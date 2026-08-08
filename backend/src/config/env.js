@@ -18,6 +18,7 @@ const env = {
     password: process.env.DB_PASSWORD || '',
     name: process.env.DB_NAME || 'festival',
     logging: process.env.DB_LOGGING === 'true',
+    sync: process.env.DB_SYNC !== 'false',
   },
 };
 

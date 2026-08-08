@@ -1,4 +1,3 @@
-// 1:1 게임과 전체 참여 게임을 위한 게임 세션 기본 모델
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
 
@@ -6,18 +5,26 @@ const GameSession = sequelize.define(
   'GameSession',
   {
     type: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(50),
       allowNull: false,
-      defaultValue: 'GLOBAL',
     },
     status: {
-      type: DataTypes.ENUM('PENDING', 'ACTIVE', 'ENDED'),
+      type: DataTypes.ENUM('PENDING', 'ACTIVE', 'ENDED', 'CANCELLED'),
       allowNull: false,
       defaultValue: 'PENDING',
     },
+    initiatorSessionId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    targetSessionId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
     state: {
       type: DataTypes.JSON,
-      allowNull: true,
+      allowNull: false,
+      defaultValue: {},
     },
     startedAt: {
       type: DataTypes.DATE,
@@ -30,6 +37,11 @@ const GameSession = sequelize.define(
   },
   {
     tableName: 'game_sessions',
+    indexes: [
+      { fields: ['initiatorSessionId'] },
+      { fields: ['targetSessionId'] },
+      { fields: ['status'] },
+    ],
   }
 );
 

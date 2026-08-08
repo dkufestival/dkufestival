@@ -1,35 +1,119 @@
-// 게임 비즈니스 로직
-const { GameSession } = require('../models');
+const { Op } = require('sequelize');
+const { GameSession, TableSession } = require('../models');
+
+function createServiceError(message, code) {
+  const error = new Error(message);
+  error.code = code;
+  return error;
+}
+
+async function requireActiveTableSession(sessionId) {
+  const session = await TableSession.findOne({
+    where: { id: sessionId, status: 'ACTIVE' },
+  });
+
+  if (!session) {
+    throw createServiceError('활성화된 테이블 세션을 찾을 수 없습니다.', 'SESSION_NOT_FOUND');
+  }
+
+  return session;
+}
+
+function requireParticipant(game, sessionId) {
+  if (![game.initiatorSessionId, game.targetSessionId].includes(Number(sessionId))) {
+    throw createServiceError('해당 게임에 참여할 권한이 없습니다.', 'GAME_FORBIDDEN');
+  }
+}
 
 async function createInvite(fromSessionId, data) {
-  // TODO: 게임 세부 기획이 확정되면 1:1 게임 초대를 저장한다.
-  return { fromSessionId, ...data };
-}
+  const initiatorSessionId = Number(fromSessionId);
+  const targetSessionId = Number(data.targetSessionId);
 
-async function acceptInvite(sessionId, data) {
-  // TODO: 초대 수락 후 GameSession을 생성한다.
-  return { sessionId, ...data };
-}
+  if (!initiatorSessionId || !targetSessionId || !data.type) {
+    throw createServiceError('fromSessionId, targetSessionId, type이 필요합니다.', 'INVALID_PAYLOAD');
+  }
+  if (initiatorSessionId === targetSessionId) {
+    throw createServiceError('자기 테이블에는 게임을 신청할 수 없습니다.', 'INVALID_TARGET');
+  }
 
-async function handleAction(sessionId, data) {
-  // TODO: 게임 액션을 검증하고 현재 게임 상태에 반영한다.
-  return { sessionId, ...data };
-}
+  await Promise.all([
+    requireActiveTableSession(initiatorSessionId),
+    requireActiveTableSession(targetSessionId),
+  ]);
 
-async function startGlobalGame(data) {
-  // TODO: 관리자 전용 전체 참여 게임 생명주기를 구현한다.
+  const existingInvite = await GameSession.findOne({
+    where: {
+      status: { [Op.in]: ['PENDING', 'ACTIVE'] },
+      [Op.or]: [
+        { initiatorSessionId, targetSessionId },
+        { initiatorSessionId: targetSessionId, targetSessionId: initiatorSessionId },
+      ],
+    },
+  });
+
+  if (existingInvite) {
+    throw createServiceError('두 테이블 사이에 진행 중인 게임이 있습니다.', 'GAME_ALREADY_EXISTS');
+  }
+
   return GameSession.create({
-    type: data.type || 'GLOBAL',
-    status: 'PENDING',
-    state: data.state || null,
-    startedAt: null,
-    endedAt: null,
+    type: data.type,
+    initiatorSessionId,
+    targetSessionId,
+    state: data.state || {},
   });
 }
 
-module.exports = {
-  createInvite,
-  acceptInvite,
-  handleAction,
-  startGlobalGame,
-};
+async function acceptInvite(sessionId, data) {
+  const game = await GameSession.findByPk(data.gameId);
+  if (!game) throw createServiceError('게임 초대를 찾을 수 없습니다.', 'GAME_NOT_FOUND');
+  if (game.targetSessionId !== Number(sessionId)) {
+    throw createServiceError('초대를 수락할 권한이 없습니다.', 'GAME_FORBIDDEN');
+  }
+  if (game.status !== 'PENDING') {
+    throw createServiceError('대기 중인 게임 초대가 아닙니다.', 'INVALID_GAME_STATUS');
+  }
+
+  await requireActiveTableSession(sessionId);
+  game.status = 'ACTIVE';
+  game.startedAt = new Date();
+  await game.save();
+  return game;
+}
+
+async function handleAction(sessionId, data) {
+  const game = await GameSession.findByPk(data.gameId);
+  if (!game) throw createServiceError('게임을 찾을 수 없습니다.', 'GAME_NOT_FOUND');
+  requireParticipant(game, sessionId);
+  if (game.status !== 'ACTIVE') {
+    throw createServiceError('진행 중인 게임이 아닙니다.', 'INVALID_GAME_STATUS');
+  }
+
+  game.state = {
+    ...(game.state || {}),
+    ...(data.state || {}),
+    lastAction: data.action || null,
+    lastActorSessionId: Number(sessionId),
+    updatedAt: new Date().toISOString(),
+  };
+  game.changed('state', true);
+  await game.save();
+  return game;
+}
+
+async function endGame(sessionId, data) {
+  const game = await GameSession.findByPk(data.gameId);
+  if (!game) throw createServiceError('게임을 찾을 수 없습니다.', 'GAME_NOT_FOUND');
+  requireParticipant(game, sessionId);
+  if (!['PENDING', 'ACTIVE'].includes(game.status)) {
+    throw createServiceError('이미 종료된 게임입니다.', 'INVALID_GAME_STATUS');
+  }
+
+  game.status = data.cancelled ? 'CANCELLED' : 'ENDED';
+  game.state = { ...(game.state || {}), ...(data.state || {}) };
+  game.endedAt = new Date();
+  game.changed('state', true);
+  await game.save();
+  return game;
+}
+
+module.exports = { createInvite, acceptInvite, handleAction, endGame };

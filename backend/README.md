@@ -52,4 +52,8 @@ npm run dev
 서버 기본 포트는 `3000`
 
 ## 참고 사항
- 인증 정책, QR 검증, payload validation, 관리자 권한 검증, 게임 상태 동기화는 TODO
+
+- 프론트에서 연결할 Socket.IO 이벤트와 payload는 `docs/SOCKET_API.md`의 `프론트 연동 필수` 부분을 확인
+- `sessionId`에는 물리 테이블 ID가 아닌 활성 `tableSessionId`를 전달
+- 운영 환경에서는 `CORS_ORIGIN`, `JWT_SECRET`, DB 접속 정보를 반드시 별도로 설정
+- 소켓 인증, QR 검증, 관리자 계정 검증은 추가 보완 필요

@@ -17,6 +17,11 @@ JoinRequest.belongsTo(TableSession, { foreignKey: 'targetSessionId', as: 'target
 ChatRoom.hasMany(ChatMessage, { foreignKey: 'roomId', as: 'messages' });
 ChatMessage.belongsTo(ChatRoom, { foreignKey: 'roomId', as: 'room' });
 
+TableSession.hasMany(GameSession, { foreignKey: 'initiatorSessionId', as: 'createdGames' });
+TableSession.hasMany(GameSession, { foreignKey: 'targetSessionId', as: 'receivedGames' });
+GameSession.belongsTo(TableSession, { foreignKey: 'initiatorSessionId', as: 'initiator' });
+GameSession.belongsTo(TableSession, { foreignKey: 'targetSessionId', as: 'target' });
+
 module.exports = {
   Table,
   TableSession,
