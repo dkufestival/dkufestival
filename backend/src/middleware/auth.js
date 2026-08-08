@@ -1,5 +1,6 @@
 // JWT Bearer 토큰 인증 미들웨어
 const jwt = require('jsonwebtoken');
+const env = require('../config/env');
 
 function auth(req, res, next) {
   const authorization = req.headers.authorization;
@@ -11,7 +12,7 @@ function auth(req, res, next) {
   const token = authorization.slice('Bearer '.length);
 
   try {
-    req.user = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret');
+    req.user = jwt.verify(token, env.jwtSecret);
     return next();
   } catch (error) {
     return res.status(401).json({ message: '유효하지 않거나 만료된 토큰입니다.' });

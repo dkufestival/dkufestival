@@ -1,11 +1,12 @@
 //관리자 컨트롤러
 const jwt = require('jsonwebtoken');
+const env = require('../config/env');
 const tableService = require('../services/table.service');
 
 async function login(req, res, next) {
   try {
     // TODO: 실제 관리자 계정 검증으로 교체한다.
-    const token = jwt.sign({ role: 'ADMIN' }, process.env.JWT_SECRET || 'dev-secret', {
+    const token = jwt.sign({ role: 'ADMIN' }, env.jwtSecret, {
       expiresIn: '1d',
     });
 
