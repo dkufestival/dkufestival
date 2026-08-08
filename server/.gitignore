@@ -1,0 +1,8 @@
+node_modules
+.env
+uploads/recreation/*
+!uploads/recreation/.gitkeep
+uploads/music/*
+!uploads/music/.gitkeep
+uploads/mission-photo/*
+!uploads/mission-photo/.gitkeep

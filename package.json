@@ -1,0 +1,21 @@
+{
+  "name": "dkufestival",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "npm --prefix app start",
+    "prepare:lan": "node scripts/prepare-lan.js",
+    "lan": "npm run prepare:lan && npm --prefix app run start:lan",
+    "lan:clear": "npm run prepare:lan && npm --prefix app run start:lan:clear",
+    "tunnel": "node scripts/start-tunnel.js",
+    "web": "npm --prefix app run web",
+    "android": "npm --prefix app run android",
+    "ios": "npm --prefix app run ios",
+    "lint": "npm --prefix app run lint"
+  },
+  "dependencies": {
+    "socket.io-client": "^4.8.3"
+  }
+}
