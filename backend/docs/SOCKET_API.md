@@ -7,7 +7,7 @@
 ```js
 import { io } from 'socket.io-client';
 
-const socket = io(SERVER_URL);
+const socket = io(SERVER_URL, { auth: { token } });
 ```
 
 모든 게임 이벤트의 콜백은 성공 시 `{ ok: true, data? }`, 실패 시
@@ -79,3 +79,19 @@ socket.on('game:ended', (game) => {});
 | 서버 → 프론트 | `chat:message` | 저장된 메시지 객체 |
 
 > `sessionId`는 물리 테이블의 `tableId`가 아니라 현재 사용 팀의 `tableSessionId`입니다.
+
+## 관리자 단체 게임
+
+| 방향 | 이벤트 | Payload | 설명 |
+| --- | --- | --- | --- |
+| 관리자 → 서버 | `game:global:start` | `{ type, state? }` | 전체 참가자 게임 시작 |
+| 서버 → 참가자 | `game:global:started` | `GameSession` | 단체 게임 시작 알림 |
+| 참가자 → 서버 | `game:action` | `{ gameId, action, state? }` | 단체 게임 응답 제출 |
+| 서버 → 관리자 | `game:global:state` | `GameSession` | 참가자 응답 상태 전달 |
+| 관리자 → 서버 | `game:global:end` | `{ gameId, state? }` | 단체 게임 종료 |
+| 서버 → 참가자 | `game:global:ended` | `GameSession` | 단체 게임 종료 알림 |
+
+## 전체 공지
+
+관리자가 `POST /api/notices`로 공지를 생성하면 연결된 참가자에게
+`notice:created` 이벤트와 공지 객체가 전달됩니다.

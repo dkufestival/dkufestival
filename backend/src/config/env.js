@@ -11,6 +11,10 @@ const env = {
   port: Number(process.env.PORT || 3000),
   corsOrigin: process.env.CORS_ORIGIN || '*',
   jwtSecret: process.env.JWT_SECRET || 'dev-secret',
+  admin: {
+    id: process.env.ADMIN_ID || 'admin',
+    password: process.env.ADMIN_PASSWORD || null,
+  },
   db: {
     host: process.env.DB_HOST || 'localhost',
     port: Number(process.env.DB_PORT || 3306),
@@ -19,7 +23,9 @@ const env = {
     name: process.env.DB_NAME || 'festival',
     logging: process.env.DB_LOGGING === 'true',
     sync: process.env.DB_SYNC !== 'false',
+    alter: process.env.DB_ALTER === 'true',
   },
+  tableCount: Number(process.env.TABLE_COUNT || 20),
 };
 
 module.exports = env;

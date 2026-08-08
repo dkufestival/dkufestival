@@ -1,5 +1,7 @@
 // 테이블 컨트롤러
 const tableService = require('../services/table.service');
+const jwt = require('jsonwebtoken');
+const env = require('../config/env');
 
 async function getTables(req, res, next) {
   try {
@@ -22,7 +24,10 @@ async function getTable(req, res, next) {
 async function enterTable(req, res, next) {
   try {
     const session = await tableService.enterTable(req.params.tableId, req.body);
-    res.status(201).json({ data: session });
+    const token = jwt.sign({ role: 'PARTICIPANT', sessionId: session.id }, env.jwtSecret, {
+      expiresIn: '12h',
+    });
+    res.status(201).json({ data: { session, token } });
   } catch (error) {
     next(error);
   }

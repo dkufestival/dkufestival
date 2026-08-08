@@ -68,13 +68,13 @@ mysql --version
 
 ```bash
 git clone https://github.com/dkufestival/dkufestival.git
-cd dkufestival/backend
+cd dkufestival
 ```
 
 ### 2. 백엔드 의존성 설치
 
 ```bash
-npm ci
+npm run setup
 ```
 
 ### 3. MySQL 데이터베이스 생성
@@ -101,7 +101,7 @@ EXIT;
 ### 4. 환경변수 설정
 
 ```bash
-cp .env.example .env
+cp backend/.env.example backend/.env
 ```
 
 `backend/.env`를 다음과 같이 수정합니다.

@@ -16,6 +16,11 @@ const ChatRoom = sequelize.define(
   },
   {
     tableName: 'chat_rooms',
+    indexes: [
+      { fields: ['sessionAId'] },
+      { fields: ['sessionBId'] },
+      { unique: true, fields: ['sessionAId', 'sessionBId'] },
+    ],
   }
 );
 

@@ -17,5 +17,8 @@
 | POST | `/api/admin/login` | 관리자 로그인 및 JWT 발급 | 아니오 |
 | GET | `/api/admin/tables` | 관리자용 테이블/세션 목록 조회 | 예 |
 | POST | `/api/admin/tables/:tableId/checkout` | 특정 테이블의 현재 활성 세션 종료 처리 | 예 |
+| GET | `/api/notices` | 최근 전체 공지 조회 | 예 |
+| POST | `/api/notices` | 관리자 전체 공지 생성 | 관리자 |
 
-프론트엔드 흐름이 확정될 때까지 payload와 검증 규칙은 TODO로 둔다.
+좌석 입장 성공 응답에는 참가자용 JWT가 포함됩니다. 이후 인증 API는
+`Authorization: Bearer <token>` 헤더를 사용합니다.

@@ -14,12 +14,13 @@ const io = new Server(server, {
   },
 });
 
+app.set('io', io);
 registerSocketHandlers(io);
 
 async function startServer() {
   try {
     await sequelize.authenticate();
-    if (env.db.sync) await sequelize.sync();
+    if (env.db.sync) await sequelize.sync({ alter: env.db.alter });
 
     server.listen(env.port, () => {
       console.log(`Festival backend listening on port ${env.port}`);

@@ -1,18 +1,30 @@
 // 테이블 비즈니스 로직
 const { Table, TableSession } = require('../models');
+const AppError = require('../errors/AppError');
 
-async function getTables() {
-  // TODO: 지도/목록 화면에 필요한 각 테이블의 현재 활성 TableSession을 포함한다.
-  return Table.findAll({ include: [{ model: TableSession, as: 'sessions' }] });
+async function getTables(options = {}) {
+  return Table.findAll({
+    attributes: options.includeQrToken ? undefined : { exclude: ['qrToken'] },
+    include: [{ model: TableSession, as: 'sessions', where: { status: 'ACTIVE' }, required: false }],
+  });
 }
 
 async function getTable(tableId) {
-  // TODO: 현재 ACTIVE 상태인 세션만 포함해 테이블 상세 정보를 반환한다.
-  return Table.findByPk(tableId, { include: [{ model: TableSession, as: 'sessions' }] });
+  return Table.findByPk(tableId, {
+    attributes: { exclude: ['qrToken'] },
+    include: [{ model: TableSession, as: 'sessions', where: { status: 'ACTIVE' }, required: false }],
+  });
 }
 
 async function enterTable(tableId, data) {
-  // TODO: QR 토큰을 검증하고 같은 테이블의 ACTIVE 세션 중복 생성을 막는다.
+  const table = await Table.findByPk(tableId);
+  if (!table || table.qrToken !== data.qrToken) {
+    throw new AppError(404, 'INVALID_TABLE_TOKEN', '좌석 또는 QR 토큰이 올바르지 않습니다.');
+  }
+
+  const activeSession = await TableSession.findOne({ where: { tableId, status: 'ACTIVE' } });
+  if (activeSession) throw new AppError(409, 'TABLE_ALREADY_ACTIVE', '이미 사용 중인 좌석입니다.');
+
   return TableSession.create({
     tableId,
     nickname: data.nickname,
@@ -24,17 +36,13 @@ async function enterTable(tableId, data) {
 }
 
 async function updateMyTable(sessionId, data) {
-  // TODO: 수정 가능한 대표 정보 필드만 업데이트하도록 제한한다.
   const session = await TableSession.findByPk(sessionId);
-  if (!session) {
-    return null;
-  }
+  if (!session) throw new AppError(404, 'SESSION_NOT_FOUND', '좌석 세션을 찾을 수 없습니다.');
 
   return session.update(data);
 }
 
 async function checkoutTable(tableId) {
-  // TODO: 보호된 라우트에서 관리자만 호출할 수 있도록 권한을 검증한다.
   const session = await TableSession.findOne({
     where: { tableId, status: 'ACTIVE' },
     order: [['startedAt', 'DESC']],

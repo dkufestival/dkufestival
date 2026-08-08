@@ -1,0 +1,17 @@
+{
+  "name": "dku-festival",
+  "version": "1.0.0",
+  "private": true,
+  "description": "대학교 축제 주점 운영 실시간 웹 서비스",
+  "scripts": {
+    "setup": "npm ci --prefix backend",
+    "start": "npm start --prefix backend",
+    "dev": "npm run dev --prefix backend",
+    "seed": "npm run seed --prefix backend",
+    "test": "npm test --prefix backend",
+    "check": "npm run check --prefix backend"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

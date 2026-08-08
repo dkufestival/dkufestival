@@ -1,23 +1,34 @@
-// 채팅 Socket.IO 이벤트를 등록
 const chatService = require('../services/chat.service');
 
+function reply(callback, response) {
+  if (typeof callback === 'function') callback(response);
+}
+
 function registerChatSocket(io, socket) {
-  socket.on('chat:join', async (payload, callback) => {
-    // TODO: 채팅방 입장 전에 세션 접근 권한을 검증한다.
-    socket.join(`chat:${payload.roomId}`);
-    if (callback) callback({ ok: true });
+  socket.on('chat:join', async (payload = {}, callback) => {
+    try {
+      if (socket.data.user.role !== 'PARTICIPANT') throw new Error('PARTICIPANT_REQUIRED');
+      await chatService.requireRoomMember(payload.roomId, socket.data.sessionId);
+      await socket.join(`chat:${payload.roomId}`);
+      reply(callback, { ok: true });
+    } catch (error) {
+      reply(callback, { ok: false, error: error.code || error.message || 'CHAT_ERROR' });
+    }
   });
 
-  socket.on('chat:send', async (payload, callback) => {
-    // TODO: 소켓 인증과 채팅방 참여자 검증을 추가한다.
-    const message = await chatService.sendMessage(
-      payload.roomId,
-      payload.senderSessionId,
-      payload.content
-    );
-
-    io.to(`chat:${payload.roomId}`).emit('chat:message', message);
-    if (callback) callback({ ok: true, data: message });
+  socket.on('chat:send', async (payload = {}, callback) => {
+    try {
+      if (socket.data.user.role !== 'PARTICIPANT') throw new Error('PARTICIPANT_REQUIRED');
+      const message = await chatService.sendMessage(
+        payload.roomId,
+        socket.data.sessionId,
+        payload.content
+      );
+      io.to(`chat:${payload.roomId}`).emit('chat:message', message);
+      reply(callback, { ok: true, data: message });
+    } catch (error) {
+      reply(callback, { ok: false, error: error.code || error.message || 'CHAT_ERROR' });
+    }
   });
 }
 

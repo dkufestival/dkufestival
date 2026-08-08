@@ -147,9 +147,13 @@ DB_USER=festival_user
 DB_PASSWORD=change_this_password
 DB_NAME=festival
 DB_SYNC=true
+DB_ALTER=false
 
 CORS_ORIGIN=*
 JWT_SECRET=replace_with_a_long_random_value
+ADMIN_ID=admin
+ADMIN_PASSWORD=replace_with_a_strong_password
+TABLE_COUNT=20
 ```
 
 JWT 비밀키는 다음 명령으로 생성할 수 있습니다.
@@ -171,8 +175,18 @@ openssl rand -hex 32
 | `DB_PASSWORD` | MySQL 비밀번호 | 빈 값 |
 | `DB_NAME` | 사용할 데이터베이스 | `festival` |
 | `DB_SYNC` | 시작 시 Sequelize 테이블 동기화 여부 | `true` |
+| `DB_ALTER` | 개발 DB의 기존 테이블을 모델에 맞춰 변경할지 여부 | `false` |
 | `CORS_ORIGIN` | 접근을 허용할 프론트 주소 | `*` |
 | `JWT_SECRET` | JWT 서명용 비밀키 | 개발용 기본값 |
+| `ADMIN_ID` | 관리자 로그인 아이디 | `admin` |
+| `ADMIN_PASSWORD` | 관리자 로그인 비밀번호(필수) | 없음 |
+| `TABLE_COUNT` | seed로 생성할 물리 좌석 수 | `20` |
+
+환경변수를 설정한 뒤 최초 한 번 좌석과 QR 토큰을 생성합니다.
+
+```bash
+npm run seed
+```
 
 ### 6. 서버 실행
 

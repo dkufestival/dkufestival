@@ -4,6 +4,11 @@ const sequelize = require('../config/db');
 const GameSession = sequelize.define(
   'GameSession',
   {
+    mode: {
+      type: DataTypes.ENUM('PAIR', 'GLOBAL'),
+      allowNull: false,
+      defaultValue: 'PAIR',
+    },
     type: {
       type: DataTypes.STRING(50),
       allowNull: false,
@@ -15,11 +20,11 @@ const GameSession = sequelize.define(
     },
     initiatorSessionId: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
     },
     targetSessionId: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
     },
     state: {
       type: DataTypes.JSON,
