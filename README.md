@@ -1,6 +1,6 @@
 # DKU Festival
 
-축제 주점 운영을 위한 테이블 세션, QR 입장, 합석 요청, 채팅, 공지, 신청곡, 게임 백엔드와 프론트엔드 프로젝트다.
+축제 주점 운영을 위한 테이블 세션, QR 입장, 합석 요청, 채팅, 공지, 신청곡, 게임 백엔드와 정적 프론트엔드 프로젝트다.
 
 ## 주요 개념
 
@@ -13,7 +13,7 @@
 ## 기술 스택
 
 - Backend: Node.js, Express, Socket.IO, Sequelize, MySQL
-- Frontend: 정적 HTML/CSS/JavaScript
+- Frontend: 정적 HTML/CSS/JavaScript, ES Module, Socket.IO client
 - Authentication: JWT
 
 ## 설치
@@ -24,13 +24,16 @@ cd dkufestival
 npm run setup
 ```
 
-## 백엔드 환경변수
+## 백엔드 실행
 
 ```bash
 cp backend/.env.example backend/.env
+cd backend
+npm run seed
+npm run dev
 ```
 
-주요 변수:
+주요 백엔드 환경변수:
 
 - `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`
 - `DB_SYNC`, `DB_ALTER`
@@ -44,18 +47,30 @@ cp backend/.env.example backend/.env
 
 자세한 설명은 [backend/README.md](backend/README.md)를 확인한다.
 
-## 실행
+## 프론트엔드 실행
 
 ```bash
-cd backend
-npm run seed
-npm run dev
+cd frontend
+python -m http.server 5174
 ```
 
-`npm run seed`는 물리 테이블과 QR 토큰을 준비하고, `<FRONTEND_URL>/index.html?qr=<qrToken>` 형식의 QR PNG를 `QR_OUTPUT_DIR`에 생성한다.
+사용자 화면:
+
+```text
+http://localhost:5174/index.html?qr=<qrToken>
+```
+
+관리자 화면:
+
+```text
+http://localhost:5174/admin.html
+```
+
+프론트 설정, API 매핑, Socket.IO 매핑, 테스트 시나리오는 [frontend/README.md](frontend/README.md)를 확인한다.
 
 ## 문서
 
 - [Backend README](backend/README.md)
 - [REST API](backend/docs/REST_API.md)
 - [Socket.IO API](backend/docs/SOCKET_API.md)
+- [Frontend README](frontend/README.md)
