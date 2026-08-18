@@ -1,7 +1,9 @@
+const defaultServerUrl = `${window.location.protocol}//${window.location.hostname || 'localhost'}:3000`;
+
 export const API_BASE_URL =
   window.PIUM_CONFIG?.API_BASE_URL ||
   localStorage.getItem('piumApiBaseUrl') ||
-  'http://localhost:3000';
+  defaultServerUrl;
 
 export const SOCKET_URL =
   window.PIUM_CONFIG?.SOCKET_URL ||

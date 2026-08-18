@@ -85,7 +85,8 @@ async function initEntry() {
     const auth = getParticipantAuth();
     if (auth?.token && auth.tableId === state.table.id) {
       $('nickname-input').value = auth.participant?.nickname || '';
-      setLandingStatus('저장된 참가자 정보가 있습니다. 바로 복구할 수 있습니다.');
+      setLandingStatus('저장된 참가자 정보를 복구하는 중입니다.');
+      await restoreFromToken();
     }
   } catch (error) {
     $('join-btn').disabled = true;
@@ -620,6 +621,10 @@ async function restoreFromToken() {
 }
 
 bindEvents();
-restoreFromToken().then((restored) => {
-  if (!restored) initEntry();
-});
+if (state.qrToken) {
+  initEntry();
+} else {
+  restoreFromToken().then((restored) => {
+    if (!restored) initEntry();
+  });
+}
