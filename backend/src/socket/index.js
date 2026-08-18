@@ -8,6 +8,7 @@ function registerSocketHandlers(io) {
   io.on('connection', (socket) => {
     socket.join(socket.data.user.role === 'ADMIN' ? 'admins' : 'participants');
     if (socket.data.sessionId) socket.join(`session:${socket.data.sessionId}`);
+    if (socket.data.participantId) socket.join(`participant:${socket.data.participantId}`);
     registerChatSocket(io, socket);
     registerGameSocket(io, socket);
   });

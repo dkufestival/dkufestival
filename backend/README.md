@@ -1,110 +1,107 @@
-# 축제 테이블 매칭 백엔드
+# Festival Backend
 
-## 기술 스택
+Node.js, Express, Socket.IO, Sequelize, MySQL 기반의 축제 테이블 운영 백엔드다.
 
-- Node.js, Express
-- Socket.IO
-- MySQL, Sequelize
-- JWT, dotenv, cors
+## 현재 데이터 구조
+
+- `Table`: 현장의 물리 테이블이다. `tableNumber`, `qrToken`, `qrEnabled`, `qrVersion`을 가진다.
+- `TableSession`: 물리 테이블을 현재 사용하는 팀 세션이다. `maleCount`, `femaleCount`, `startedAt`, `expiresAt`, `endedAt`, `status`를 가진다.
+- `Participant`: 같은 테이블 세션에 QR로 접속한 개별 휴대폰 사용자다. `clientId`, `nickname`, `isHost`를 가진다.
+- `tableId`: 물리 테이블 ID다.
+- `tableSessionId` / `sessionId`: 현재 사용 팀 세션 ID다. JWT payload에서는 `sessionId`로 들어간다.
+- `participantId`: 개별 참가자 ID다.
+- `clientId`: 프론트가 휴대폰별로 저장해야 하는 재입장 식별자다.
+
+한 테이블 QR에는 여러 휴대폰이 접속할 수 있다. 첫 입장자는 새 `TableSession`을 만들고 대표자(`isHost=true`)가 된다. 이후 입장자는 기존 활성 세션에 `Participant`로 추가된다. 같은 휴대폰이 다시 들어오면 `clientId`로 기존 참가자를 복구한다.
 
 ## 프로젝트 구조
 
 ```text
 backend/
-├── src/
-│   ├── server.js             # HTTP 서버 및 Socket.IO 시작
-│   ├── app.js                # Express 앱 및 REST 라우트
-│   ├── config/               # 환경변수와 DB 연결 설정
-│   ├── routes/               # REST API 경로
-│   ├── controllers/          # 요청/응답 처리
-│   ├── services/             # 비즈니스 로직
-│   ├── models/               # Sequelize DB 모델
-│   ├── socket/               # 채팅·게임 Socket.IO 이벤트
-│   └── middleware/           # JWT 등 공통 미들웨어
-├── docs/
-│   ├── REST_API.md
-│   └── SOCKET_API.md
-├── .env.example
-├── package-lock.json
-└── package.json
+  src/
+    server.js
+    app.js
+    config/
+    routes/
+    controllers/
+    services/
+    models/
+    middleware/
+    socket/
+  scripts/
+    seed-tables.js
+    check-js.js
+  docs/
+    REST_API.md
+    SOCKET_API.md
 ```
 
-## 핵심 개념
-
-`Table`은 실제 물리 테이블이고, `TableSession`은 현재 해당 테이블을 사용하는 팀입니다.
-같은 테이블 QR로 여러 팀이 차례로 입장해도 `tableId`는 유지되며 팀이 바뀔 때마다 새로운
-`tableSessionId`가 생성됩니다. 채팅, 합석 요청, 게임은 `tableSessionId`를 기준으로 처리합니다.
-
-## 새 컴퓨터에서 처음 실행하기
-
-### 1. 필수 프로그램 설치
-
-권장 환경은 Node.js 20 LTS 이상, npm, MySQL 8 이상, Git입니다.
-
-macOS에서 Homebrew를 사용하는 경우:
+## 설치
 
 ```bash
-brew install node@20 mysql git
-brew services start mysql
-```
-
-Ubuntu/Debian 계열인 경우:
-
-```bash
-sudo apt update
-sudo apt install -y nodejs npm mysql-server git
-sudo systemctl enable --now mysql
-```
-
-설치 여부를 확인합니다.
-
-```bash
-node --version
-npm --version
-mysql --version
-git --version
-```
-
-### 2. 저장소 내려받기
-
-```bash
-git clone https://github.com/dkufestival/dkufestival.git
-cd dkufestival/backend
-```
-
-이미 저장소가 있다면 최신 코드를 받습니다.
-
-```bash
-cd dkufestival
-git pull origin main
 cd backend
-```
-
-### 3. Node.js 의존성 설치
-
-`package-lock.json`에 기록된 동일 버전을 설치하기 위해 `npm ci`를 사용합니다.
-
-```bash
 npm ci
 ```
 
-개발 도구를 제외한 운영용 의존성만 설치하려면 다음 명령을 사용합니다.
+Node.js 20 이상과 MySQL이 필요하다.
+
+## 환경변수
+
+`.env.example`을 복사해서 `.env`를 만든다.
 
 ```bash
-npm ci --omit=dev
+cp .env.example .env
 ```
 
-주요 의존성은 Express, Socket.IO, Sequelize, mysql2, jsonwebtoken, dotenv, cors입니다.
+예시:
 
-### 4. MySQL 데이터베이스와 계정 생성
+```env
+PORT=3000
 
-MySQL 관리자 계정으로 접속합니다.
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=festival_user
+DB_PASSWORD=change_this_password
+DB_NAME=festival
+DB_SYNC=true
+DB_ALTER=true
+DB_LOGGING=false
 
-```bash
-mysql -u root -p
+CORS_ORIGIN=*
+FRONTEND_URL=http://localhost:5500
+SESSION_DURATION_MINUTES=120
+QR_OUTPUT_DIR=./qr-codes
+
+JWT_SECRET=replace_with_a_long_random_value
+ADMIN_ID=admin
+ADMIN_PASSWORD=replace_with_a_strong_password
+
+TABLE_COUNT=20
 ```
 
-MySQL 콘솔에서 아래 SQL을 실행합니다. 비밀번호는 개발 환경에 맞게 변경하세요.
+| 변수 | 설명 | 기본값 |
+| --- | --- | --- |
+| `PORT` | HTTP 및 Socket.IO 포트 | `3000` |
+| `DB_HOST` | MySQL 호스트 | `localhost` |
+| `DB_PORT` | MySQL 포트 | `3306` |
+| `DB_USER` | MySQL 사용자 | `root` |
+| `DB_PASSWORD` | MySQL 비밀번호 | empty |
+| `DB_NAME` | MySQL 데이터베이스 | `festival` |
+| `DB_SYNC` | 서버 시작 시 Sequelize sync 실행 여부 | `true` |
+| `DB_ALTER` | 기존 테이블을 모델에 맞춰 alter 시도 | `false` |
+| `DB_LOGGING` | Sequelize SQL 로그 출력 | `false` |
+| `CORS_ORIGIN` | CORS 허용 origin | `*` |
+| `FRONTEND_URL` | QR URL 생성에 사용할 프론트 주소 | `http://localhost:3000` |
+| `SESSION_DURATION_MINUTES` | 기본 테이블 이용 시간 | `120` |
+| `QR_OUTPUT_DIR` | seed 실행 시 QR PNG 출력 위치 | `backend/qr-codes` |
+| `JWT_SECRET` | JWT 서명 비밀키 | `dev-secret` |
+| `ADMIN_ID` | 관리자 로그인 ID | `admin` |
+| `ADMIN_PASSWORD` | 관리자 로그인 비밀번호 | 없음 |
+| `TABLE_COUNT` | seed로 생성할 물리 테이블 수 | `20` |
+
+서버 시작 시 `DB_SYNC=true`이면 `sequelize.sync()`가 실행된다. `DB_ALTER=true`이면 모델 기준으로 기존 테이블 변경을 시도한다. 실데이터 DB에서는 실행 전 백업이 필요하다.
+
+## 데이터베이스 준비
 
 ```sql
 CREATE DATABASE IF NOT EXISTS festival
@@ -116,189 +113,165 @@ CREATE USER IF NOT EXISTS 'festival_user'@'localhost'
 
 GRANT ALL PRIVILEGES ON festival.* TO 'festival_user'@'localhost';
 FLUSH PRIVILEGES;
-EXIT;
 ```
 
-생성한 계정으로 접속되는지 확인합니다.
-
-```bash
-mysql -u festival_user -p festival
-```
-
-접속이 확인되면 `EXIT;`를 입력해 종료합니다. 서버 시작 시 `DB_SYNC=true`이면 Sequelize가
-필요한 테이블을 자동으로 생성합니다.
-
-### 5. 환경변수 설정
-
-예제 파일을 복사합니다.
-
-```bash
-cp .env.example .env
-```
-
-`backend/.env`를 아래와 같이 수정합니다.
-
-```env
-PORT=3000
-
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=festival_user
-DB_PASSWORD=change_this_password
-DB_NAME=festival
-DB_SYNC=true
-DB_ALTER=false
-
-CORS_ORIGIN=*
-JWT_SECRET=replace_with_a_long_random_value
-ADMIN_ID=admin
-ADMIN_PASSWORD=replace_with_a_strong_password
-TABLE_COUNT=20
-```
-
-JWT 비밀키는 다음 명령으로 생성할 수 있습니다.
-
-```bash
-openssl rand -hex 32
-```
-
-생성된 값을 `JWT_SECRET`에 붙여 넣습니다. `.env`는 비밀정보를 포함하므로 Git에 커밋하지 않습니다.
-
-환경변수 설명:
-
-| 이름 | 설명 | 개발 기본값 |
-| --- | --- | --- |
-| `PORT` | 백엔드 HTTP·Socket.IO 포트 | `3000` |
-| `DB_HOST` | MySQL 서버 주소 | `localhost` |
-| `DB_PORT` | MySQL 포트 | `3306` |
-| `DB_USER` | MySQL 사용자 | `root` |
-| `DB_PASSWORD` | MySQL 비밀번호 | 빈 값 |
-| `DB_NAME` | 사용할 데이터베이스 | `festival` |
-| `DB_SYNC` | 시작 시 Sequelize 테이블 동기화 여부 | `true` |
-| `DB_ALTER` | 개발 DB의 기존 테이블을 모델에 맞춰 변경할지 여부 | `false` |
-| `CORS_ORIGIN` | 접근을 허용할 프론트 주소 | `*` |
-| `JWT_SECRET` | JWT 서명용 비밀키 | 개발용 기본값 |
-| `ADMIN_ID` | 관리자 로그인 아이디 | `admin` |
-| `ADMIN_PASSWORD` | 관리자 로그인 비밀번호(필수) | 없음 |
-| `TABLE_COUNT` | seed로 생성할 물리 좌석 수 | `20` |
-
-환경변수를 설정한 뒤 최초 한 번 좌석과 QR 토큰을 생성합니다.
+## 테이블 seed 및 QR 이미지 생성
 
 ```bash
 npm run seed
 ```
 
-### 6. 서버 실행
+seed 동작:
 
-개발 모드에서는 파일 변경 시 서버가 자동으로 재시작됩니다.
+- `TABLE_COUNT`만큼 물리 테이블을 생성한다.
+- 새 테이블에는 안전한 랜덤 `qrToken`을 만든다.
+- 이미 존재하는 테이블의 `qrToken`은 seed만으로 변경하지 않는다.
+- 각 테이블의 QR 주소는 `<FRONTEND_URL>/index.html?qr=<qrToken>`이다.
+- 각 테이블 QR PNG를 `QR_OUTPUT_DIR`에 `table-<tableNumber>.png`로 생성한다.
+- 실행 결과에 `tableId`, `tableNumber`, `qrToken`, `qrPng`가 표로 출력된다.
+
+일반 테이블 API는 `qrToken`을 노출하지 않는다. 관리자 조회와 seed 출력에서만 확인할 수 있다.
+
+## 실행
+
+개발:
 
 ```bash
 npm run dev
 ```
 
-일반 실행 또는 운영 실행:
+일반 실행:
 
 ```bash
 npm start
 ```
 
-정상적으로 시작되면 다음 로그가 표시됩니다.
-
-```text
-Festival backend listening on port 3000
-```
-
-### 7. 동작 확인
-
-새 터미널에서 health API를 호출합니다.
+헬스 체크:
 
 ```bash
 curl http://localhost:3000/health
 ```
 
-정상 응답:
+응답:
 
 ```json
-{"status":"ok"}
+{ "status": "ok" }
 ```
 
-MySQL에 테이블이 생성됐는지도 확인할 수 있습니다.
+## 인증
+
+참가자 토큰은 `/api/entry` 성공 응답으로 받는다.
+
+```json
+{
+  "role": "PARTICIPANT",
+  "tableId": 3,
+  "sessionId": 15,
+  "participantId": 101
+}
+```
+
+관리자 토큰은 `/api/admin/login`에서 받으며 payload는 `{ "role": "ADMIN" }`이다.
+
+REST 요청:
+
+```http
+Authorization: Bearer <token>
+```
+
+Socket.IO 연결:
+
+```js
+io(SERVER_URL, { auth: { token } });
+```
+
+참가자 토큰은 참가자 존재 여부, `TableSession.status === "ACTIVE"`, `expiresAt` 미만 여부를 검증한다. 종료되거나 만료된 세션의 토큰은 사용할 수 없다.
+
+## 대표 시나리오
+
+### 첫 번째 사용자의 QR 입장
+
+1. 프론트가 QR URL의 `qr` 값을 읽는다.
+2. `GET /api/entry/context?qr=<qrToken>`으로 테이블 상태를 확인한다.
+3. 활성 세션이 없으면 `requiresTeamSetup=true`다.
+4. 사용자가 닉네임, 남녀 인원을 입력한다.
+5. `POST /api/entry`로 `qrToken`, `clientId`, `nickname`, `maleCount`, `femaleCount`를 보낸다.
+6. 서버가 `TableSession`과 대표 `Participant`를 만들고 참가자 JWT를 반환한다.
+
+### 같은 테이블의 두 번째 사용자 입장
+
+1. 같은 QR을 스캔한다.
+2. `GET /api/entry/context`에서 `hasActiveSession=true`를 받는다.
+3. `POST /api/entry`로 `qrToken`, 새 `clientId`, `nickname`만 보낸다.
+4. 서버가 기존 활성 세션에 새 `Participant`를 추가한다.
+
+### 새로고침 및 재입장
+
+1. 프론트는 같은 휴대폰에 저장한 `clientId`를 다시 사용한다.
+2. `POST /api/entry`에 같은 `clientId`를 보내면 서버가 기존 참가자를 복구한다.
+3. 응답의 `restored=true` 여부로 복구 여부를 확인할 수 있다.
+
+### 사용 중 테이블에 합석 요청
+
+1. `GET /api/tables`로 `activeSession`이 있는 대상 테이블을 찾는다.
+2. `POST /api/join-requests`에 `targetSessionId`를 보낸다.
+3. 응답은 `{ joinRequest, chatRoom }`이다.
+4. 양쪽 세션에 `join:created`, `chat:room-created` 이벤트가 전송된다.
+
+### 요청 수락 전 채팅
+
+1. 합석 요청 생성 응답의 `chatRoom.id`를 사용한다.
+2. Socket `chat:join`으로 `chat:<roomId>`에 입장한다.
+3. Socket `chat:send`로 메시지를 보낸다.
+4. 수락 전에도 채팅 가능하다.
+
+### 관리자 시간 연장
+
+1. 관리자가 `/api/admin/login`으로 토큰을 받는다.
+2. `POST /api/admin/tables/:tableId/extend`에 `minutes`와 선택적 `paymentReference`를 보낸다.
+3. 서버가 `expiresAt`을 연장하고 `table:extended` 이벤트를 전송한다.
+
+### 관리자 퇴실
+
+1. `POST /api/admin/tables/:tableId/checkout`을 호출한다.
+2. 서버가 활성 세션을 `CLOSED`로 바꾸고 `endedAt`을 기록한다.
+3. 해당 세션 참가자에게 `table:checked-out` 이벤트를 보낸다.
+4. 이후 기존 참가자 JWT는 REST/Socket 활동에 사용할 수 없다.
+
+### 신청곡
+
+1. 참가자가 `POST /api/song-requests`로 `songTitle`, `artist`를 보낸다.
+2. 관리자와 같은 세션에 `song:requested` 이벤트가 전송된다.
+3. 참가자는 `GET /api/song-requests/me`로 내 신청곡을 조회한다.
+4. 관리자는 `GET /api/admin/song-requests`로 전체 신청곡을 본다.
+5. 관리자는 `PATCH /api/admin/song-requests/:requestId/complete`로 완료 처리한다.
+
+### 관리자 전체 게임
+
+1. 관리자가 Socket으로 연결한다.
+2. `game:global:start`에 `{ type, state }`를 보낸다.
+3. 참가자들은 `game:global:started`를 받는다.
+4. 참가자는 `game:action`으로 응답한다.
+5. 서버는 관리자에게 `game:global:state`를 보낸다.
+6. 관리자는 `game:global:end`로 종료한다.
+
+## 문서
+
+- REST 상세 명세: `docs/REST_API.md`
+- Socket.IO 상세 명세: `docs/SOCKET_API.md`
+
+## 검증
 
 ```bash
-mysql -u festival_user -p -D festival -e "SHOW TABLES;"
+npm test
+npm run check
 ```
 
-## 프론트엔드 연동
+현재 `npm run check`는 `scripts/check-js.js`를 사용해 `src`, `scripts`, `test` 아래 JS 파일을 `node --check`로 검사한다.
 
-프론트엔드의 API 및 Socket.IO 서버 주소를 실행 중인 백엔드 주소로 맞춰야 합니다.
+## 현재 구현상 주의점
 
-같은 컴퓨터에서 실행하는 경우:
-
-```text
-http://localhost:3000
-```
-
-휴대전화 등 같은 Wi-Fi의 다른 기기에서 접속하는 경우 macOS에서 개발 PC의 IP를 확인합니다.
-
-```bash
-ipconfig getifaddr en0
-```
-
-예를 들어 결과가 `192.168.0.10`이라면 프론트 서버 주소는 다음과 같습니다.
-
-```text
-http://192.168.0.10:3000
-```
-
-게임 소켓의 이벤트명, payload, 콜백 형식은 `docs/SOCKET_API.md`의 `프론트 연동 필수`
-부분을 확인하세요. `sessionId`에는 물리 테이블 ID가 아닌 활성 `tableSessionId`를 전달해야 합니다.
-
-## 자주 발생하는 문제
-
-### `ECONNREFUSED 127.0.0.1:3306`
-
-MySQL이 실행 중인지 확인하고 시작합니다.
-
-```bash
-brew services list
-brew services start mysql
-```
-
-Linux에서는 다음 명령을 사용합니다.
-
-```bash
-sudo systemctl status mysql
-sudo systemctl start mysql
-```
-
-### `Access denied for user`
-
-`.env`의 `DB_USER`, `DB_PASSWORD`와 MySQL에서 생성한 계정 정보가 같은지 확인합니다.
-
-```bash
-mysql -u festival_user -p festival
-```
-
-### 포트 3000이 이미 사용 중인 경우
-
-`.env`에서 다른 포트를 지정합니다.
-
-```env
-PORT=3001
-```
-
-프론트의 API·Socket.IO 주소도 같은 포트로 변경해야 합니다.
-
-### 의존성 설치 상태를 초기화해야 하는 경우
-
-`package-lock.json`은 삭제하지 않고 아래 명령을 다시 실행합니다.
-
-```bash
-npm ci
-```
-
-## 참고 사항
-
-- 운영 환경에서는 `CORS_ORIGIN`을 실제 프론트 주소로 제한해야 합니다.
-- 운영 DB에서는 스키마 마이그레이션 정책을 정한 뒤 `DB_SYNC=false` 사용을 권장합니다.
-- 소켓 인증, QR 검증, 관리자 계정 검증은 추가 보완이 필요합니다.
+- `POST /api/tables/:tableId/enter` legacy 라우트가 남아 있지만 신규 참가자 JWT 구조와 맞지 않는다. 신규 프론트는 `/api/entry`를 사용해야 한다.
+- 관리자 수동 입실은 현재 `TableSession`만 생성하고 `Participant`는 생성하지 않는다.
+- `GET /api/notices`는 현재 인증이 필요하다.
+- Socket callback은 문서상 표준 형식을 권장하지만, 현재 `chat:join` 성공은 `{ ok: true }`만 반환하고 일부 실패 응답은 `message`가 없을 수 있다.

@@ -11,7 +11,11 @@ const ChatMessage = sequelize.define(
     },
     senderSessionId: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
+    },
+    senderParticipantId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     },
     content: {
       type: DataTypes.TEXT,

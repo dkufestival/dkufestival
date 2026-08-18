@@ -3,8 +3,13 @@ const joinService = require('../services/join.service');
 
 async function createJoinRequest(req, res, next) {
   try {
-    const request = await joinService.createJoinRequest(req.user.sessionId, req.body);
-    res.status(201).json({ data: request });
+    const data = await joinService.createJoinRequest(req.user.sessionId, req.body);
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`session:${req.user.sessionId}`).to(`session:${req.body.targetSessionId}`).emit('join:created', data.joinRequest);
+      io.to(`session:${req.user.sessionId}`).to(`session:${req.body.targetSessionId}`).emit('chat:room-created', data.chatRoom);
+    }
+    res.status(201).json({ data });
   } catch (error) {
     next(error);
   }
@@ -22,6 +27,8 @@ async function getJoinRequests(req, res, next) {
 async function acceptJoinRequest(req, res, next) {
   try {
     const request = await joinService.acceptJoinRequest(req.params.requestId, req.user.sessionId);
+    const io = req.app.get('io');
+    if (io) io.to(`session:${request.fromSessionId}`).to(`session:${request.targetSessionId}`).emit('join:accepted', request);
     res.json({ data: request });
   } catch (error) {
     next(error);
@@ -31,6 +38,8 @@ async function acceptJoinRequest(req, res, next) {
 async function rejectJoinRequest(req, res, next) {
   try {
     const request = await joinService.rejectJoinRequest(req.params.requestId, req.user.sessionId);
+    const io = req.app.get('io');
+    if (io) io.to(`session:${request.fromSessionId}`).to(`session:${request.targetSessionId}`).emit('join:rejected', request);
     res.json({ data: request });
   } catch (error) {
     next(error);
@@ -39,8 +48,10 @@ async function rejectJoinRequest(req, res, next) {
 
 async function cancelJoinRequest(req, res, next) {
   try {
-    await joinService.cancelJoinRequest(req.params.requestId, req.user.sessionId);
-    res.status(204).send();
+    const request = await joinService.cancelJoinRequest(req.params.requestId, req.user.sessionId);
+    const io = req.app.get('io');
+    if (io) io.to(`session:${request.fromSessionId}`).to(`session:${request.targetSessionId}`).emit('join:cancelled', request);
+    res.json({ data: request });
   } catch (error) {
     next(error);
   }

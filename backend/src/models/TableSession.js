@@ -11,15 +11,27 @@ const TableSession = sequelize.define(
     },
     nickname: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     memberCount: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
     },
     genderType: {
       type: DataTypes.ENUM('MALE', 'FEMALE', 'MIXED'),
+      allowNull: true,
+    },
+    maleCount: {
+      type: DataTypes.INTEGER,
       allowNull: false,
+      defaultValue: 0,
+      validate: { min: 0 },
+    },
+    femaleCount: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      validate: { min: 0 },
     },
     status: {
       type: DataTypes.ENUM('ACTIVE', 'CLOSED'),
@@ -30,6 +42,10 @@ const TableSession = sequelize.define(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    expiresAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
     },
     endedAt: {
       type: DataTypes.DATE,

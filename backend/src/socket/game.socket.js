@@ -54,7 +54,7 @@ function registerGameSocket(io, socket) {
     try {
       if (socket.data.user.role !== 'PARTICIPANT') throw new Error('PARTICIPANT_REQUIRED');
       const sessionId = socket.data.sessionId;
-      const game = await gameService.handleAction(sessionId, payload);
+      const game = await gameService.handleAction(sessionId, payload, socket.data.participantId);
       if (game.mode === 'GLOBAL') {
         io.to('admins').emit('game:global:state', game);
       } else {

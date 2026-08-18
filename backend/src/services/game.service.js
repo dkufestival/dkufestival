@@ -81,7 +81,7 @@ async function acceptInvite(sessionId, data) {
   return game;
 }
 
-async function handleAction(sessionId, data) {
+async function handleAction(sessionId, data, participantId) {
   const game = await GameSession.findByPk(data.gameId);
   if (!game) throw createServiceError('게임을 찾을 수 없습니다.', 'GAME_NOT_FOUND');
   if (game.mode === 'PAIR') {
@@ -98,7 +98,13 @@ async function handleAction(sessionId, data) {
         ...(game.state || {}),
         responses: {
           ...((game.state || {}).responses || {}),
-          [sessionId]: { action: data.action || null, state: data.state || {}, updatedAt: new Date().toISOString() },
+          [participantId || sessionId]: {
+            participantId: participantId || null,
+            sessionId: Number(sessionId),
+            action: data.action || null,
+            state: data.state || {},
+            updatedAt: new Date().toISOString(),
+          },
         },
       }
     : {
@@ -106,6 +112,7 @@ async function handleAction(sessionId, data) {
         ...(data.state || {}),
         lastAction: data.action || null,
         lastActorSessionId: Number(sessionId),
+        lastActorParticipantId: participantId || null,
         updatedAt: new Date().toISOString(),
       };
   game.changed('state', true);

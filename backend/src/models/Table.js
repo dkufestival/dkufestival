@@ -15,6 +15,16 @@ const Table = sequelize.define(
       allowNull: false,
       unique: true,
     },
+    qrEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    qrVersion: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 1,
+    },
   },
   {
     tableName: 'tables',

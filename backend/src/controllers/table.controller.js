@@ -35,7 +35,11 @@ async function enterTable(req, res, next) {
 
 async function updateMyTable(req, res, next) {
   try {
-    const session = await tableService.updateMyTable(req.user.sessionId, req.body);
+    const session = req.user.participantId
+      ? await tableService.updateMyCounts(req.user, req.body)
+      : await tableService.updateMyTable(req.user.sessionId, req.body);
+    const io = req.app.get('io');
+    if (io) io.to(`session:${session.id}`).emit('table:updated', { session });
     res.json({ data: session });
   } catch (error) {
     next(error);

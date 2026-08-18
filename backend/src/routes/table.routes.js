@@ -16,9 +16,8 @@ router.post('/:tableId/enter', validateBody({
   genderType: { required: true, enum: ['MALE', 'FEMALE', 'MIXED'] },
 }), tableController.enterTable);
 router.patch('/me', auth, requireRole('PARTICIPANT'), validateBody({
-  nickname: { type: 'string', maxLength: 100 },
-  memberCount: { type: 'number', min: 1 },
-  genderType: { enum: ['MALE', 'FEMALE', 'MIXED'] },
+  maleCount: { required: true, type: 'number', min: 0 },
+  femaleCount: { required: true, type: 'number', min: 0 },
 }), tableController.updateMyTable);
 
 module.exports = router;

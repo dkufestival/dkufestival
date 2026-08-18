@@ -1,21 +1,42 @@
 const { Op } = require('sequelize');
-const { JoinRequest, TableSession } = require('../models');
+const sequelize = require('../config/db');
+const { JoinRequest, TableSession, ChatRoom } = require('../models');
 const AppError = require('../errors/AppError');
+
+async function requireActiveSession(sessionId, code = 'SESSION_NOT_FOUND') {
+  const session = await TableSession.findOne({ where: { id: sessionId, status: 'ACTIVE' } });
+  if (!session || new Date(session.expiresAt) <= new Date()) {
+    throw new AppError(404, code, 'Active table session not found.');
+  }
+  return session;
+}
 
 async function createJoinRequest(fromSessionId, data) {
   const targetSessionId = Number(data.targetSessionId);
   if (Number(fromSessionId) === targetSessionId) {
-    throw new AppError(400, 'INVALID_JOIN_TARGET', '자기 좌석에는 요청할 수 없습니다.');
+    throw new AppError(400, 'INVALID_JOIN_TARGET', 'Cannot request join to the same table session.');
   }
 
-  const target = await TableSession.findOne({ where: { id: targetSessionId, status: 'ACTIVE' } });
-  if (!target) throw new AppError(404, 'TARGET_NOT_FOUND', '대상 좌석 세션을 찾을 수 없습니다.');
+  await Promise.all([
+    requireActiveSession(fromSessionId),
+    requireActiveSession(targetSessionId, 'TARGET_NOT_FOUND'),
+  ]);
 
-  const [request] = await JoinRequest.findOrCreate({
-    where: { fromSessionId, targetSessionId, status: 'PENDING' },
-    defaults: { message: data.message || null },
+  return sequelize.transaction(async (transaction) => {
+    const [joinRequest] = await JoinRequest.findOrCreate({
+      where: { fromSessionId, targetSessionId, status: 'PENDING' },
+      defaults: { message: data.message || null },
+      transaction,
+    });
+
+    const [sessionAId, sessionBId] = [Number(fromSessionId), targetSessionId].sort((a, b) => a - b);
+    const [chatRoom] = await ChatRoom.findOrCreate({
+      where: { sessionAId, sessionBId },
+      transaction,
+    });
+
+    return { joinRequest, chatRoom };
   });
-  return request;
 }
 
 async function getJoinRequests(sessionId) {
@@ -27,11 +48,11 @@ async function getJoinRequests(sessionId) {
 
 async function getOwnedRequest(requestId, sessionId, ownerField) {
   const request = await JoinRequest.findByPk(requestId);
-  if (!request) throw new AppError(404, 'JOIN_REQUEST_NOT_FOUND', '합석 요청을 찾을 수 없습니다.');
+  if (!request) throw new AppError(404, 'JOIN_REQUEST_NOT_FOUND', 'Join request not found.');
   if (request[ownerField] !== Number(sessionId)) {
-    throw new AppError(403, 'JOIN_REQUEST_FORBIDDEN', '해당 요청을 변경할 권한이 없습니다.');
+    throw new AppError(403, 'JOIN_REQUEST_FORBIDDEN', 'No permission to change this request.');
   }
-  if (request.status !== 'PENDING') throw new AppError(409, 'JOIN_REQUEST_CLOSED', '이미 처리된 요청입니다.');
+  if (request.status !== 'PENDING') throw new AppError(409, 'JOIN_REQUEST_CLOSED', 'Join request is already closed.');
   return request;
 }
 
@@ -44,7 +65,7 @@ async function rejectJoinRequest(requestId, sessionId) {
 }
 
 async function cancelJoinRequest(requestId, sessionId) {
-  await (await getOwnedRequest(requestId, sessionId, 'fromSessionId')).destroy();
+  return (await getOwnedRequest(requestId, sessionId, 'fromSessionId')).update({ status: 'CANCELLED' });
 }
 
 module.exports = { createJoinRequest, getJoinRequests, acceptJoinRequest, rejectJoinRequest, cancelJoinRequest };

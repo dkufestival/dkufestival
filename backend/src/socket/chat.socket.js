@@ -22,6 +22,7 @@ function registerChatSocket(io, socket) {
       const message = await chatService.sendMessage(
         payload.roomId,
         socket.data.sessionId,
+        socket.data.participantId,
         payload.content
       );
       io.to(`chat:${payload.roomId}`).emit('chat:message', message);

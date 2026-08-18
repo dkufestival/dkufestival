@@ -1,8 +1,9 @@
 // JWT Bearer 토큰 인증 미들웨어
 const jwt = require('jsonwebtoken');
 const env = require('../config/env');
+const { Participant, TableSession } = require('../models');
 
-function auth(req, res, next) {
+async function auth(req, res, next) {
   const authorization = req.headers.authorization;
 
   if (!authorization || !authorization.startsWith('Bearer ')) {
@@ -15,6 +16,19 @@ function auth(req, res, next) {
 
   try {
     req.user = jwt.verify(token, env.jwtSecret);
+    if (req.user.role === 'PARTICIPANT') {
+      const participant = await Participant.findByPk(req.user.participantId);
+      const session = participant
+        ? await TableSession.findByPk(req.user.sessionId)
+        : null;
+      if (!participant || !session || session.status !== 'ACTIVE' || new Date(session.expiresAt) <= new Date()) {
+        return res.status(401).json({
+          error: { code: 'INVALID_PARTICIPANT_SESSION', message: 'Participant session is not active.' },
+        });
+      }
+      req.participant = participant;
+      req.tableSession = session;
+    }
     return next();
   } catch (error) {
     return res.status(401).json({

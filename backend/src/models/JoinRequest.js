@@ -18,7 +18,7 @@ const JoinRequest = sequelize.define(
       allowNull: true,
     },
     status: {
-      type: DataTypes.ENUM('PENDING', 'ACCEPTED', 'REJECTED'),
+      type: DataTypes.ENUM('PENDING', 'ACCEPTED', 'REJECTED', 'CANCELLED'),
       allowNull: false,
       defaultValue: 'PENDING',
     },
