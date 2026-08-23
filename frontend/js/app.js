@@ -28,6 +28,7 @@ const state = {
   counts: { male: 0, female: 0 },
   timer: null,
   pendingTargetTable: null,
+  timeMatch: { phase: 'ready', startedAt: 0, elapsedMs: 0, frame: null },
 };
 
 function showToast(message) {
@@ -274,6 +275,7 @@ function bindSocket() {
     showGlobalGameScreen();
   });
   socket.on('game:global:ended', (game) => {
+    resetTimeMatch();
     state.activeGame = null;
     renderGame();
     closeModal('modal-game');
@@ -632,6 +634,11 @@ function renderGame() {
     return;
   }
   box.appendChild(text('div', 'history-seat-name', `${state.activeGame.type} / ${state.activeGame.status}`));
+  if (state.activeGame.type === 'TIME_MATCH') {
+    box.appendChild(text('div', 'history-empty', `목표 ${formatGameTime(state.activeGame.state?.targetMs)} · 중앙제어 게임 진행 중`));
+    box.appendChild(button('btn-primary full', '게임 화면으로 이동', showGlobalGameScreen));
+    return;
+  }
   box.appendChild(button('btn-primary full', '응답 보내기', () => {
     getSocket()?.emit('game:action', {
       gameId: state.activeGame.id,
@@ -651,10 +658,92 @@ function renderGame() {
   }
 }
 
+function formatGameTime(totalMs) {
+  const value = Math.max(0, Math.floor(Number(totalMs) || 0));
+  const minutes = Math.floor(value / 60000);
+  const seconds = Math.floor((value % 60000) / 1000);
+  const milliseconds = value % 1000;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`;
+}
+
+function resetTimeMatch() {
+  if (state.timeMatch.frame) cancelAnimationFrame(state.timeMatch.frame);
+  state.timeMatch = { phase: 'ready', startedAt: 0, elapsedMs: 0, frame: null };
+}
+
+function updateTimeMatchDisplay() {
+  const live = document.querySelector('.time-live-value');
+  if (live) live.textContent = formatGameTime(state.timeMatch.elapsedMs);
+}
+
+function startTimeMatch() {
+  resetTimeMatch();
+  state.timeMatch.phase = 'running';
+  state.timeMatch.startedAt = performance.now();
+  const actionButton = $('game-screen-action');
+  actionButton.textContent = 'STOP';
+  actionButton.classList.add('is-stop');
+  $('game-screen-status').textContent = '목표 시간에 맞춰 멈추세요';
+
+  const tick = (now) => {
+    state.timeMatch.elapsedMs = Math.floor(now - state.timeMatch.startedAt);
+    updateTimeMatchDisplay();
+    state.timeMatch.frame = requestAnimationFrame(tick);
+  };
+  state.timeMatch.frame = requestAnimationFrame(tick);
+}
+
+function stopTimeMatch() {
+  if (state.timeMatch.phase !== 'running') return;
+  if (state.timeMatch.frame) cancelAnimationFrame(state.timeMatch.frame);
+  state.timeMatch.frame = null;
+  state.timeMatch.elapsedMs = Math.floor(performance.now() - state.timeMatch.startedAt);
+  state.timeMatch.phase = 'stopped';
+  updateTimeMatchDisplay();
+
+  const targetMs = Number(state.activeGame?.state?.targetMs || 0);
+  const differenceMs = state.timeMatch.elapsedMs - targetMs;
+  const success = differenceMs === 0;
+  const mission = $('game-demo-mission');
+  mission.querySelector('.time-result').textContent = success
+    ? 'PERFECT! 정확히 일치했습니다'
+    : `${Math.abs(differenceMs)}ms ${differenceMs < 0 ? '빨랐어요' : '늦었어요'}`;
+  const actionButton = $('game-screen-action');
+  actionButton.disabled = true;
+  actionButton.classList.remove('is-stop');
+  actionButton.textContent = success ? 'PERFECT' : '도전 완료';
+  $('game-screen-status').textContent = '결과를 중앙 관리자에게 전송 중입니다.';
+
+  getSocket()?.emit('game:action', {
+    gameId: state.activeGame.id,
+    action: 'STOP',
+    state: {
+      elapsedMs: state.timeMatch.elapsedMs,
+      targetMs,
+      differenceMs,
+      success,
+      stoppedAt: new Date().toISOString(),
+    },
+  }, (response) => {
+    $('game-screen-status').textContent = response?.ok ? '결과가 중앙 관리자에게 전달되었습니다.' : '결과 전송에 실패했습니다.';
+  });
+}
+
 function showGlobalGameScreen() {
-  $('game-screen-title').textContent = state.activeGame?.type === 'MISSION' ? '전체 미션' : state.activeGame?.type || '전체 게임';
+  const isTimeMatch = state.activeGame?.type === 'TIME_MATCH';
+  $('screen-game').classList.toggle('time-match', isTimeMatch);
+  $('game-screen-title').textContent = isTimeMatch ? '시간을 멈춰라' : state.activeGame?.type === 'MISSION' ? '전체 미션' : state.activeGame?.type || '전체 게임';
+  $('game-screen-kicker').textContent = isTimeMatch ? 'PRECISION GAME' : 'ADMIN EVENT';
+  $('game-screen-copy').innerHTML = isTimeMatch ? '중앙에서 설정한 목표 시간입니다.<br>밀리초까지 정확히 맞춰보세요.' : '관리자가 게임을 시작했습니다.<br>아래 버튼을 눌러 참여해 주세요.';
+  $('game-demo-icon').textContent = isTimeMatch ? '' : '⚡';
+  $('game-demo-label').textContent = isTimeMatch ? 'TARGET TIME' : '오늘의 미션';
+  $('game-demo-mission').innerHTML = isTimeMatch
+    ? `<span class="time-target-value">${formatGameTime(state.activeGame?.state?.targetMs)}</span><span class="time-live-value">00:00.000</span><span class="time-result">START를 눌러 시작하세요</span>`
+    : '가장 빠르게<br><strong>참여 버튼</strong>을 누르세요!';
+  resetTimeMatch();
   $('game-screen-action').disabled = false;
-  $('game-screen-action').textContent = '게임 참여하기';
+  $('game-screen-action').classList.remove('is-stop');
+  $('game-screen-action').textContent = isTimeMatch ? 'START' : '게임 참여하기';
   $('game-screen-status').textContent = '응답 대기 중';
   showScreen('screen-game');
 }
@@ -739,6 +828,11 @@ function bindEvents() {
   $('chat-game-btn').addEventListener('click', () => openModal('modal-game'));
   $('game-screen-action').addEventListener('click', () => {
     if (!state.activeGame) return;
+    if (state.activeGame.type === 'TIME_MATCH') {
+      if (state.timeMatch.phase === 'ready') startTimeMatch();
+      else if (state.timeMatch.phase === 'running') stopTimeMatch();
+      return;
+    }
     const actionButton = $('game-screen-action');
     actionButton.disabled = true;
     actionButton.textContent = '응답 전송 중...';
