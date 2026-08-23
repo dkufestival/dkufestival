@@ -9,6 +9,7 @@ import { chatApi } from './chat.js';
 import { songsApi } from './songs.js';
 import { noticesApi } from './notices.js';
 import { initMapZoom } from './mapzoom.js';
+import { dismissPushPrompt, enablePush, shouldShowPushPrompt } from './push.js';
 
 const state = {
   qrToken: new URLSearchParams(location.search).get('qr'),
@@ -133,6 +134,7 @@ async function afterAuthenticated() {
   ]);
   renderAll();
   startTimer();
+  renderPushPrompt();
   if (state.chatRoom?.status === 'ACTIVE') openChat(state.chatRoom.roomId);
 }
 
@@ -182,7 +184,11 @@ function bindSocket() {
   if (!socket) return;
 
   socket.on('connect', () => {
+    $('connection-status').textContent = '실시간 연결됨';
     if (state.chatRoom?.status === 'ACTIVE') joinChatRoom(state.chatRoom.roomId);
+  });
+  socket.on('disconnect', () => {
+    $('connection-status').textContent = '재연결 대기';
   });
   socket.on('participant:joined', async () => {
     await refreshParticipants();
@@ -285,11 +291,20 @@ function bindSocket() {
   socket.on('game:global:started', (game) => {
     state.activeGame = game;
     renderGame();
+    showGlobalGameScreen();
     showToast('전체 게임이 시작되었습니다.');
   });
-  socket.on('game:global:ended', (game) => {
+  socket.on('game:global:current', (game) => {
     state.activeGame = game;
     renderGame();
+    showGlobalGameScreen();
+  });
+  socket.on('game:global:ended', (game) => {
+    state.activeGame = null;
+    renderGame();
+    closeModal('modal-game');
+    showScreen(state.activeRoomId ? 'screen-chat' : 'screen-seats');
+    showToast(`${game.type} 게임이 종료되었습니다.`);
   });
   socket.on('game:invited', (game) => {
     state.activeGame = game;
@@ -576,6 +591,17 @@ function renderNotices() {
 function renderGame() {
   const box = $('game-panel');
   clear(box);
+
+  const basketballCard = document.createElement('div');
+  basketballCard.className = 'basketball-entry';
+  basketballCard.appendChild(text('div', 'basketball-entry-icon', '🏀'));
+  basketballCard.appendChild(text('div', 'basketball-entry-title', '농구게임'));
+  basketballCard.appendChild(text('div', 'basketball-entry-copy', '제한 시간 안에 최대한 많은 골을 넣어보세요.'));
+  basketballCard.appendChild(button('btn-dark full', '농구게임 입장', () => {
+    window.location.href = '/basketball/';
+  }));
+  box.appendChild(basketballCard);
+
   if (!state.activeGame) {
     box.appendChild(text('div', 'history-empty', '진행 중인 게임이 없습니다.'));
     return;
@@ -598,6 +624,19 @@ function renderGame() {
       });
     }));
   }
+}
+
+function showGlobalGameScreen() {
+  $('game-screen-title').textContent = state.activeGame?.type === 'MISSION' ? '전체 미션' : state.activeGame?.type || '전체 게임';
+  $('game-screen-action').disabled = false;
+  $('game-screen-action').textContent = '게임 참여하기';
+  $('game-screen-status').textContent = '응답 대기 중';
+  showScreen('screen-game');
+}
+
+function renderPushPrompt() {
+  const prompt = $('push-prompt');
+  prompt.hidden = !shouldShowPushPrompt();
 }
 
 function startTimer() {
@@ -667,6 +706,39 @@ function bindEvents() {
   $('game-btn').addEventListener('click', () => {
     renderGame();
     openModal('modal-game');
+  });
+  $('game-screen-action').addEventListener('click', () => {
+    if (!state.activeGame) return;
+    const actionButton = $('game-screen-action');
+    actionButton.disabled = true;
+    actionButton.textContent = '응답 전송 중...';
+    getSocket()?.emit('game:action', {
+      gameId: state.activeGame.id,
+      action: 'ANSWER',
+      state: { answeredAt: new Date().toISOString() },
+    }, (response) => {
+      if (response?.ok) {
+        actionButton.textContent = '참여 완료';
+        $('game-screen-status').textContent = '응답이 관리자에게 전달되었습니다.';
+      } else {
+        actionButton.disabled = false;
+        actionButton.textContent = '다시 시도하기';
+        $('game-screen-status').textContent = response?.message || response?.error || '응답 전송에 실패했습니다.';
+      }
+    });
+  });
+  $('push-dismiss-btn').addEventListener('click', () => {
+    dismissPushPrompt();
+    renderPushPrompt();
+  });
+  $('push-enable-btn').addEventListener('click', async () => {
+    try {
+      const result = await enablePush();
+      showToast(result.ok ? '알림을 켰습니다.' : '알림을 켜지 않았습니다.');
+    } catch (error) {
+      showToast(error.code === 'PUSH_NOT_CONFIGURED' ? '서버 알림 설정이 필요합니다.' : error.message);
+    }
+    renderPushPrompt();
   });
 }
 

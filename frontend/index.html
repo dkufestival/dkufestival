@@ -8,7 +8,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Gasoek+One&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
-<link rel="stylesheet" href="style.css?v=22">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="style.css?v=23">
 </head>
 <body>
 <div class="phone">
@@ -59,6 +60,7 @@
   <section id="screen-seats" class="screen">
     <header class="topbar">
       <div class="wordmark small">piu:m</div>
+      <div id="connection-status" class="connection-status" hidden>연결 대기</div>
       <div class="table-tag-block">
         <div id="table-tag" class="table-tag">TABLE -</div>
         <div id="table-tag-time" class="table-tag-time">00:00 남음</div>
@@ -71,6 +73,13 @@
       <div class="stat-block col"><span class="stat-mini-label">남은 시간</span><span id="stat-time" class="stat-mini-num">00:00</span></div>
       <div class="stat-divider"></div>
       <div class="stat-block col"><span class="stat-mini-label">받은 요청</span><span id="stat-requests" class="stat-mini-num">0개</span></div>
+    </div>
+    <div id="push-prompt" class="push-prompt" hidden>
+      <span>채팅 요청 알림을 받을 수 있습니다.</span>
+      <div>
+        <button id="push-dismiss-btn" type="button">나중에</button>
+        <button id="push-enable-btn" type="button">알림 켜기</button>
+      </div>
     </div>
     <div id="member-chips" class="member-chips"></div>
     <div id="map-viewport" class="map-viewport">
@@ -106,6 +115,28 @@
       <button id="chat-leave-btn" class="btn-dark full leave">채팅방 나가기</button>
     </div>
   </section>
+
+  <!-- DEMO: 실제 게임 UI가 확정되면 이 임시 미션 화면을 교체합니다. -->
+  <section id="screen-game" class="screen game-screen">
+    <div class="game-screen-glow"></div>
+    <header class="game-screen-header">
+      <div class="wordmark small">piu:m</div>
+      <div class="game-live-badge"><span></span> LIVE GAME</div>
+    </header>
+    <main class="game-screen-content">
+      <div class="game-kicker">ADMIN EVENT</div>
+      <h1 id="game-screen-title" class="game-screen-title">전체 미션</h1>
+      <p class="game-screen-copy">관리자가 게임을 시작했습니다.<br>아래 버튼을 눌러 참여해 주세요.</p>
+      <div class="game-demo-card">
+        <div class="game-demo-icon">⚡</div>
+        <div class="game-demo-label">오늘의 미션</div>
+        <div class="game-demo-mission">가장 빠르게<br><strong>참여 버튼</strong>을 누르세요!</div>
+      </div>
+      <button id="game-screen-action" class="game-screen-action">게임 참여하기</button>
+      <div id="game-screen-status" class="game-screen-status">응답 대기 중</div>
+    </main>
+    <footer class="game-screen-footer">게임이 끝나면 자동으로 돌아갑니다</footer>
+  </section>
 </div>
 
 <div id="modal-leave-confirm" class="modal-backdrop">
@@ -139,7 +170,7 @@
 <div id="modal-incoming" class="modal-backdrop">
   <div class="modal-card">
     <button type="button" id="incoming-close" class="modal-close">×</button>
-    <div class="modal-title">합석 요청이 도착했습니다</div>
+    <div class="modal-title">채팅 요청이 도착했습니다</div>
     <div id="incoming-detail" class="modal-detail"></div>
     <div class="modal-row">
       <button id="accept-btn" class="btn-half accept">수락</button>
@@ -210,6 +241,6 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-<script type="module" src="js/app.js?v=12"></script>
+<script type="module" src="js/app.js?v=13"></script>
 </body>
 </html>

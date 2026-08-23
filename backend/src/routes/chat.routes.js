@@ -1,4 +1,3 @@
-// 채팅 REST 라우트
 const express = require('express');
 const chatController = require('../controllers/chat.controller');
 const auth = require('../middleware/auth');
@@ -7,10 +6,18 @@ const { validateBody } = require('../middleware/validate');
 
 const router = express.Router();
 
-router.post('/rooms', auth, requireRole('PARTICIPANT'), validateBody({
+router.use(auth, requireRole('PARTICIPANT'));
+
+router.post('/requests', validateBody({
   targetSessionId: { required: true, type: 'number', min: 1 },
-}), chatController.createRoom);
-router.get('/rooms', auth, requireRole('PARTICIPANT'), chatController.getRooms);
-router.get('/rooms/:roomId/messages', auth, requireRole('PARTICIPANT'), chatController.getMessages);
+  message: { type: 'string', maxLength: 500 },
+}), chatController.createRequest);
+router.get('/requests', chatController.listRequests);
+router.post('/requests/:roomId/accept', chatController.acceptRequest);
+router.post('/requests/:roomId/reject', chatController.rejectRequest);
+router.delete('/requests/:roomId', chatController.cancelRequest);
+router.get('/active', chatController.getActive);
+router.get('/rooms/:roomId/messages', chatController.getMessages);
+router.post('/rooms/:roomId/end', chatController.endRoom);
 
 module.exports = router;

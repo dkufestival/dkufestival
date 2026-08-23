@@ -1,26 +1,29 @@
 // 모델 내보내기와 기본 association 설정
 const Table = require('./Table');
 const TableSession = require('./TableSession');
-const JoinRequest = require('./JoinRequest');
 const ChatRoom = require('./ChatRoom');
 const ChatMessage = require('./ChatMessage');
 const GameSession = require('./GameSession');
 const Notice = require('./Notice');
 const Participant = require('./Participant');
 const SongRequest = require('./SongRequest');
+const PushSubscription = require('./PushSubscription');
 
 Table.hasMany(TableSession, { foreignKey: 'tableId', as: 'sessions', constraints: false });
 TableSession.belongsTo(Table, { foreignKey: 'tableId', as: 'table', constraints: false });
 TableSession.hasMany(Participant, { foreignKey: 'tableSessionId', as: 'participants', constraints: false });
 Participant.belongsTo(TableSession, { foreignKey: 'tableSessionId', as: 'session', constraints: false });
 
-TableSession.hasMany(JoinRequest, { foreignKey: 'fromSessionId', as: 'sentJoinRequests', constraints: false });
-TableSession.hasMany(JoinRequest, { foreignKey: 'targetSessionId', as: 'receivedJoinRequests', constraints: false });
-JoinRequest.belongsTo(TableSession, { foreignKey: 'fromSessionId', as: 'fromSession', constraints: false });
-JoinRequest.belongsTo(TableSession, { foreignKey: 'targetSessionId', as: 'targetSession', constraints: false });
-
 ChatRoom.hasMany(ChatMessage, { foreignKey: 'roomId', as: 'messages', constraints: false });
 ChatMessage.belongsTo(ChatRoom, { foreignKey: 'roomId', as: 'room', constraints: false });
+TableSession.hasMany(ChatRoom, { foreignKey: 'requesterSessionId', as: 'sentChatRequests', constraints: false });
+TableSession.hasMany(ChatRoom, { foreignKey: 'targetSessionId', as: 'receivedChatRequests', constraints: false });
+ChatRoom.belongsTo(TableSession, { foreignKey: 'requesterSessionId', as: 'requesterSession', constraints: false });
+ChatRoom.belongsTo(TableSession, { foreignKey: 'targetSessionId', as: 'targetSession', constraints: false });
+Participant.hasMany(ChatRoom, { foreignKey: 'requestedByParticipantId', as: 'requestedChatRooms', constraints: false });
+Participant.hasMany(ChatRoom, { foreignKey: 'endedByParticipantId', as: 'endedChatRooms', constraints: false });
+ChatRoom.belongsTo(Participant, { foreignKey: 'requestedByParticipantId', as: 'requestedByParticipant', constraints: false });
+ChatRoom.belongsTo(Participant, { foreignKey: 'endedByParticipantId', as: 'endedByParticipant', constraints: false });
 TableSession.hasMany(ChatRoom, { foreignKey: 'sessionAId', as: 'startedChatRooms', constraints: false });
 TableSession.hasMany(ChatRoom, { foreignKey: 'sessionBId', as: 'receivedChatRooms', constraints: false });
 ChatRoom.belongsTo(TableSession, { foreignKey: 'sessionAId', as: 'sessionA', constraints: false });
@@ -37,6 +40,8 @@ ChatMessage.belongsTo(TableSession, {
 });
 Participant.hasMany(ChatMessage, { foreignKey: 'senderParticipantId', as: 'sentMessages', constraints: false });
 ChatMessage.belongsTo(Participant, { foreignKey: 'senderParticipantId', as: 'senderParticipant', constraints: false });
+Participant.hasMany(PushSubscription, { foreignKey: 'participantId', as: 'pushSubscriptions', constraints: false });
+PushSubscription.belongsTo(Participant, { foreignKey: 'participantId', as: 'participant', constraints: false });
 
 TableSession.hasMany(GameSession, { foreignKey: 'initiatorSessionId', as: 'createdGames', constraints: false });
 TableSession.hasMany(GameSession, { foreignKey: 'targetSessionId', as: 'receivedGames', constraints: false });
@@ -51,11 +56,11 @@ SongRequest.belongsTo(Participant, { foreignKey: 'participantId', as: 'participa
 module.exports = {
   Table,
   TableSession,
-  JoinRequest,
   ChatRoom,
   ChatMessage,
   GameSession,
   Notice,
   Participant,
   SongRequest,
+  PushSubscription,
 };

@@ -2,6 +2,7 @@
 const express = require('express');
 const adminController = require('../controllers/admin.controller');
 const songController = require('../controllers/song.controller');
+const chatController = require('../controllers/chat.controller');
 const auth = require('../middleware/auth');
 const requireRole = require('../middleware/require-role');
 const { validateBody } = require('../middleware/validate');
@@ -32,5 +33,7 @@ router.patch('/tables/:tableId/qr/enable', auth, requireRole('ADMIN'), adminCont
 router.patch('/tables/:tableId/qr/disable', auth, requireRole('ADMIN'), adminController.disableQr);
 router.get('/song-requests', auth, requireRole('ADMIN'), songController.listAdmin);
 router.patch('/song-requests/:requestId/complete', auth, requireRole('ADMIN'), songController.complete);
+router.get('/chat/rooms', auth, requireRole('ADMIN'), chatController.adminListRooms);
+router.post('/chat/rooms/:roomId/end', auth, requireRole('ADMIN'), chatController.adminEndRoom);
 
 module.exports = router;

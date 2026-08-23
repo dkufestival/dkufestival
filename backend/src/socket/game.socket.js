@@ -8,6 +8,12 @@ function reply(callback, response) {
 }
 
 function registerGameSocket(io, socket) {
+  gameService.getActiveGlobalGame()
+    .then((game) => {
+      if (game) socket.emit('game:global:current', game);
+    })
+    .catch(() => {});
+
   // [프론트 연동] 소켓 연결 직후 활성 tableSession의 id로 반드시 한 번 호출해야 합니다.
   socket.on('game:register', async (payload = {}, callback) => {
     try {
@@ -95,6 +101,7 @@ function registerGameSocket(io, socket) {
       if (socket.data.user.role !== 'ADMIN') throw new Error('ADMIN_REQUIRED');
       const game = await gameService.endGlobalGame(payload);
       io.to('participants').emit('game:global:ended', game);
+      io.to('admins').emit('game:global:ended', game);
       reply(callback, { ok: true, data: game });
     } catch (error) {
       reply(callback, { ok: false, error: error.code || error.message || 'GAME_ERROR' });

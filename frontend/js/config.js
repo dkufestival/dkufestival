@@ -1,4 +1,4 @@
-const defaultServerUrl = `${window.location.protocol}//${window.location.hostname || 'localhost'}:3000`;
+const defaultServerUrl = window.location.origin;
 
 export const API_BASE_URL =
   window.PIUM_CONFIG?.API_BASE_URL ||

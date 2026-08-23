@@ -1,4 +1,4 @@
-const { Op } = require('sequelize');
+const { Op, QueryTypes } = require('sequelize');
 const { GameSession, TableSession } = require('../models');
 
 function createServiceError(message, code) {
@@ -136,27 +136,74 @@ async function endGame(sessionId, data) {
   return game;
 }
 
+async function withGlobalGameLock(work) {
+  const sequelize = GameSession.sequelize;
+  return sequelize.transaction(async (transaction) => {
+    const [lock] = await sequelize.query(
+      "SELECT GET_LOCK('festival_global_game', 5) AS acquired",
+      { type: QueryTypes.SELECT, transaction }
+    );
+    if (Number(lock?.acquired) !== 1) {
+      throw createServiceError('게임 처리 잠금을 얻지 못했습니다.', 'GLOBAL_GAME_LOCK_TIMEOUT');
+    }
+
+    try {
+      return await work(transaction);
+    } finally {
+      await sequelize.query("SELECT RELEASE_LOCK('festival_global_game')", {
+        type: QueryTypes.SELECT,
+        transaction,
+      });
+    }
+  });
+}
+
 async function startGlobalGame(data) {
-  const activeGame = await GameSession.findOne({ where: { mode: 'GLOBAL', status: 'ACTIVE' } });
-  if (activeGame) throw createServiceError('이미 진행 중인 단체 게임이 있습니다.', 'GLOBAL_GAME_ALREADY_ACTIVE');
-  return GameSession.create({
-    mode: 'GLOBAL',
-    type: data.type,
-    status: 'ACTIVE',
-    state: data.state || {},
-    startedAt: new Date(),
+  if (!data.type) throw createServiceError('게임 종류가 필요합니다.', 'INVALID_PAYLOAD');
+  return withGlobalGameLock(async (transaction) => {
+    const activeGame = await GameSession.findOne({
+      where: { mode: 'GLOBAL', status: 'ACTIVE' },
+      transaction,
+    });
+    if (activeGame) throw createServiceError('이미 진행 중인 단체 게임이 있습니다.', 'GLOBAL_GAME_ALREADY_ACTIVE');
+    return GameSession.create({
+      mode: 'GLOBAL',
+      type: data.type,
+      status: 'ACTIVE',
+      state: data.state || {},
+      startedAt: new Date(),
+    }, { transaction });
+  });
+}
+
+function getActiveGlobalGame() {
+  return GameSession.findOne({
+    where: { mode: 'GLOBAL', status: 'ACTIVE' },
+    order: [['startedAt', 'DESC'], ['id', 'DESC']],
   });
 }
 
 async function endGlobalGame(data) {
-  const game = await GameSession.findOne({ where: { id: data.gameId, mode: 'GLOBAL', status: 'ACTIVE' } });
-  if (!game) throw createServiceError('진행 중인 단체 게임을 찾을 수 없습니다.', 'GLOBAL_GAME_NOT_FOUND');
-  game.status = 'ENDED';
-  game.state = { ...(game.state || {}), ...(data.state || {}) };
-  game.endedAt = new Date();
-  game.changed('state', true);
-  await game.save();
-  return game;
+  return withGlobalGameLock(async (transaction) => {
+    const activeGames = await GameSession.findAll({
+      where: { mode: 'GLOBAL', status: 'ACTIVE' },
+      transaction,
+    });
+    const game = activeGames.find((item) => item.id === Number(data.gameId));
+    if (!game) throw createServiceError('진행 중인 단체 게임을 찾을 수 없습니다.', 'GLOBAL_GAME_NOT_FOUND');
+
+    const endedAt = new Date();
+    await Promise.all(activeGames.map((item) => {
+      item.status = 'ENDED';
+      item.endedAt = endedAt;
+      if (item.id === game.id) {
+        item.state = { ...(item.state || {}), ...(data.state || {}) };
+        item.changed('state', true);
+      }
+      return item.save({ transaction });
+    }));
+    return game;
+  });
 }
 
-module.exports = { createInvite, acceptInvite, handleAction, endGame, startGlobalGame, endGlobalGame };
+module.exports = { createInvite, acceptInvite, handleAction, endGame, startGlobalGame, endGlobalGame, getActiveGlobalGame };
