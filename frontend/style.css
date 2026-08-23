@@ -69,6 +69,15 @@ body {
 .game-demo-label { color: var(--text-muted); font-size: 11px; font-weight: 700; letter-spacing: 2px; }
 .game-demo-mission { margin-top: 12px; font-size: 21px; line-height: 1.45; }
 .game-demo-mission strong { color: #fff; text-decoration: underline; text-underline-offset: 5px; }
+.game-screen.time-match { background: radial-gradient(circle at 50% 25%, #282b24 0, #0d0f0c 42%, #020302 78%); }
+.game-screen.time-match .game-screen-glow { background: rgba(215,255,56,.11); }
+.game-screen.time-match .game-demo-card { border-color: rgba(215,255,56,.26); background: rgba(15,18,13,.88); }
+.time-target-label { display: block; margin-bottom: 13px; color: #7f8577; font-size: 10px; font-weight: 800; letter-spacing: 2px; }
+.time-target-value { display: block; color: #d7ff38; font-family: monospace; font-size: 35px; font-weight: 800; letter-spacing: -2px; font-variant-numeric: tabular-nums; }
+.time-live-value { display: block; margin-top: 21px; color: #fff; font-family: monospace; font-size: 42px; font-weight: 800; letter-spacing: -3px; font-variant-numeric: tabular-nums; }
+.time-result { display: block; margin-top: 11px; color: #9da394; font-size: 12px; }
+.game-screen.time-match .game-screen-action { background: #d7ff38; }
+.game-screen.time-match .game-screen-action.is-stop { color: #fff; background: #ef4136; }
 .game-screen-action { width: 100%; margin-top: 18px; padding: 17px; border: 0; border-radius: 14px; background: #f2f2f2; color: #080808; font-family: inherit; font-size: 15px; font-weight: 900; cursor: pointer; }
 .game-screen-action:disabled { background: #303030; color: #9a9a9a; }
 .game-screen-status { min-height: 18px; margin-top: 12px; color: var(--text-muted); font-size: 11px; }

@@ -124,13 +124,13 @@
       <div class="game-live-badge"><span></span> LIVE GAME</div>
     </header>
     <main class="game-screen-content">
-      <div class="game-kicker">ADMIN EVENT</div>
+      <div id="game-screen-kicker" class="game-kicker">ADMIN EVENT</div>
       <h1 id="game-screen-title" class="game-screen-title">전체 미션</h1>
-      <p class="game-screen-copy">관리자가 게임을 시작했습니다.<br>아래 버튼을 눌러 참여해 주세요.</p>
+      <p id="game-screen-copy" class="game-screen-copy">관리자가 게임을 시작했습니다.<br>아래 버튼을 눌러 참여해 주세요.</p>
       <div class="game-demo-card">
-        <div class="game-demo-icon">⚡</div>
-        <div class="game-demo-label">오늘의 미션</div>
-        <div class="game-demo-mission">가장 빠르게<br><strong>참여 버튼</strong>을 누르세요!</div>
+        <div id="game-demo-icon" class="game-demo-icon">⚡</div>
+        <div id="game-demo-label" class="game-demo-label">오늘의 미션</div>
+        <div id="game-demo-mission" class="game-demo-mission">가장 빠르게<br><strong>참여 버튼</strong>을 누르세요!</div>
       </div>
       <button id="game-screen-action" class="game-screen-action">게임 참여하기</button>
       <div id="game-screen-status" class="game-screen-status">응답 대기 중</div>
@@ -241,6 +241,6 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-<script type="module" src="js/app.js?v=13"></script>
+<script type="module" src="js/app.js?v=14"></script>
 </body>
 </html>

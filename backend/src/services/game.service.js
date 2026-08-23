@@ -93,6 +93,23 @@ async function handleAction(sessionId, data, participantId) {
     throw createServiceError('진행 중인 게임이 아닙니다.', 'INVALID_GAME_STATUS');
   }
 
+  let responseState = data.state || {};
+  if (game.mode === 'GLOBAL' && game.type === 'TIME_MATCH') {
+    const elapsedMs = Number(responseState.elapsedMs);
+    const targetMs = Number(game.state?.targetMs);
+    if (!Number.isInteger(elapsedMs) || elapsedMs < 0 || !Number.isInteger(targetMs)) {
+      throw createServiceError('유효한 시간 기록이 필요합니다.', 'INVALID_TIME_RESULT');
+    }
+    const differenceMs = elapsedMs - targetMs;
+    responseState = {
+      elapsedMs,
+      targetMs,
+      differenceMs,
+      success: differenceMs === 0,
+      stoppedAt: responseState.stoppedAt || new Date().toISOString(),
+    };
+  }
+
   game.state = game.mode === 'GLOBAL'
     ? {
         ...(game.state || {}),
@@ -102,7 +119,7 @@ async function handleAction(sessionId, data, participantId) {
             participantId: participantId || null,
             sessionId: Number(sessionId),
             action: data.action || null,
-            state: data.state || {},
+            state: responseState,
             updatedAt: new Date().toISOString(),
           },
         },
@@ -160,6 +177,12 @@ async function withGlobalGameLock(work) {
 
 async function startGlobalGame(data) {
   if (!data.type) throw createServiceError('게임 종류가 필요합니다.', 'INVALID_PAYLOAD');
+  if (data.type === 'TIME_MATCH') {
+    const targetMs = Number(data.state?.targetMs);
+    if (!Number.isInteger(targetMs) || targetMs < 1 || targetMs > 5999999) {
+      throw createServiceError('목표 시간은 1ms 이상 99분 59.999초 이하로 설정해야 합니다.', 'INVALID_TARGET_TIME');
+    }
+  }
   return withGlobalGameLock(async (transaction) => {
     const activeGame = await GameSession.findOne({
       where: { mode: 'GLOBAL', status: 'ACTIVE' },

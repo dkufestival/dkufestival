@@ -11,7 +11,7 @@ const state = {
   tables: [],
   chatRooms: [],
   songs: [],
-  selectedGame: 'MISSION',
+  selectedGame: 'TIME_MATCH',
   activeGame: null,
   activeDetailTable: null,
   detailCounts: { male: 0, female: 0 },
@@ -67,7 +67,16 @@ function bindSocket() {
   });
   socket.on('song:cancelled', updateSong);
   socket.on('song:completed', updateSong);
-  socket.on('game:global:state', (game) => addGameLog(`${game.type} 응답 수신`));
+  socket.on('game:global:state', (game) => {
+    const responses = Object.values(game.state?.responses || {});
+    const latest = responses.sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))[0];
+    if (game.type === 'TIME_MATCH' && latest?.state) {
+      const diff = Number(latest.state.differenceMs || 0);
+      addGameLog(latest.state.success ? '시간 맞추기 성공 · 정확히 일치' : `시간 맞추기 응답 · ${Math.abs(diff)}ms ${diff < 0 ? '빠름' : '늦음'}`);
+    } else {
+      addGameLog(`${game.type} 응답 수신`);
+    }
+  });
   socket.on('game:global:current', (game) => {
     state.activeGame = game;
     renderGameControls();
@@ -300,10 +309,32 @@ function renderChatRooms() {
 }
 
 function renderGameControls() {
-  $('game-status').textContent = state.activeGame ? '참가자 화면에서 게임이 진행 중입니다.' : '게임을 시작할 수 있습니다.';
+  const activeTarget = state.activeGame?.type === 'TIME_MATCH' ? ` · 목표 ${formatTargetTime(state.activeGame.state?.targetMs)}` : '';
+  $('game-status').textContent = state.activeGame ? `참가자 화면에서 게임이 진행 중입니다${activeTarget}.` : '게임을 시작할 수 있습니다.';
   $('broadcast-btn').hidden = Boolean(state.activeGame);
   $('end-game-btn').hidden = !state.activeGame;
+  $('time-target-seconds').disabled = Boolean(state.activeGame);
+  $('time-target-milliseconds').disabled = Boolean(state.activeGame);
   renderStats();
+}
+
+function targetTimeMs() {
+  const seconds = Math.max(0, Math.min(5999, Number($('time-target-seconds').value) || 0));
+  const milliseconds = Math.max(0, Math.min(999, Number($('time-target-milliseconds').value) || 0));
+  return seconds * 1000 + milliseconds;
+}
+
+function formatTargetTime(targetMs) {
+  const value = Math.max(0, Number(targetMs) || 0);
+  const minutes = Math.floor(value / 60000);
+  const seconds = Math.floor((value % 60000) / 1000);
+  const milliseconds = Math.floor(value % 1000);
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`;
+}
+
+function renderTimeMatchSetting() {
+  $('time-match-setting').hidden = state.selectedGame !== 'TIME_MATCH';
+  $('time-target-preview').textContent = formatTargetTime(targetTimeMs());
 }
 
 function renderGameList() {
@@ -317,9 +348,11 @@ function renderGameList() {
     item.addEventListener('click', () => {
       state.selectedGame = game.id;
       renderGameList();
+      renderTimeMatchSetting();
     });
     list.appendChild(item);
   });
+  renderTimeMatchSetting();
 }
 
 function addGameLog(message) {
@@ -389,9 +422,15 @@ function bindEvents() {
   $('detail-close').addEventListener('click', closeDetail);
   $('detail-overlay').addEventListener('click', closeDetail);
   $('broadcast-btn').addEventListener('click', () => {
+    const targetMs = targetTimeMs();
+    if (state.selectedGame === 'TIME_MATCH' && targetMs < 1) return showToast('목표 시간을 1ms 이상 입력해주세요.');
     getSocket()?.emit('game:global:start', {
       type: state.selectedGame,
-      state: { startedBy: 'admin', startedAt: new Date().toISOString() },
+      state: {
+        startedBy: 'admin',
+        startedAt: new Date().toISOString(),
+        ...(state.selectedGame === 'TIME_MATCH' ? { targetMs } : {}),
+      },
     }, (response) => {
       if (response?.ok) {
         state.activeGame = response.data;
@@ -401,6 +440,9 @@ function bindEvents() {
         showToast(response?.message || response?.error || '게임 시작 실패');
       }
     });
+  });
+  ['time-target-seconds', 'time-target-milliseconds'].forEach((id) => {
+    $(id).addEventListener('input', renderTimeMatchSetting);
   });
   $('end-game-btn').addEventListener('click', () => {
     if (!state.activeGame) return;
