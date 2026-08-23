@@ -243,11 +243,20 @@ function bindSocket() {
   socket.on('game:global:started', (game) => {
     state.activeGame = game;
     renderGame();
+    showGlobalGameScreen();
     showToast('전체 게임이 시작되었습니다.');
   });
-  socket.on('game:global:ended', (game) => {
+  socket.on('game:global:current', (game) => {
     state.activeGame = game;
     renderGame();
+    showGlobalGameScreen();
+  });
+  socket.on('game:global:ended', (game) => {
+    state.activeGame = null;
+    renderGame();
+    closeModal('modal-game');
+    showScreen('screen-seats');
+    showToast(`${game.type} 게임이 종료되었습니다.`);
   });
   socket.on('game:invited', (game) => {
     state.activeGame = game;
@@ -531,6 +540,15 @@ function renderGame() {
   }
 }
 
+function showGlobalGameScreen() {
+  // DEMO: 실제 게임별 화면 라우팅이 구현되면 이 공통 미션 화면을 교체합니다.
+  $('game-screen-title').textContent = state.activeGame?.type === 'MISSION' ? '전체 미션' : state.activeGame?.type || '전체 게임';
+  $('game-screen-action').disabled = false;
+  $('game-screen-action').textContent = '게임 참여하기';
+  $('game-screen-status').textContent = '응답 대기 중';
+  showScreen('screen-game');
+}
+
 function startTimer() {
   if (state.timer) clearInterval(state.timer);
   state.timer = setInterval(() => {
@@ -602,6 +620,26 @@ function bindEvents() {
   $('game-btn').addEventListener('click', () => {
     renderGame();
     openModal('modal-game');
+  });
+  $('game-screen-action').addEventListener('click', () => {
+    if (!state.activeGame) return;
+    const actionButton = $('game-screen-action');
+    actionButton.disabled = true;
+    actionButton.textContent = '응답 전송 중...';
+    getSocket()?.emit('game:action', {
+      gameId: state.activeGame.id,
+      action: 'ANSWER',
+      state: { answeredAt: new Date().toISOString() },
+    }, (response) => {
+      if (response?.ok) {
+        actionButton.textContent = '참여 완료 ✓';
+        $('game-screen-status').textContent = '응답이 관리자에게 전달되었습니다.';
+      } else {
+        actionButton.disabled = false;
+        actionButton.textContent = '다시 시도하기';
+        $('game-screen-status').textContent = response?.message || response?.error || '응답 전송에 실패했습니다.';
+      }
+    });
   });
 }
 

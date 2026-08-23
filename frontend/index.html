@@ -81,6 +81,28 @@
       <button id="history-btn" class="pill-btn">채팅 <span id="history-badge" class="pill-badge" data-zero="true">0</span></button>
     </footer>
   </section>
+
+  <!-- DEMO: 실제 게임 UI가 확정되면 이 임시 미션 화면을 교체합니다. -->
+  <section id="screen-game" class="screen game-screen">
+    <div class="game-screen-glow"></div>
+    <header class="game-screen-header">
+      <div class="wordmark small">piu:m</div>
+      <div class="game-live-badge"><span></span> LIVE GAME</div>
+    </header>
+    <main class="game-screen-content">
+      <div class="game-kicker">ADMIN EVENT</div>
+      <h1 id="game-screen-title" class="game-screen-title">전체 미션</h1>
+      <p class="game-screen-copy">관리자가 게임을 시작했습니다.<br>아래 버튼을 눌러 참여해 주세요.</p>
+      <div class="game-demo-card">
+        <div class="game-demo-icon">⚡</div>
+        <div class="game-demo-label">오늘의 미션</div>
+        <div class="game-demo-mission">가장 빠르게<br><strong>참여 버튼</strong>을 누르세요!</div>
+      </div>
+      <button id="game-screen-action" class="game-screen-action">게임 참여하기</button>
+      <div id="game-screen-status" class="game-screen-status">응답 대기 중</div>
+    </main>
+    <footer class="game-screen-footer">게임이 끝나면 자동으로 돌아갑니다</footer>
+  </section>
 </div>
 
 <div id="modal-send" class="modal-backdrop">
@@ -187,6 +209,6 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-<script type="module" src="js/app.js?v=1"></script>
+<script type="module" src="js/app.js?v=3"></script>
 </body>
 </html>

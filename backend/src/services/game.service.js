@@ -148,6 +148,10 @@ async function startGlobalGame(data) {
   });
 }
 
+function getActiveGlobalGame() {
+  return GameSession.findOne({ where: { mode: 'GLOBAL', status: 'ACTIVE' } });
+}
+
 async function endGlobalGame(data) {
   const game = await GameSession.findOne({ where: { id: data.gameId, mode: 'GLOBAL', status: 'ACTIVE' } });
   if (!game) throw createServiceError('진행 중인 단체 게임을 찾을 수 없습니다.', 'GLOBAL_GAME_NOT_FOUND');
@@ -159,4 +163,4 @@ async function endGlobalGame(data) {
   return game;
 }
 
-module.exports = { createInvite, acceptInvite, handleAction, endGame, startGlobalGame, endGlobalGame };
+module.exports = { createInvite, acceptInvite, handleAction, endGame, startGlobalGame, endGlobalGame, getActiveGlobalGame };

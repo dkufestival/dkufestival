@@ -5,12 +5,11 @@ import { $, button, clear, formatDateTime, formatRemaining, text } from './dom.j
 import { adminApi } from './admin-api.js';
 import { songsApi } from './songs.js';
 import { noticesApi } from './notices.js';
-import { GAME_TYPES } from './games.js';
 
 const state = {
   tables: [],
   songs: [],
-  selectedGame: 'MISSION',
+  activeGame: null,
   activeDetailTable: null,
   detailCounts: { male: 0, female: 0 },
   timer: null,
@@ -64,6 +63,15 @@ function bindSocket() {
   socket.on('song:cancelled', updateSong);
   socket.on('song:completed', updateSong);
   socket.on('game:global:state', (game) => addGameLog(`${game.type} 응답 수신`));
+  socket.on('game:global:current', (game) => {
+    state.activeGame = game;
+    renderGameControls();
+  });
+  socket.on('game:global:ended', (game) => {
+    state.activeGame = null;
+    renderGameControls();
+    addGameLog(`${game.type} 전체 게임 종료`);
+  });
 }
 
 function updateSong(song) {
@@ -82,7 +90,7 @@ async function loadSongs() {
 function renderAll() {
   renderStats();
   renderTableGrid();
-  renderGameList();
+  renderGameControls();
   renderSongs();
 }
 
@@ -94,7 +102,7 @@ function renderStats() {
   }, 0);
   $('stat-occupied').textContent = `${occupied.length}/${state.tables.length}`;
   $('stat-people').textContent = `${people}명`;
-  $('stat-game').textContent = state.selectedGame;
+  $('stat-game').textContent = state.activeGame ? '진행 중' : '대기 중';
 }
 
 function renderTableGrid() {
@@ -254,21 +262,11 @@ function closeDetail() {
   state.activeDetailTable = null;
 }
 
-function renderGameList() {
-  const list = $('game-list');
-  clear(list);
-  GAME_TYPES.forEach((game) => {
-    const item = document.createElement('div');
-    item.className = `game-option ${game.id === state.selectedGame ? 'selected' : ''}`;
-    item.appendChild(text('span', 'game-option-name', game.name));
-    item.appendChild(text('span', 'game-option-level', game.id));
-    item.addEventListener('click', () => {
-      state.selectedGame = game.id;
-      renderGameList();
-      renderStats();
-    });
-    list.appendChild(item);
-  });
+function renderGameControls() {
+  $('game-status').textContent = state.activeGame ? '참가자 화면에서 게임이 진행 중입니다.' : '게임을 시작할 수 있습니다.';
+  $('broadcast-btn').hidden = Boolean(state.activeGame);
+  $('end-game-btn').hidden = !state.activeGame;
+  renderStats();
 }
 
 function addGameLog(message) {
@@ -340,11 +338,23 @@ function bindEvents() {
   $('detail-overlay').addEventListener('click', closeDetail);
   $('broadcast-btn').addEventListener('click', () => {
     getSocket()?.emit('game:global:start', {
-      type: state.selectedGame,
+      type: 'MISSION',
       state: { startedBy: 'admin', startedAt: new Date().toISOString() },
     }, (response) => {
-      if (response?.ok) addGameLog(`${state.selectedGame} 전체 게임 시작`);
+      if (response?.ok) {
+        state.activeGame = response.data;
+        renderGameControls();
+        addGameLog('전체 게임 시작');
+      }
       else showToast(response?.message || response?.error || '게임 시작 실패');
+    });
+  });
+  $('end-game-btn').addEventListener('click', () => {
+    if (!state.activeGame) return;
+    getSocket()?.emit('game:global:end', { gameId: state.activeGame.id }, (response) => {
+      if (!response?.ok) return showToast(response?.message || response?.error || '게임 종료 실패');
+      state.activeGame = null;
+      renderGameControls();
     });
   });
   $('notice-send-btn').addEventListener('click', () => createNotice().catch((error) => showToast(error.message)));
