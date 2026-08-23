@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Gasoek+One&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
-<link rel="stylesheet" href="style.css?v=13">
+<link rel="stylesheet" href="style.css?v=22">
 </head>
 <body>
 <div class="phone">
@@ -73,21 +73,65 @@
       <div class="stat-block col"><span class="stat-mini-label">받은 요청</span><span id="stat-requests" class="stat-mini-num">0개</span></div>
     </div>
     <div id="member-chips" class="member-chips"></div>
-    <div id="seat-grid" class="seat-grid"></div>
+    <div id="map-viewport" class="map-viewport">
+      <div id="map-canvas" class="map-canvas"></div>
+      <div class="map-controls">
+        <button id="map-zoom-in" type="button" class="map-zoom-btn">+</button>
+        <button id="map-zoom-out" type="button" class="map-zoom-btn">−</button>
+        <button id="map-zoom-reset" type="button" class="map-zoom-btn reset">⟲</button>
+      </div>
+      <div class="map-hint">두 손가락으로 확대 · 드래그로 이동</div>
+    </div>
     <footer class="bottombar">
       <button id="notice-btn" class="pill-btn">공지</button>
       <button id="song-btn" class="pill-btn">신청곡</button>
       <button id="game-btn" class="pill-btn">게임</button>
-      <button id="history-btn" class="pill-btn">채팅 <span id="history-badge" class="pill-badge" data-zero="true">0</span></button>
     </footer>
   </section>
+
+  <section id="screen-chat" class="screen">
+    <header class="topbar">
+      <div class="wordmark small">piu:m</div>
+      <div class="table-tag-block">
+        <div id="chat-title" class="table-tag">채팅방</div>
+        <div id="chat-me-label" class="table-tag-time"></div>
+      </div>
+    </header>
+    <div id="chat-log" class="chat-log"></div>
+    <div class="chat-bottom">
+      <div class="chat-input-row">
+        <input id="chat-input" class="modal-input" placeholder="메시지 입력">
+        <button id="chat-send-btn" class="btn-dark">전송</button>
+      </div>
+      <button id="chat-leave-btn" class="btn-dark full leave">채팅방 나가기</button>
+    </div>
+  </section>
+</div>
+
+<div id="modal-leave-confirm" class="modal-backdrop">
+  <div class="modal-card">
+    <div class="modal-title">채팅방을 나가시겠습니까?</div>
+    <div class="modal-detail">참여자 한 명이라도 채팅방을 나가면
+현재 채팅방이 폭파됩니다.</div>
+    <div class="modal-row">
+      <button id="leave-cancel-btn" class="btn-half accept">취소</button>
+      <button id="leave-confirm-btn" class="btn-half reject">나가기</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-chat-ended" class="modal-backdrop">
+  <div class="modal-card">
+    <div class="modal-title">채팅이 종료되었습니다</div>
+    <div id="chat-ended-detail" class="modal-detail">채팅 참여자가 채팅을 종료해 해당 채팅이 종료되었습니다.</div>
+    <button id="chat-ended-confirm-btn" class="btn-dark full">확인</button>
+  </div>
 </div>
 
 <div id="modal-send" class="modal-backdrop">
   <div class="modal-card">
     <button type="button" class="modal-close" data-modal="modal-send">×</button>
     <div id="send-seat-label" class="modal-title"></div>
-    <textarea id="send-message" class="modal-textarea" placeholder="합석 요청 메시지"></textarea>
     <button id="send-request-btn" class="btn-dark full">요청 보내기</button>
   </div>
 </div>
@@ -147,27 +191,6 @@
   </div>
 </div>
 
-<div id="modal-history" class="modal-backdrop">
-  <div class="modal-card">
-    <button type="button" class="modal-close" data-modal="modal-history">×</button>
-    <div class="modal-title">채팅방</div>
-    <div id="history-list" class="history-list"></div>
-  </div>
-</div>
-
-<div id="modal-chat" class="modal-backdrop">
-  <div class="modal-card chat-card">
-    <button type="button" id="chat-close" class="modal-close">×</button>
-    <div id="chat-title" class="modal-title"></div>
-    <div id="chat-me-label" class="chat-me-label"></div>
-    <div id="chat-log" class="chat-log"></div>
-    <div class="chat-input-row">
-      <input id="chat-input" class="modal-input" placeholder="메시지 입력">
-      <button id="chat-send-btn" class="btn-dark">전송</button>
-    </div>
-  </div>
-</div>
-
 <div id="modal-notices" class="modal-backdrop">
   <div class="modal-card">
     <button type="button" class="modal-close" data-modal="modal-notices">×</button>
@@ -187,6 +210,6 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-<script type="module" src="js/app.js?v=1"></script>
+<script type="module" src="js/app.js?v=12"></script>
 </body>
 </html>
