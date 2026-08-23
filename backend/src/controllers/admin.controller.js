@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const env = require('../config/env');
 const AppError = require('../errors/AppError');
 const tableService = require('../services/table.service');
+const lifecycleService = require('../services/lifecycle.service');
 
 async function login(req, res, next) {
   try {
@@ -35,10 +36,10 @@ async function getTables(req, res, next) {
 
 async function checkoutTable(req, res, next) {
   try {
-    const session = await tableService.checkoutTable(req.params.tableId);
+    const result = await tableService.checkoutTable(req.params.tableId);
     const io = req.app.get('io');
-    if (io && session) io.to(`session:${session.id}`).emit('table:checked-out', { session });
-    res.json({ data: session });
+    if (io && result) lifecycleService.emitLifecycle(io, result);
+    res.json({ data: result?.session || null });
   } catch (error) {
     next(error);
   }

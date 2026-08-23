@@ -1,10 +1,13 @@
 // 테이블 비즈니스 로직
 const { Op } = require('sequelize');
+const sequelize = require('../config/db');
 const { Table, TableSession, Participant } = require('../models');
 const AppError = require('../errors/AppError');
 const { defaultExpiresAt } = require('./session.service');
+const lifecycleService = require('./lifecycle.service');
 
 async function getTables(options = {}) {
+  await lifecycleService.expireSessions();
   const tables = await Table.findAll({
     attributes: options.includeQrToken ? undefined : { exclude: ['qrToken'] },
     include: [{
@@ -75,18 +78,24 @@ async function updateMyCounts(user, data) {
 }
 
 async function checkoutTable(tableId) {
-  const session = await TableSession.findOne({
-    where: { tableId, status: 'ACTIVE' },
-    order: [['startedAt', 'DESC']],
-  });
+  return sequelize.transaction(async (transaction) => {
+    const session = await TableSession.findOne({
+      where: { tableId, status: 'ACTIVE' },
+      order: [['startedAt', 'DESC']],
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
 
-  if (!session) {
-    return null;
-  }
+    if (!session) {
+      return null;
+    }
 
-  return session.update({
-    status: 'CLOSED',
-    endedAt: new Date(),
+    await session.update({
+      status: 'CLOSED',
+      endedAt: new Date(),
+    }, { transaction });
+    const chats = await lifecycleService.closeSessionChats(session.id, 'SESSION_CHECKED_OUT', { transaction });
+    return { session, ...chats };
   });
 }
 
