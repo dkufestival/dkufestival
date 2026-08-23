@@ -1,26 +1,32 @@
 # Frontend
 
-정적 HTML/CSS/JavaScript 프론트입니다.
+정적 HTML/CSS/JavaScript 프론트입니다. Express 백엔드가 이 디렉터리를
+정적 파일로 함께 제공하므로 별도의 프런트엔드 서버는 필요하지 않습니다.
 
 ## 실행
 
-`index.html`과 Service Worker는 같은 origin에서 제공되어야 하므로 `frontend` 디렉터리에서 정적 서버를 실행합니다.
+저장소 루트에서 백엔드 서버 하나만 실행합니다.
 
 ```bash
-cd frontend
-python -m http.server 5174
+npm run dev
 ```
 
 사용자 화면:
 
 ```text
-http://localhost:5174/index.html?qr=<qrToken>
+http://localhost:3000/index.html?qr=<qrToken>
 ```
 
 관리자 화면:
 
 ```text
-http://localhost:5174/admin.html
+http://localhost:3000/admin.html
+```
+
+농구게임:
+
+```text
+http://localhost:3000/basketball/
 ```
 
 ## 사용자 UX
