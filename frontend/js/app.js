@@ -144,14 +144,26 @@ async function enter() {
 async function afterAuthenticated() {
   showScreen('screen-seats');
   bindSocket();
-  await Promise.all([
+
+  renderStats();
+  renderParticipants();
+  renderTables();
+
+  const requiredLoads = await Promise.allSettled([
     refreshParticipants(),
     refreshTables(),
+  ]);
+  if (requiredLoads.some((result) => result.status === 'rejected')) {
+    showToast('테이블 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+  }
+
+  await Promise.allSettled([
     refreshChatRequests(),
     refreshSongs(),
     refreshNotices(),
+    refreshActiveRoom(),
   ]);
-  await refreshActiveRoom();
+
   renderAll();
   startTimer();
   renderPushPrompt();
