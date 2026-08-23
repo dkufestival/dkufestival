@@ -1,72 +1,31 @@
 # DKU Festival
 
-축제 주점 운영을 위한 테이블 세션, QR 입장, 합석 요청, 채팅, 공지, 신청곡, 게임 백엔드와 정적 프론트엔드 프로젝트다.
+QR 기반 테이블 입장, 실시간 채팅 요청, 공지, 신청곡, 게임, 관리자 운영 화면을 제공하는 프로젝트입니다.
 
-## 주요 개념
-
-- `Table`: 현장의 물리 테이블
-- `TableSession`: 현재 해당 테이블을 사용하는 팀
-- `Participant`: 같은 테이블 세션에 접속한 개별 휴대폰 사용자
-
-한 테이블 QR에는 여러 휴대폰이 접속할 수 있고, 각 참가자는 별도 닉네임과 JWT를 가진다.
-
-## 기술 스택
-
-- Backend: Node.js, Express, Socket.IO, Sequelize, MySQL
-- Frontend: 정적 HTML/CSS/JavaScript, ES Module, Socket.IO client
-- Authentication: JWT
-
-## 설치
+## 실행
 
 ```bash
-git clone https://github.com/dkufestival/dkufestival.git
-cd dkufestival
 npm run setup
-```
-
-## 백엔드 실행
-
-```bash
 cp backend/.env.example backend/.env
-cd backend
-npm run seed
+npm run seed --prefix backend
+npm run migrate --prefix backend
 npm run dev
 ```
 
-주요 백엔드 환경변수:
-
-- `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`
-- `DB_SYNC`, `DB_ALTER`
-- `JWT_SECRET`
-- `ADMIN_ID`, `ADMIN_PASSWORD`
-- `CORS_ORIGIN`
-- `FRONTEND_URL`
-- `SESSION_DURATION_MINUTES`
-- `QR_OUTPUT_DIR`
-- `TABLE_COUNT`
-
-자세한 설명은 [backend/README.md](backend/README.md)를 확인한다.
-
-## 프론트엔드 실행
+프론트는 정적 파일 서버로 실행합니다.
 
 ```bash
 cd frontend
 python -m http.server 5174
 ```
 
-사용자 화면:
+사용자 화면: `http://localhost:5174/index.html?qr=<qrToken>`
 
-```text
-http://localhost:5174/index.html?qr=<qrToken>
-```
+관리자 화면: `http://localhost:5174/admin.html`
 
-관리자 화면:
+## 채팅 흐름
 
-```text
-http://localhost:5174/admin.html
-```
-
-프론트 설정, API 매핑, Socket.IO 매핑, 테스트 시나리오는 [frontend/README.md](frontend/README.md)를 확인한다.
+대표 참가자만 다른 사용 중 테이블에 채팅 요청을 보낼 수 있습니다. 요청은 1분 동안 `PENDING`이며, 상대 테이블 대표가 수락하면 `ACTIVE`가 됩니다. 수락 즉시 양쪽 테이블의 모든 참가자는 전체 화면 채팅으로 이동합니다. 아무 참가자나 종료할 수 있고, 종료 후 같은 두 테이블이 다시 요청하면 새 방을 생성합니다.
 
 ## 문서
 
