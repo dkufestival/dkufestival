@@ -350,6 +350,8 @@ body {
   border-radius: 12px;
   padding: 24px;
 }
+.game-panel.wide { max-width: 760px; }
+.panel-title.spaced { margin-top: 24px; }
 .panel-title {
   font-family: var(--font-display);
   font-size: 15px;
@@ -397,8 +399,10 @@ body {
 
 /* 신청곡 */
 .song-list { display: flex; flex-direction: column; gap: 8px; }
+.admin-list { display: flex; flex-direction: column; gap: 8px; }
 .song-empty { color: var(--text-muted); font-size: 12px; padding: 6px 0; }
-.song-item {
+.song-item,
+.admin-list-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -408,7 +412,8 @@ body {
   border: 1px solid var(--border-soft);
   background: var(--card-dark-2);
 }
-.song-item-info { min-width: 0; }
+.song-item-info,
+.admin-list-info { min-width: 0; }
 .song-item-title {
   font-size: 13px;
   font-weight: 700;
@@ -431,6 +436,9 @@ body {
   cursor: pointer;
 }
 .song-done-btn:hover { border-color: var(--lime); color: var(--lime); }
+.song-done-btn.danger { color: #ff8080; }
+.textarea { margin-top: 10px; resize: vertical; }
+.select { margin-top: 10px; }
 
 .toast {
   position: fixed;
