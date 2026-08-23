@@ -265,7 +265,8 @@ function bindSocket() {
     state.activeGame = null;
     renderGame();
     closeModal('modal-game');
-    showScreen(state.activeRoom ? 'screen-chat' : 'screen-seats');
+    showScreen('screen-seats');
+    if (state.activeRoom) openModal('modal-chat');
     showToast(`${game.type} 게임이 종료되었습니다.`);
   });
   socket.on('game:invited', (game) => {
@@ -308,6 +309,7 @@ async function handleChatEnded() {
   state.activeRoom = null;
   state.messages.clear();
   closeModal('modal-end-chat');
+  closeModal('modal-chat');
   showToast('채팅이 종료되었습니다.');
   await Promise.all([refreshChatRequests(), refreshTables()]);
   renderAll();
@@ -322,6 +324,7 @@ function renderAll() {
   renderSongs();
   renderNotices();
   renderGame();
+  renderChatRooms();
   if (state.activeRoom) renderChat();
 }
 
@@ -333,6 +336,12 @@ function renderStats() {
   $('stat-time').textContent = left;
   $('table-tag-time').textContent = `${left} 남음`;
   $('stat-requests').textContent = state.chatRequests.filter((request) => request.status === 'PENDING').length;
+  const badge = $('history-badge');
+  if (badge) {
+    const count = state.chatRequests.length + (state.activeRoom ? 1 : 0);
+    badge.textContent = count;
+    badge.dataset.zero = count ? 'false' : 'true';
+  }
 }
 
 function renderParticipants() {
@@ -404,6 +413,46 @@ function renderRequestStatus() {
   }
 }
 
+function renderChatRooms() {
+  const list = $('history-list');
+  if (!list) return;
+  clear(list);
+
+  if (state.activeRoom) {
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    const info = document.createElement('div');
+    info.className = 'history-info';
+    info.appendChild(text('div', 'history-seat-name', `${peerLabel(state.activeRoom)} 채팅 중`));
+    info.appendChild(text('div', 'history-preview', '터치해서 채팅방 열기'));
+    item.appendChild(info);
+    item.addEventListener('click', () => {
+      closeModal('modal-history');
+      openModal('modal-chat');
+      renderChat();
+    });
+    list.appendChild(item);
+  }
+
+  state.chatRequests.forEach((request) => {
+    if (state.activeRoom && Number(request.id) === Number(state.activeRoom.id)) return;
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    const info = document.createElement('div');
+    info.className = 'history-info';
+    const sent = Number(request.requesterSessionId) === Number(state.session?.id);
+    const label = sent ? '보낸 요청' : '받은 요청';
+    info.appendChild(text('div', 'history-seat-name', `${peerLabel(request)} ${label}`));
+    info.appendChild(text('div', 'history-preview', request.status));
+    item.appendChild(info);
+    list.appendChild(item);
+  });
+
+  if (!list.children.length) {
+    list.appendChild(text('div', 'history-empty', '채팅방이 없습니다.'));
+  }
+}
+
 function openRequestModal(table) {
   state.pendingTargetTable = table;
   $('send-seat-label').textContent = `TABLE ${table.tableNumber}에 채팅 요청`;
@@ -454,7 +503,8 @@ async function setActiveRoom(room) {
   await loadMessages(room.id);
   joinChatRoom(room.id);
   renderChat();
-  showScreen('screen-chat');
+  renderChatRooms();
+  openModal('modal-chat');
 }
 
 async function loadMessages(roomId) {
@@ -627,9 +677,17 @@ function bindEvents() {
   });
   $('join-btn').addEventListener('click', () => enter().catch((error) => showToast(error.message)));
   $('send-request-btn').addEventListener('click', () => sendChatRequest().catch((error) => showToast(error.message)));
-  $('chat-form').addEventListener('submit', (event) => {
-    event.preventDefault();
-    sendChatMessage();
+  $('history-btn').addEventListener('click', () => {
+    renderChatRooms();
+    openModal('modal-history');
+  });
+  $('chat-close').addEventListener('click', () => closeModal('modal-chat'));
+  $('chat-send-btn').addEventListener('click', sendChatMessage);
+  $('chat-input').addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      sendChatMessage();
+    }
   });
   $('chat-end-btn').addEventListener('click', () => openModal('modal-end-chat'));
   $('end-cancel-btn').addEventListener('click', () => closeModal('modal-end-chat'));
