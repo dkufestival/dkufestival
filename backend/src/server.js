@@ -37,7 +37,12 @@ function startLifecycleJobs() {
 async function startServer() {
   try {
     await sequelize.authenticate();
-    if (env.db.sync) await sequelize.sync({ alter: env.db.alter });
+    if (env.db.sync) {
+      if (env.db.alter) {
+        console.warn('DB_ALTER=true is ignored. Use `npm run migrate` for schema changes.');
+      }
+      await sequelize.sync();
+    }
 
     server.listen(env.port, () => {
       console.log(`Festival backend listening on port ${env.port}`);
