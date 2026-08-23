@@ -1,4 +1,5 @@
 const webpush = require('web-push');
+const crypto = require('crypto');
 const env = require('../config/env');
 const { PushSubscription, Participant } = require('../models');
 const AppError = require('../errors/AppError');
@@ -18,6 +19,10 @@ function publicKey() {
   return env.vapid.publicKey;
 }
 
+function hashEndpoint(endpoint) {
+  return crypto.createHash('sha256').update(endpoint).digest('hex');
+}
+
 async function upsertSubscription(user, data, userAgent) {
   if (!configured()) throw new AppError(503, 'PUSH_NOT_CONFIGURED', 'Web Push is not configured.');
   const participant = await Participant.findOne({ where: { id: user.participantId, tableSessionId: user.sessionId } });
@@ -26,11 +31,13 @@ async function upsertSubscription(user, data, userAgent) {
   if (!data.endpoint || !keys.p256dh || !keys.auth) {
     throw new AppError(400, 'INVALID_PUSH_SUBSCRIPTION', 'Invalid push subscription.');
   }
+  const endpointHash = hashEndpoint(data.endpoint);
   const [subscription] = await PushSubscription.findOrCreate({
-    where: { endpoint: data.endpoint },
+    where: { endpointHash },
     defaults: {
       participantId: participant.id,
       endpoint: data.endpoint,
+      endpointHash,
       p256dh: keys.p256dh,
       auth: keys.auth,
       userAgent: userAgent || null,
@@ -39,6 +46,8 @@ async function upsertSubscription(user, data, userAgent) {
   if (subscription.participantId !== participant.id || subscription.p256dh !== keys.p256dh || subscription.auth !== keys.auth) {
     await subscription.update({
       participantId: participant.id,
+      endpoint: data.endpoint,
+      endpointHash,
       p256dh: keys.p256dh,
       auth: keys.auth,
       userAgent: userAgent || null,
@@ -49,7 +58,7 @@ async function upsertSubscription(user, data, userAgent) {
 
 async function deleteSubscription(user, endpoint) {
   const where = { participantId: user.participantId };
-  if (endpoint) where.endpoint = endpoint;
+  if (endpoint) where.endpointHash = hashEndpoint(endpoint);
   return PushSubscription.destroy({ where });
 }
 

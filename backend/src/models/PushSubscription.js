@@ -11,6 +11,10 @@ const PushSubscription = sequelize.define(
     endpoint: {
       type: DataTypes.TEXT,
       allowNull: false,
+    },
+    endpointHash: {
+      type: DataTypes.STRING(64),
+      allowNull: false,
       unique: true,
     },
     p256dh: {
@@ -28,7 +32,10 @@ const PushSubscription = sequelize.define(
   },
   {
     tableName: 'push_subscriptions',
-    indexes: [{ fields: ['participantId'] }],
+    indexes: [
+      { fields: ['participantId'] },
+      { unique: true, fields: ['endpointHash'] },
+    ],
   }
 );
 
