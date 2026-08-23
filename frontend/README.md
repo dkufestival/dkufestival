@@ -29,6 +29,12 @@ http://localhost:3000/admin.html
 http://localhost:3000/basketball/
 ```
 
+스톱워치 게임:
+
+```text
+http://localhost:3000/stopwatch/
+```
+
 ## 사용자 UX
 
 1. QR로 테이블에 입장합니다.

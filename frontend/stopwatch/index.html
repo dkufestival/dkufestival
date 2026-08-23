@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#10120f">
+  <title>스톱워치 게임 | piu:m</title>
+  <link rel="stylesheet" href="./stopwatch.css">
+</head>
+<body>
+  <main class="game-shell">
+    <section class="game-card" aria-label="스톱워치 목표 시간 게임">
+      <header class="topbar">
+        <button id="back-button" class="back-button" type="button" aria-label="돌아가기"><i>‹</i> 돌아가기</button>
+        <h1>스톱워치</h1>
+        <button id="reset-button" class="reset-button" type="button">초기화</button>
+      </header>
+
+      <section class="target-panel">
+        <span>목표 시간</span>
+        <strong id="target-time">--:--.---</strong>
+      </section>
+
+      <section class="watch-panel">
+        <div id="elapsed-time" class="elapsed-time">00:00.000</div>
+        <p id="result-text" class="result-text">관리자가 스톱워치 게임을 시작하면 참여할 수 있습니다.</p>
+      </section>
+
+      <button id="action-button" class="action-button" type="button" disabled>대기 중</button>
+      <p id="status-text" class="status-text">서버 연결 중</p>
+    </section>
+  </main>
+
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+  <script type="module" src="./stopwatch.js"></script>
+</body>
+</html>

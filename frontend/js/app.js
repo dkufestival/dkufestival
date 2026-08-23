@@ -293,13 +293,13 @@ function bindSocket() {
   socket.on('game:global:started', (game) => {
     state.activeGame = game;
     renderGame();
-    showGlobalGameScreen();
+    if (game.type !== 'TIME_MATCH') showGlobalGameScreen();
     showToast('전체 게임이 시작되었습니다.');
   });
   socket.on('game:global:current', (game) => {
     state.activeGame = game;
     renderGame();
-    showGlobalGameScreen();
+    if (game.type !== 'TIME_MATCH') showGlobalGameScreen();
   });
   socket.on('game:global:ended', (game) => {
     resetTimeMatch();
@@ -605,6 +605,18 @@ function renderGame() {
   }));
   box.appendChild(basketballCard);
 
+  const stopwatchCard = document.createElement('div');
+  stopwatchCard.className = 'basketball-entry';
+  stopwatchCard.appendChild(text('div', 'basketball-entry-icon', '⏱'));
+  stopwatchCard.appendChild(text('div', 'basketball-entry-title', '스톱워치 게임'));
+  stopwatchCard.appendChild(text('div', 'basketball-entry-copy', state.activeGame?.type === 'TIME_MATCH'
+    ? `목표 ${formatGameTime(state.activeGame.state?.targetMs)}에 맞춰 멈춰보세요.`
+    : '관리자가 스톱워치를 시작하면 입장할 수 있습니다.'));
+  stopwatchCard.appendChild(button('btn-dark full', '스톱워치 입장', () => {
+    window.location.href = '/stopwatch/';
+  }));
+  box.appendChild(stopwatchCard);
+
   if (!state.activeGame) {
     box.appendChild(text('div', 'history-empty', '진행 중인 게임이 없습니다.'));
     return;
@@ -612,7 +624,9 @@ function renderGame() {
   box.appendChild(text('div', 'history-seat-name', `${state.activeGame.type} / ${state.activeGame.status}`));
   if (state.activeGame.type === 'TIME_MATCH') {
     box.appendChild(text('div', 'history-empty', `목표 ${formatGameTime(state.activeGame.state?.targetMs)} · 중앙제어 게임 진행 중`));
-    box.appendChild(button('btn-primary full', '게임 화면으로 이동', showGlobalGameScreen));
+    box.appendChild(button('btn-primary full', '스톱워치 입장', () => {
+      window.location.href = '/stopwatch/';
+    }));
     return;
   }
   box.appendChild(button('btn-primary full', '응답 보내기', () => {
