@@ -556,8 +556,17 @@ function renderNotices() {
 function renderGame() {
   const box = $('game-panel');
   clear(box);
+  const basketballCard = document.createElement('div');
+  basketballCard.className = 'basketball-entry';
+  basketballCard.appendChild(text('div', 'basketball-entry-icon', '🏀'));
+  basketballCard.appendChild(text('div', 'basketball-entry-title', '농구게임'));
+  basketballCard.appendChild(text('div', 'basketball-entry-copy', '제한 시간 안에 최대한 많은 골을 넣어보세요.'));
+  basketballCard.appendChild(button('btn-dark full', '농구게임 입장', () => {
+    window.location.href = `${window.location.protocol}//${window.location.hostname}:5175/`;
+  }));
+  box.appendChild(basketballCard);
   if (!state.activeGame) {
-    box.appendChild(text('div', 'history-empty', '진행 중인 게임이 없습니다.'));
+    box.appendChild(text('div', 'history-empty', '현재 진행 중인 전체 게임은 없습니다.'));
     return;
   }
   box.appendChild(text('div', 'history-seat-name', `${state.activeGame.type} / ${state.activeGame.status}`));
