@@ -11,7 +11,7 @@ const state = {
   tables: [],
   chatRooms: [],
   songs: [],
-  selectedGame: 'TIME_MATCH',
+  selectedGame: 'PINBALL',
   activeGame: null,
   activeDetailTable: null,
   detailCounts: { male: 0, female: 0 },
@@ -309,13 +309,46 @@ function renderChatRooms() {
 }
 
 function renderGameControls() {
-  const activeTarget = state.activeGame?.type === 'TIME_MATCH' ? ` · 목표 ${formatTargetTime(state.activeGame.state?.targetMs)}` : '';
+  const activeTarget = state.activeGame?.type === 'TIME_MATCH'
+    ? ` · 목표 ${formatTargetTime(state.activeGame.state?.targetMs)}`
+    : state.activeGame?.type === 'PINBALL'
+      ? ` · 참가 ${state.activeGame.state?.names?.length || 0}명`
+      : '';
   $('game-status').textContent = state.activeGame ? `참가자 화면에서 게임이 진행 중입니다${activeTarget}.` : '게임을 시작할 수 있습니다.';
   $('broadcast-btn').hidden = Boolean(state.activeGame);
   $('end-game-btn').hidden = !state.activeGame;
   $('time-target-seconds').disabled = Boolean(state.activeGame);
   $('time-target-milliseconds').disabled = Boolean(state.activeGame);
+  $('pinball-names').disabled = Boolean(state.activeGame);
+  const isPinballActive = state.activeGame?.type === 'PINBALL';
+  $('pinball-admin-preview').hidden = !isPinballActive;
+  const frame = $('pinball-admin-frame');
+  const nextSrc = isPinballActive ? pinballViewerUrl(state.activeGame) : 'about:blank';
+  if (frame.getAttribute('src') !== nextSrc) frame.src = nextSrc;
   renderStats();
+}
+
+function parsePinballNames() {
+  return $('pinball-names').value
+    .split(/[,\n\r]+/)
+    .map((name) => name.trim())
+    .filter(Boolean);
+}
+
+function pinballViewerUrl(game) {
+  const params = new URLSearchParams({
+    viewer: '1',
+    names: (game.state?.names || []).join(','),
+    seed: String(game.state?.seed || 1),
+    startAt: String(game.state?.startAt || Date.now()),
+  });
+  return `/pinball-viewer/?${params}`;
+}
+
+function renderPinballSetting() {
+  const names = parsePinballNames();
+  $('pinball-setting').hidden = state.selectedGame !== 'PINBALL';
+  $('pinball-name-count').textContent = `${names.length}명`;
 }
 
 function targetTimeMs() {
@@ -349,10 +382,12 @@ function renderGameList() {
       state.selectedGame = game.id;
       renderGameList();
       renderTimeMatchSetting();
+      renderPinballSetting();
     });
     list.appendChild(item);
   });
   renderTimeMatchSetting();
+  renderPinballSetting();
 }
 
 function addGameLog(message) {
@@ -424,12 +459,18 @@ function bindEvents() {
   $('broadcast-btn').addEventListener('click', () => {
     const targetMs = targetTimeMs();
     if (state.selectedGame === 'TIME_MATCH' && targetMs < 1) return showToast('목표 시간을 1ms 이상 입력해주세요.');
+    const pinballNames = parsePinballNames();
+    if (state.selectedGame === 'PINBALL') {
+      if (pinballNames.length < 2 || pinballNames.length > 50) return showToast('핀볼 이름을 2명 이상 50명 이하로 입력해주세요.');
+      if (pinballNames.some((name) => name.length > 20 || /[,/*]/.test(name))) return showToast('이름은 20자 이하이며 , / * 문자를 사용할 수 없습니다.');
+    }
     getSocket()?.emit('game:global:start', {
       type: state.selectedGame,
       state: {
         startedBy: 'admin',
         startedAt: new Date().toISOString(),
         ...(state.selectedGame === 'TIME_MATCH' ? { targetMs } : {}),
+        ...(state.selectedGame === 'PINBALL' ? { names: pinballNames } : {}),
       },
     }, (response) => {
       if (response?.ok) {
@@ -444,6 +485,7 @@ function bindEvents() {
   ['time-target-seconds', 'time-target-milliseconds'].forEach((id) => {
     $(id).addEventListener('input', renderTimeMatchSetting);
   });
+  $('pinball-names').addEventListener('input', renderPinballSetting);
   $('end-game-btn').addEventListener('click', () => {
     if (!state.activeGame) return;
     getSocket()?.emit('game:global:end', { gameId: state.activeGame.id }, (response) => {

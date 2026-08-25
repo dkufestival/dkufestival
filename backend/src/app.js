@@ -12,6 +12,7 @@ const entryRoutes = require('./routes/entry.routes');
 const participantRoutes = require('./routes/participant.routes');
 const songRoutes = require('./routes/song.routes');
 const pushRoutes = require('./routes/push.routes');
+const { getPinballPage } = require('./services/pinball-page.service');
 const { notFound, errorHandler } = require('./middleware/error-handler');
 
 const app = express();
@@ -21,6 +22,14 @@ app.use(express.json());
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
+});
+
+app.get('/pinball-viewer/', async (req, res, next) => {
+  try {
+    res.type('html').send(await getPinballPage());
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.use('/api/tables', tableRoutes);

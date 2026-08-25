@@ -183,6 +183,21 @@ async function startGlobalGame(data) {
       throw createServiceError('목표 시간은 1ms 이상 99분 59.999초 이하로 설정해야 합니다.', 'INVALID_TARGET_TIME');
     }
   }
+  let gameState = data.state || {};
+  if (data.type === 'PINBALL') {
+    const names = Array.isArray(gameState.names)
+      ? gameState.names.map((name) => String(name).trim()).filter(Boolean)
+      : [];
+    if (names.length < 2 || names.length > 50 || names.some((name) => name.length > 20 || /[,/*]/.test(name))) {
+      throw createServiceError('핀볼 이름은 특수 구분자 없이 2명 이상 50명 이하로 입력해야 합니다.', 'INVALID_PINBALL_NAMES');
+    }
+    gameState = {
+      startedBy: 'admin',
+      names,
+      seed: Math.floor(Math.random() * 0xffffffff) || 1,
+      startAt: Date.now() + 2000,
+    };
+  }
   return withGlobalGameLock(async (transaction) => {
     const activeGame = await GameSession.findOne({
       where: { mode: 'GLOBAL', status: 'ACTIVE' },
@@ -193,7 +208,7 @@ async function startGlobalGame(data) {
       mode: 'GLOBAL',
       type: data.type,
       status: 'ACTIVE',
-      state: data.state || {},
+      state: gameState,
       startedAt: new Date(),
     }, { transaction });
   });

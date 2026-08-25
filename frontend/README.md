@@ -23,11 +23,8 @@ http://localhost:3000/index.html?qr=<qrToken>
 http://localhost:3000/admin.html
 ```
 
-농구게임:
-
-```text
-http://localhost:3000/basketball/
-```
+핀볼 관전 화면은 관리자가 이름을 입력해 시작하면 사용자 화면에 자동으로 표시됩니다.
+외부 [Marble Roulette](https://lazygyu.github.io/roulette/)를 관전 모드로 불러오며 사용자는 조작할 수 없습니다.
 
 스톱워치 게임:
 

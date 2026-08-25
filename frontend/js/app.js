@@ -293,17 +293,20 @@ function bindSocket() {
   socket.on('game:global:started', (game) => {
     state.activeGame = game;
     renderGame();
-    if (game.type !== 'TIME_MATCH') showGlobalGameScreen();
+    if (game.type === 'PINBALL') showPinballScreen(game);
+    else if (game.type !== 'TIME_MATCH') showGlobalGameScreen();
     showToast('전체 게임이 시작되었습니다.');
   });
   socket.on('game:global:current', (game) => {
     state.activeGame = game;
     renderGame();
-    if (game.type !== 'TIME_MATCH') showGlobalGameScreen();
+    if (game.type === 'PINBALL') showPinballScreen(game);
+    else if (game.type !== 'TIME_MATCH') showGlobalGameScreen();
   });
   socket.on('game:global:ended', (game) => {
     resetTimeMatch();
     state.activeGame = null;
+    $('pinball-viewer-frame').src = 'about:blank';
     renderGame();
     closeModal('modal-game');
     showScreen(state.activeRoomId ? 'screen-chat' : 'screen-seats');
@@ -595,15 +598,20 @@ function renderGame() {
   const box = $('game-panel');
   clear(box);
 
-  const basketballCard = document.createElement('div');
-  basketballCard.className = 'basketball-entry';
-  basketballCard.appendChild(text('div', 'basketball-entry-icon', '🏀'));
-  basketballCard.appendChild(text('div', 'basketball-entry-title', '농구게임'));
-  basketballCard.appendChild(text('div', 'basketball-entry-copy', '제한 시간 안에 최대한 많은 골을 넣어보세요.'));
-  basketballCard.appendChild(button('btn-dark full', '농구게임 입장', () => {
-    window.location.href = '/basketball/';
-  }));
-  box.appendChild(basketballCard);
+  const pinballActive = state.activeGame?.type === 'PINBALL' && state.activeGame?.status === 'ACTIVE';
+  const pinballCard = document.createElement('div');
+  pinballCard.className = 'basketball-entry';
+  pinballCard.appendChild(text('div', 'basketball-entry-icon', '🎯'));
+  pinballCard.appendChild(text('div', 'basketball-entry-title', '핀볼게임'));
+  pinballCard.appendChild(text('div', 'basketball-entry-copy', pinballActive
+    ? `${state.activeGame.state?.names?.length || 0}명의 핀볼 게임을 관전 중입니다.`
+    : '관리자가 이름을 입력하고 게임을 시작하면 자동으로 관전 화면이 열립니다.'));
+  const pinballButton = button('btn-dark full', pinballActive ? '관전 화면으로 이동' : '관리자 시작 대기', () => {
+    showPinballScreen(state.activeGame);
+  });
+  pinballButton.disabled = !pinballActive;
+  pinballCard.appendChild(pinballButton);
+  box.appendChild(pinballCard);
 
   const stopwatchActive = state.activeGame?.type === 'TIME_MATCH' && state.activeGame?.status === 'ACTIVE';
   const stopwatchCard = document.createElement('div');
@@ -645,6 +653,24 @@ function renderGame() {
       });
     }));
   }
+}
+
+function pinballViewerUrl(game) {
+  const params = new URLSearchParams({
+    viewer: '1',
+    names: (game?.state?.names || []).join(','),
+    seed: String(game?.state?.seed || 1),
+    startAt: String(game?.state?.startAt || Date.now()),
+  });
+  return `/pinball-viewer/?${params}`;
+}
+
+function showPinballScreen(game) {
+  if (!game || game.type !== 'PINBALL') return;
+  const frame = $('pinball-viewer-frame');
+  const nextSrc = pinballViewerUrl(game);
+  if (frame.getAttribute('src') !== nextSrc) frame.src = nextSrc;
+  showScreen('screen-pinball');
 }
 
 function formatGameTime(totalMs) {
