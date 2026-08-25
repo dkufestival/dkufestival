@@ -175,6 +175,26 @@ async function withGlobalGameLock(work) {
   });
 }
 
+function normalizePinballEntries(values) {
+  if (!Array.isArray(values) || !values.length || values.length > 50) return null;
+  const entries = [];
+  let marbleCount = 0;
+
+  for (const rawValue of values) {
+    const value = String(rawValue).trim();
+    const match = /^([^,/*]+?)(?:\*(\d+))?$/.exec(value);
+    const name = match?.[1]?.trim();
+    const count = Number(match?.[2] || 1);
+    if (!name || name.length > 20 || !Number.isInteger(count) || count < 1 || count > 50) return null;
+    marbleCount += count;
+    if (marbleCount > 50) return null;
+    entries.push(count > 1 ? `${name}*${count}` : name);
+  }
+
+  if (marbleCount < 2) return null;
+  return { entries, marbleCount };
+}
+
 async function startGlobalGame(data) {
   if (!data.type) throw createServiceError('게임 종류가 필요합니다.', 'INVALID_PAYLOAD');
   if (data.type === 'TIME_MATCH') {
@@ -185,15 +205,12 @@ async function startGlobalGame(data) {
   }
   let gameState = data.state || {};
   if (data.type === 'PINBALL') {
-    const names = Array.isArray(gameState.names)
-      ? gameState.names.map((name) => String(name).trim()).filter(Boolean)
-      : [];
-    if (names.length < 2 || names.length > 50 || names.some((name) => name.length > 20 || /[,/*]/.test(name))) {
-      throw createServiceError('핀볼 이름은 특수 구분자 없이 2명 이상 50명 이하로 입력해야 합니다.', 'INVALID_PINBALL_NAMES');
-    }
+    const parsed = normalizePinballEntries(gameState.names);
+    if (!parsed) throw createServiceError('핀볼 구슬은 이름 또는 이름*개수 형식으로 총 2~50개를 입력해야 합니다.', 'INVALID_PINBALL_NAMES');
     gameState = {
       startedBy: 'admin',
-      names,
+      names: parsed.entries,
+      marbleCount: parsed.marbleCount,
       seed: Math.floor(Math.random() * 0xffffffff) || 1,
       startAt: Date.now() + 2000,
     };
@@ -244,4 +261,4 @@ async function endGlobalGame(data) {
   });
 }
 
-module.exports = { createInvite, acceptInvite, handleAction, endGame, startGlobalGame, endGlobalGame, getActiveGlobalGame };
+module.exports = { createInvite, acceptInvite, handleAction, endGame, startGlobalGame, endGlobalGame, getActiveGlobalGame, normalizePinballEntries };

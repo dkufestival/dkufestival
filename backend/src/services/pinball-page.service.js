@@ -7,6 +7,7 @@ let cachedAt = 0;
 const viewerBootstrap = String.raw`
 <style>
   html.festival-pinball-viewer #settings,
+  html.festival-pinball-viewer #notice,
   html.festival-pinball-viewer .copyright,
   html.festival-pinball-viewer .modal-overlay,
   html.festival-pinball-viewer #btnToggleSettings { display: none !important; }
@@ -43,13 +44,16 @@ const viewerBootstrap = String.raw`
       .map((name) => name.trim())
       .filter(Boolean)
       .slice(0, 50);
-    if (names.length < 2) return;
+    if (!names.length) return;
 
     const seed = Number(params.get('seed')) >>> 0 || 1;
     Math.random = makeRandom(seed);
-    window.options.winningRank = 0;
     window.roulette.setMarbles(names);
-    window.roulette.setWinningRank(0);
+    const marbleCount = window.roulette.getCount();
+    if (marbleCount < 2) return;
+    const lastPlace = marbleCount - 1;
+    window.options.winningRank = lastPlace;
+    window.roulette.setWinningRank(lastPlace);
 
     const startAt = Number(params.get('startAt')) || Date.now();
     window.setTimeout(() => window.roulette.start(), Math.max(0, Math.min(startAt - Date.now(), 5000)));

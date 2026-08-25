@@ -312,7 +312,7 @@ function renderGameControls() {
   const activeTarget = state.activeGame?.type === 'TIME_MATCH'
     ? ` · 목표 ${formatTargetTime(state.activeGame.state?.targetMs)}`
     : state.activeGame?.type === 'PINBALL'
-      ? ` · 참가 ${state.activeGame.state?.names?.length || 0}명`
+      ? ` · 구슬 ${state.activeGame.state?.marbleCount || state.activeGame.state?.names?.length || 0}개`
       : '';
   $('game-status').textContent = state.activeGame ? `참가자 화면에서 게임이 진행 중입니다${activeTarget}.` : '게임을 시작할 수 있습니다.';
   $('broadcast-btn').hidden = Boolean(state.activeGame);
@@ -328,11 +328,30 @@ function renderGameControls() {
   renderStats();
 }
 
-function parsePinballNames() {
-  return $('pinball-names').value
+function parsePinballEntries() {
+  const values = $('pinball-names').value
     .split(/[,\n\r]+/)
     .map((name) => name.trim())
     .filter(Boolean);
+  const entries = [];
+  let marbleCount = 0;
+
+  for (const value of values) {
+    const match = /^([^,/*]+?)(?:\*(\d+))?$/.exec(value);
+    const name = match?.[1]?.trim();
+    const count = Number(match?.[2] || 1);
+    if (!name || name.length > 20 || !Number.isInteger(count) || count < 1 || count > 50) {
+      return { valid: false, entries: [], marbleCount: 0 };
+    }
+    marbleCount += count;
+    entries.push(count > 1 ? `${name}*${count}` : name);
+  }
+
+  return {
+    valid: entries.length > 0 && marbleCount >= 2 && marbleCount <= 50,
+    entries,
+    marbleCount,
+  };
 }
 
 function pinballViewerUrl(game) {
@@ -346,9 +365,11 @@ function pinballViewerUrl(game) {
 }
 
 function renderPinballSetting() {
-  const names = parsePinballNames();
+  const parsed = parsePinballEntries();
   $('pinball-setting').hidden = state.selectedGame !== 'PINBALL';
-  $('pinball-name-count').textContent = `${names.length}명`;
+  $('pinball-name-count').textContent = parsed.entries.length && !parsed.valid
+    ? '입력 확인'
+    : `${parsed.marbleCount}개 구슬`;
 }
 
 function targetTimeMs() {
@@ -459,10 +480,9 @@ function bindEvents() {
   $('broadcast-btn').addEventListener('click', () => {
     const targetMs = targetTimeMs();
     if (state.selectedGame === 'TIME_MATCH' && targetMs < 1) return showToast('목표 시간을 1ms 이상 입력해주세요.');
-    const pinballNames = parsePinballNames();
+    const pinball = parsePinballEntries();
     if (state.selectedGame === 'PINBALL') {
-      if (pinballNames.length < 2 || pinballNames.length > 50) return showToast('핀볼 이름을 2명 이상 50명 이하로 입력해주세요.');
-      if (pinballNames.some((name) => name.length > 20 || /[,/*]/.test(name))) return showToast('이름은 20자 이하이며 , / * 문자를 사용할 수 없습니다.');
+      if (!pinball.valid) return showToast('이름 또는 이름*개수 형식으로 총 2~50개 구슬을 입력해주세요.');
     }
     getSocket()?.emit('game:global:start', {
       type: state.selectedGame,
@@ -470,7 +490,7 @@ function bindEvents() {
         startedBy: 'admin',
         startedAt: new Date().toISOString(),
         ...(state.selectedGame === 'TIME_MATCH' ? { targetMs } : {}),
-        ...(state.selectedGame === 'PINBALL' ? { names: pinballNames } : {}),
+        ...(state.selectedGame === 'PINBALL' ? { names: pinball.entries } : {}),
       },
     }, (response) => {
       if (response?.ok) {

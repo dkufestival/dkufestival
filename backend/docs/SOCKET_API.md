@@ -15,7 +15,7 @@ io(SERVER_URL, { auth: { token } });
 | `chat:join` | 참가자 | `{ "roomId": 1 }` | `{ "ok": true }` | `ACTIVE` 채팅방만 입장 |
 | `chat:send` | 참가자 | `{ "roomId": 1, "content": "안녕하세요" }` | `{ "ok": true, "data": ChatMessage }` | `ACTIVE` 방 멤버만 전송 |
 | `game:global:start` | 관리자 | `{ "type": "TIME_MATCH", "state": { "targetMs": 5250 } }` | `{ "ok": true, "data": GameSession }` | 중앙 목표 시간으로 시간 맞추기 시작 |
-| `game:global:start` | 관리자 | `{ "type": "PINBALL", "state": { "names": ["민수", "지영"] } }` | `{ "ok": true, "data": GameSession }` | 이름 목록으로 전체 핀볼 관전 시작 |
+| `game:global:start` | 관리자 | `{ "type": "PINBALL", "state": { "names": ["민수*3", "지영"] } }` | `{ "ok": true, "data": GameSession }` | `이름*개수`를 지원하며 마지막 도착 구슬을 승자로 하는 전체 핀볼 관전 시작 |
 | `game:action` | 참가자 | `{ "gameId": 1, "action": "STOP", "state": { "elapsedMs": 5251 } }` | `{ "ok": true, "data": GameSession }` | 서버가 목표 대비 오차와 성공 여부 계산 |
 | `game:global:end` | 관리자 | `{ "gameId": 1 }` | `{ "ok": true, "data": GameSession }` | 진행 중인 전체 게임 종료 |
 

@@ -389,6 +389,7 @@ body {
 .pinball-names { min-height: 132px; resize: vertical; line-height: 1.6; }
 .pinball-names:disabled { opacity: .45; }
 .pinball-setting p { margin: 11px 0 0; color: var(--text-muted); font-size: 10px; line-height: 1.5; }
+.pinball-setting code { color: var(--lime); font-family: monospace; }
 .pinball-admin-preview { margin-top: 18px; overflow: hidden; border: 1px solid var(--border-soft); border-radius: 10px; background: #0d0d12; }
 .pinball-admin-preview[hidden] { display: none; }
 .pinball-preview-label { display: flex; align-items: center; gap: 7px; padding: 10px 12px; color: var(--text-muted); font-size: 10px; font-weight: 800; letter-spacing: 1px; }
