@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Gasoek+One&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="style.css?v=23">
+<link rel="stylesheet" href="style.css?v=26">
 </head>
 <body>
 <div class="phone">
@@ -80,6 +80,12 @@
         <button id="push-dismiss-btn" type="button">나중에</button>
         <button id="push-enable-btn" type="button">알림 켜기</button>
       </div>
+    </div>
+    <div id="accept-toggle-banner" class="push-prompt" hidden>
+      <span id="accept-toggle-label">합석 요청을 받고 있어요.</span>
+      <button id="accept-toggle-btn" type="button" class="accept-toggle-btn on">
+        <span class="accept-toggle-knob"></span>
+      </button>
     </div>
     <div id="member-chips" class="member-chips"></div>
     <div id="map-viewport" class="map-viewport">
@@ -253,6 +259,6 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-<script type="module" src="js/app.js?v=15"></script>
+<script type="module" src="js/app.js?v=18"></script>
 </body>
 </html>

@@ -19,5 +19,8 @@ router.patch('/me', auth, requireRole('PARTICIPANT'), validateBody({
   maleCount: { required: true, type: 'number', min: 0 },
   femaleCount: { required: true, type: 'number', min: 0 },
 }), tableController.updateMyTable);
+router.patch('/me/accepting', auth, requireRole('PARTICIPANT'), validateBody({
+  acceptingRequests: { required: true },
+}), tableController.updateMyAccepting);
 
 module.exports = router;

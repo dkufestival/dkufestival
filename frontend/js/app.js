@@ -3,12 +3,12 @@ import { clearParticipantAuth, getClientId, getParticipantAuth, saveParticipantA
 import { connectSocket, getSocket } from './socket.js';
 import { $, button, clear, formatRemaining, text } from './dom.js';
 import { entryApi } from './entry.js';
-import { tablesApi } from './tables.js';
+import { tablesApi } from './tables.js?v=2';
 import { participantsApi } from './participants.js';
 import { chatApi } from './chat.js';
 import { songsApi } from './songs.js';
 import { noticesApi } from './notices.js';
-import { initMapZoom } from './mapzoom.js';
+import { initMapZoom } from './mapzoom.js?v=2';
 import { dismissPushPrompt, enablePush, shouldShowPushPrompt } from './push.js';
 
 const state = {
@@ -350,6 +350,17 @@ function renderStats() {
   $('table-tag-time').textContent = `${left} 남음`;
   const hasPendingReceived = state.chatRoom?.status === 'PENDING' && state.chatRoom.direction === 'received';
   $('stat-requests').textContent = `${hasPendingReceived ? 1 : 0}개`;
+  renderAcceptToggle();
+}
+
+function renderAcceptToggle() {
+  const banner = $('accept-toggle-banner');
+  const isHost = !!state.participant?.isHost;
+  banner.hidden = !isHost;
+  if (!isHost) return;
+  const accepting = state.session?.acceptingRequests !== false;
+  $('accept-toggle-label').textContent = accepting ? '합석 요청을 받고 있어요.' : '합석 요청을 받지 않아요.';
+  $('accept-toggle-btn').classList.toggle('on', accepting);
 }
 
 function renderParticipants() {
@@ -389,6 +400,7 @@ function renderTables() {
   state.tables.forEach((table) => {
     const session = table.activeSession;
     const isMine = table.id === state.table?.id;
+    const requestsOff = !isMine && !!session && session.acceptingRequests === false;
     let genderClass = '';
     if (session && !isMine) {
       const hasMale = (session.maleCount || 0) > 0;
@@ -396,7 +408,7 @@ function renderTables() {
       genderClass = hasMale && hasFemale ? ' mixed' : hasFemale ? ' female' : hasMale ? ' male' : '';
     }
     const cell = document.createElement('div');
-    cell.className = `table-cell ${isMine ? 'mine' : session ? `taken${genderClass}` : 'available'}`;
+    cell.className = `table-cell ${isMine ? 'mine' : session ? `taken${genderClass}` : 'available'}${requestsOff ? ' requests-off' : ''}`;
     cell.appendChild(text('span', 'table-cell-number', String(table.tableNumber).padStart(2, '0')));
     if (session) cell.appendChild(text('div', 'table-cell-count', formatComposition(session)));
     if (isMine && state.participant?.isHost) {
@@ -409,15 +421,18 @@ function renderTables() {
     if (!isMine && session) {
       cell.appendChild(button('table-cell-btn', '채팅 요청', (event) => {
         event.stopPropagation();
+        if (requestsOff) return showToast('합석 요청이 꺼져있어 합석이 불가능합니다.');
         openJoinModal(table);
       }));
       cell.addEventListener('click', () => {
         if (mapZoom?.hasMoved()) return;
+        if (requestsOff) return showToast('합석 요청이 꺼져있어 합석이 불가능합니다.');
         openJoinModal(table);
       });
     }
     canvas.appendChild(cell);
   });
+  mapZoom?.refreshMinScale();
 }
 
 let mapZoom = null;
@@ -467,6 +482,18 @@ function renderChatRequest() {
     closeModal('modal-incoming');
   }
   renderStats();
+}
+
+async function toggleAcceptingRequests() {
+  const current = state.session?.acceptingRequests !== false;
+  try {
+    await tablesApi.updateAccepting(!current);
+    await refreshTables();
+    renderTables();
+    renderStats();
+  } catch (error) {
+    showToast(error.message);
+  }
 }
 
 function openJoinModal(table) {
@@ -865,6 +892,7 @@ function bindEvents() {
     dismissPushPrompt();
     renderPushPrompt();
   });
+  $('accept-toggle-btn').addEventListener('click', () => toggleAcceptingRequests());
   $('push-enable-btn').addEventListener('click', async () => {
     try {
       const result = await enablePush();

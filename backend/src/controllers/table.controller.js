@@ -46,9 +46,21 @@ async function updateMyTable(req, res, next) {
   }
 }
 
+async function updateMyAccepting(req, res, next) {
+  try {
+    const session = await tableService.updateMyAccepting(req.user, req.body.acceptingRequests);
+    const io = req.app.get('io');
+    if (io) io.to('participants').emit('table:updated', { session });
+    res.json({ data: session });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   getTables,
   getTable,
   enterTable,
   updateMyTable,
+  updateMyAccepting,
 };

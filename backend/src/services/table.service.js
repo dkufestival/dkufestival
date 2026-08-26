@@ -77,6 +77,14 @@ async function updateMyCounts(user, data) {
   return session.update({ maleCount, femaleCount });
 }
 
+async function updateMyAccepting(user, acceptingRequests) {
+  const participant = await Participant.findByPk(user.participantId);
+  if (!participant || !participant.isHost) throw new AppError(403, 'HOST_REQUIRED', 'Only the table host can update this setting.');
+  const session = await TableSession.findOne({ where: { id: user.sessionId, status: 'ACTIVE' } });
+  if (!session) throw new AppError(404, 'SESSION_NOT_FOUND', 'Session not found.');
+  return session.update({ acceptingRequests: Boolean(acceptingRequests) });
+}
+
 async function checkoutTable(tableId) {
   return sequelize.transaction(async (transaction) => {
     const session = await TableSession.findOne({
@@ -155,6 +163,7 @@ module.exports = {
   enterTable,
   updateMyTable,
   updateMyCounts,
+  updateMyAccepting,
   checkoutTable,
   adminCheckin,
   extendTable,
