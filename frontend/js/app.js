@@ -598,6 +598,16 @@ function renderGame() {
   const box = $('game-panel');
   clear(box);
 
+  const basketballCard = document.createElement('div');
+  basketballCard.className = 'basketball-entry';
+  basketballCard.appendChild(text('div', 'basketball-entry-icon', '🏀'));
+  basketballCard.appendChild(text('div', 'basketball-entry-title', '농구게임'));
+  basketballCard.appendChild(text('div', 'basketball-entry-copy', '제한 시간 안에 최대한 많은 골을 넣어보세요.'));
+  basketballCard.appendChild(button('btn-dark full', '농구게임 입장', () => {
+    window.location.href = '/basketball/';
+  }));
+  box.appendChild(basketballCard);
+
   const pinballActive = state.activeGame?.type === 'PINBALL' && state.activeGame?.status === 'ACTIVE';
   const pinballCard = document.createElement('div');
   pinballCard.className = 'basketball-entry';
