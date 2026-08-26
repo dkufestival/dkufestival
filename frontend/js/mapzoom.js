@@ -1,5 +1,6 @@
 // 좌석 지도(테이블 배치도) 확대/축소/이동 제어
-export function initMapZoom({ viewport, canvas, minScale = 1, maxScale = 3, zoomedThreshold = 1.6, onScaleChange }) {
+export function initMapZoom({ viewport, canvas, minScale: baseMinScale = 1, maxScale = 3, zoomedThreshold = 1.6, onScaleChange }) {
+  let minScale = baseMinScale;
   let scale = minScale;
   let x = 0;
   let y = 0;
@@ -31,6 +32,19 @@ export function initMapZoom({ viewport, canvas, minScale = 1, maxScale = 3, zoom
     x = 0;
     y = 0;
     apply();
+  }
+
+  function refreshMinScale() {
+    if (!canvas.offsetWidth || !canvas.offsetHeight) return;
+    const fitScale = Math.min(
+      viewport.clientWidth / canvas.offsetWidth,
+      viewport.clientHeight / canvas.offsetHeight,
+    );
+    minScale = Math.min(baseMinScale, fitScale);
+    if (scale < minScale) {
+      scale = minScale;
+      apply();
+    }
   }
 
   function touchDist(touches) {
@@ -112,6 +126,9 @@ export function initMapZoom({ viewport, canvas, minScale = 1, maxScale = 3, zoom
     if (event.touches.length === 0) dragging = false;
   });
 
+  window.addEventListener('resize', refreshMinScale);
+
+  refreshMinScale();
   apply();
 
   return {
@@ -120,5 +137,6 @@ export function initMapZoom({ viewport, canvas, minScale = 1, maxScale = 3, zoom
     reset,
     getScale: () => scale,
     hasMoved: () => moved,
+    refreshMinScale,
   };
 }

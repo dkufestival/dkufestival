@@ -38,6 +38,11 @@ const TableSession = sequelize.define(
       allowNull: false,
       defaultValue: 'ACTIVE',
     },
+    acceptingRequests: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
     startedAt: {
       type: DataTypes.DATE,
       allowNull: false,

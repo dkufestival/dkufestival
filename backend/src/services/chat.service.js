@@ -89,6 +89,9 @@ async function createRequest(user, data) {
       requireActiveSession(targetSessionId, 'TARGET_SESSION_NOT_FOUND', { transaction, lock: transaction.LOCK.UPDATE }),
     ]);
     await requireHost(user.participantId, requesterSessionId, transaction);
+    if (!targetSession.acceptingRequests) {
+      throw new AppError(409, 'REQUESTS_DISABLED', '합석 요청이 꺼져있어 합석이 불가능합니다.');
+    }
     await assertSessionAvailable(requesterSessionId, transaction);
     await assertSessionAvailable(targetSessionId, transaction);
 

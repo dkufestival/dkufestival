@@ -1,7 +1,7 @@
 // 테이블 비즈니스 로직
 const { Op } = require('sequelize');
 const sequelize = require('../config/db');
-const { Table, TableSession, Participant } = require('../models');
+const { Table, TableSession, Participant, ChatRoom } = require('../models');
 const AppError = require('../errors/AppError');
 const { defaultExpiresAt } = require('./session.service');
 const lifecycleService = require('./lifecycle.service');
@@ -19,11 +19,22 @@ async function getTables(options = {}) {
     }],
     order: [['tableNumber', 'ASC']],
   });
+  const activeChats = await ChatRoom.findAll({
+    where: { status: 'ACTIVE' },
+    attributes: ['requesterSessionId', 'targetSessionId'],
+  });
+  const chattingSessionIds = new Set();
+  activeChats.forEach((room) => {
+    chattingSessionIds.add(Number(room.requesterSessionId));
+    chattingSessionIds.add(Number(room.targetSessionId));
+  });
+
   return tables.map((table) => {
     const json = table.toJSON();
     const activeSession = json.sessions?.[0] || null;
     delete json.sessions;
     if (!options.includeQrToken) delete json.qrToken;
+    if (activeSession) activeSession.inChat = chattingSessionIds.has(Number(activeSession.id));
     return { ...json, activeSession };
   });
 }
@@ -75,6 +86,14 @@ async function updateMyCounts(user, data) {
   const session = await TableSession.findOne({ where: { id: user.sessionId, status: 'ACTIVE' } });
   if (!session) throw new AppError(404, 'SESSION_NOT_FOUND', 'Session not found.');
   return session.update({ maleCount, femaleCount });
+}
+
+async function updateMyAccepting(user, acceptingRequests) {
+  const participant = await Participant.findByPk(user.participantId);
+  if (!participant || !participant.isHost) throw new AppError(403, 'HOST_REQUIRED', 'Only the table host can update this setting.');
+  const session = await TableSession.findOne({ where: { id: user.sessionId, status: 'ACTIVE' } });
+  if (!session) throw new AppError(404, 'SESSION_NOT_FOUND', 'Session not found.');
+  return session.update({ acceptingRequests: Boolean(acceptingRequests) });
 }
 
 async function checkoutTable(tableId) {
@@ -155,6 +174,7 @@ module.exports = {
   enterTable,
   updateMyTable,
   updateMyCounts,
+  updateMyAccepting,
   checkoutTable,
   adminCheckin,
   extendTable,

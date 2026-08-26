@@ -14,8 +14,13 @@ async function createRequest(req, res, next) {
   try {
     const created = await chatService.createRequest(req.user, req.body);
     const room = await chatService.decorateRoom(created, req.user.sessionId);
+    const requesterView = await chatService.decorateRoom(created, created.requesterSessionId);
+    const targetView = await chatService.decorateRoom(created, created.targetSessionId);
     const io = req.app.get('io');
-    emitToRoomParties(io, room, 'chat:request-received', room);
+    if (io) {
+      io.to(`session:${created.requesterSessionId}`).emit('chat:request-received', requesterView);
+      io.to(`session:${created.targetSessionId}`).emit('chat:request-received', targetView);
+    }
     emitToRoomParties(io, room, 'notification:created', {
       type: 'CHAT_REQUEST',
       roomId: room.id,
@@ -46,11 +51,15 @@ async function acceptRequest(req, res, next) {
   try {
     const accepted = await chatService.acceptRequest(req.params.roomId, req.user);
     const room = await chatService.decorateRoom(accepted, req.user.sessionId);
+    const requesterView = await chatService.decorateRoom(accepted, accepted.requesterSessionId);
+    const targetView = await chatService.decorateRoom(accepted, accepted.targetSessionId);
     const io = req.app.get('io');
     if (io) {
       io.in(sessionRooms(room)).socketsJoin(`chat:${room.id}`);
-      emitToRoomParties(io, room, 'chat:started', room);
-      emitToRoomParties(io, room, 'chat:active', room);
+      io.to(`session:${accepted.requesterSessionId}`).emit('chat:started', requesterView);
+      io.to(`session:${accepted.targetSessionId}`).emit('chat:started', targetView);
+      io.to(`session:${accepted.requesterSessionId}`).emit('chat:active', requesterView);
+      io.to(`session:${accepted.targetSessionId}`).emit('chat:active', targetView);
       emitToRoomParties(io, room, 'notification:created', {
         type: 'CHAT_STARTED',
         roomId: room.id,

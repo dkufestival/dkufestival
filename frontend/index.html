@@ -3,13 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>piu:m</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Gasoek+One&display=swap" rel="stylesheet">
+<title>PIU:M</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="style.css?v=23">
+<link rel="stylesheet" href="style.css?v=34">
 </head>
 <body>
 <div class="phone">
@@ -17,7 +14,7 @@
     <div class="landing-bg"></div>
     <div class="landing-inner">
       <div class="logo">
-        <div class="wordmark">piu:m</div>
+        <div class="wordmark">PIU:M</div>
         <div class="tagline">QR 테이블 입장</div>
         <div class="landing-divider"></div>
       </div>
@@ -59,7 +56,7 @@
 
   <section id="screen-seats" class="screen">
     <header class="topbar">
-      <div class="wordmark small">piu:m</div>
+      <div class="wordmark small">PIU:M</div>
       <div id="connection-status" class="connection-status" hidden>연결 대기</div>
       <div class="table-tag-block">
         <div id="table-tag" class="table-tag">TABLE -</div>
@@ -74,12 +71,11 @@
       <div class="stat-divider"></div>
       <div class="stat-block col"><span class="stat-mini-label">받은 요청</span><span id="stat-requests" class="stat-mini-num">0개</span></div>
     </div>
-    <div id="push-prompt" class="push-prompt" hidden>
-      <span>채팅 요청 알림을 받을 수 있습니다.</span>
-      <div>
-        <button id="push-dismiss-btn" type="button">나중에</button>
-        <button id="push-enable-btn" type="button">알림 켜기</button>
-      </div>
+    <div id="accept-toggle-banner" class="push-prompt" hidden>
+      <span id="accept-toggle-label">채팅 요청을 받고 있어요.</span>
+      <button id="accept-toggle-btn" type="button" class="accept-toggle-btn on">
+        <span class="accept-toggle-knob"></span>
+      </button>
     </div>
     <div id="member-chips" class="member-chips"></div>
     <div id="map-viewport" class="map-viewport">
@@ -100,7 +96,7 @@
 
   <section id="screen-chat" class="screen">
     <header class="topbar">
-      <div class="wordmark small">piu:m</div>
+      <div class="wordmark small">PIU:M</div>
       <div class="table-tag-block">
         <div id="chat-title" class="table-tag">채팅방</div>
         <div id="chat-me-label" class="table-tag-time"></div>
@@ -120,7 +116,7 @@
   <section id="screen-game" class="screen game-screen">
     <div class="game-screen-glow"></div>
     <header class="game-screen-header">
-      <div class="wordmark small">piu:m</div>
+      <div class="wordmark small">PIU:M</div>
       <div class="game-live-badge"><span></span> LIVE GAME</div>
     </header>
     <main class="game-screen-content">
@@ -140,7 +136,7 @@
 
   <section id="screen-pinball" class="screen pinball-screen">
     <header class="pinball-screen-header">
-      <div class="wordmark small">piu:m</div>
+      <div class="wordmark small">PIU:M</div>
       <div class="game-live-badge"><span></span> PINBALL LIVE</div>
     </header>
     <div class="pinball-viewer-shell">
@@ -253,6 +249,6 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-<script type="module" src="js/app.js?v=15"></script>
+<script type="module" src="js/app.js?v=24"></script>
 </body>
 </html>
