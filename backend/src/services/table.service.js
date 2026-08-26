@@ -1,7 +1,7 @@
 // 테이블 비즈니스 로직
 const { Op } = require('sequelize');
 const sequelize = require('../config/db');
-const { Table, TableSession, Participant } = require('../models');
+const { Table, TableSession, Participant, ChatRoom } = require('../models');
 const AppError = require('../errors/AppError');
 const { defaultExpiresAt } = require('./session.service');
 const lifecycleService = require('./lifecycle.service');
@@ -19,11 +19,22 @@ async function getTables(options = {}) {
     }],
     order: [['tableNumber', 'ASC']],
   });
+  const activeChats = await ChatRoom.findAll({
+    where: { status: 'ACTIVE' },
+    attributes: ['requesterSessionId', 'targetSessionId'],
+  });
+  const chattingSessionIds = new Set();
+  activeChats.forEach((room) => {
+    chattingSessionIds.add(Number(room.requesterSessionId));
+    chattingSessionIds.add(Number(room.targetSessionId));
+  });
+
   return tables.map((table) => {
     const json = table.toJSON();
     const activeSession = json.sessions?.[0] || null;
     delete json.sessions;
     if (!options.includeQrToken) delete json.qrToken;
+    if (activeSession) activeSession.inChat = chattingSessionIds.has(Number(activeSession.id));
     return { ...json, activeSession };
   });
 }

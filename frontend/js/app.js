@@ -9,7 +9,6 @@ import { chatApi } from './chat.js';
 import { songsApi } from './songs.js';
 import { noticesApi } from './notices.js';
 import { initMapZoom } from './mapzoom.js?v=2';
-import { dismissPushPrompt, enablePush, shouldShowPushPrompt } from './push.js';
 
 const state = {
   qrToken: new URLSearchParams(location.search).get('qr'),
@@ -30,6 +29,7 @@ const state = {
   timer: null,
   pendingTargetTable: null,
   timeMatch: { phase: 'ready', startedAt: 0, elapsedMs: 0, frame: null },
+  receivedRequestCount: 0,
 };
 
 function showToast(message) {
@@ -136,7 +136,6 @@ async function afterAuthenticated() {
   ]);
   renderAll();
   startTimer();
-  renderPushPrompt();
   if (state.chatRoom?.status === 'ACTIVE') openChat(state.chatRoom.roomId);
 }
 
@@ -222,6 +221,7 @@ function bindSocket() {
   });
   socket.on('chat:request-received', (room) => {
     state.chatRoom = room;
+    if (room.direction === 'received') state.receivedRequestCount += 1;
     renderChatRequest();
   });
   socket.on('chat:request-cancelled', (room) => {
@@ -348,8 +348,7 @@ function renderStats() {
   const left = state.session?.expiresAt ? formatRemaining(state.session.expiresAt) : '00:00';
   $('stat-time').textContent = left;
   $('table-tag-time').textContent = `${left} 남음`;
-  const hasPendingReceived = state.chatRoom?.status === 'PENDING' && state.chatRoom.direction === 'received';
-  $('stat-requests').textContent = `${hasPendingReceived ? 1 : 0}개`;
+  $('stat-requests').textContent = `${state.receivedRequestCount}개`;
   renderAcceptToggle();
 }
 
@@ -359,7 +358,7 @@ function renderAcceptToggle() {
   banner.hidden = !isHost;
   if (!isHost) return;
   const accepting = state.session?.acceptingRequests !== false;
-  $('accept-toggle-label').textContent = accepting ? '합석 요청을 받고 있어요.' : '합석 요청을 받지 않아요.';
+  $('accept-toggle-label').textContent = accepting ? '채팅 요청을 받고 있어요.' : '채팅 요청을 받지 않아요.';
   $('accept-toggle-btn').classList.toggle('on', accepting);
 }
 
@@ -411,12 +410,18 @@ function renderTables() {
     cell.className = `table-cell ${isMine ? 'mine' : session ? `taken${genderClass}` : 'available'}${requestsOff ? ' requests-off' : ''}`;
     cell.appendChild(text('span', 'table-cell-number', String(table.tableNumber).padStart(2, '0')));
     if (session) cell.appendChild(text('div', 'table-cell-count', formatComposition(session)));
+    if (session?.inChat) cell.appendChild(text('div', 'table-cell-chatting', '채팅중'));
     if (isMine && state.participant?.isHost) {
       cell.appendChild(button('change-count-btn', '인원 변경', (event) => {
         event.stopPropagation();
         setCounts(state.session.maleCount, state.session.femaleCount);
         openModal('modal-count');
       }));
+      cell.addEventListener('click', () => {
+        if (mapZoom?.hasMoved()) return;
+        setCounts(state.session.maleCount, state.session.femaleCount);
+        openModal('modal-count');
+      });
     }
     if (!isMine && session) {
       cell.appendChild(button('table-cell-btn', '채팅 요청', (event) => {
@@ -507,6 +512,10 @@ function openJoinModal(table) {
   }
   state.pendingTargetTable = table;
   $('send-seat-label').textContent = `TABLE ${table.tableNumber}에 채팅 요청`;
+  const inChat = !!table.activeSession?.inChat;
+  const sendBtn = $('send-request-btn');
+  sendBtn.disabled = inChat;
+  sendBtn.textContent = inChat ? '이미 채팅 중인 테이블입니다' : '요청 보내기';
   openModal('modal-send');
 }
 
@@ -533,7 +542,8 @@ function joinChatRoom(roomId) {
 function openChat(roomId) {
   state.activeRoomId = roomId;
   joinChatRoom(roomId);
-  $('chat-title').textContent = `채팅방 #${roomId}`;
+  const peerTableNumber = state.chatRoom?.peerTableNumber;
+  $('chat-title').textContent = peerTableNumber ? `TABLE ${peerTableNumber}과 채팅중` : `채팅방 #${roomId}`;
   $('chat-me-label').textContent = `내 닉네임: ${state.participant?.nickname || '-'}`;
   renderChat();
   showScreen('screen-chat');
@@ -790,11 +800,6 @@ function showGlobalGameScreen() {
   showScreen('screen-game');
 }
 
-function renderPushPrompt() {
-  const prompt = $('push-prompt');
-  prompt.hidden = !shouldShowPushPrompt();
-}
-
 function startTimer() {
   if (state.timer) clearInterval(state.timer);
   state.timer = setInterval(() => {
@@ -888,20 +893,7 @@ function bindEvents() {
       }
     });
   });
-  $('push-dismiss-btn').addEventListener('click', () => {
-    dismissPushPrompt();
-    renderPushPrompt();
-  });
   $('accept-toggle-btn').addEventListener('click', () => toggleAcceptingRequests());
-  $('push-enable-btn').addEventListener('click', async () => {
-    try {
-      const result = await enablePush();
-      showToast(result.ok ? '알림을 켰습니다.' : '알림을 켜지 않았습니다.');
-    } catch (error) {
-      showToast(error.code === 'PUSH_NOT_CONFIGURED' ? '서버 알림 설정이 필요합니다.' : error.message);
-    }
-    renderPushPrompt();
-  });
 }
 
 async function restoreFromToken() {

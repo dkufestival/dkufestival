@@ -1,5 +1,14 @@
 * { box-sizing: border-box; }
 
+@font-face {
+  font-family: 'ClashGrotesk-Bold';
+  src: url('fonts/ClashGrotesk-Bold.woff2') format('woff2'),
+       url('fonts/ClashGrotesk-Bold.woff') format('woff');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --bg-black: #0a0a0a;
   --card-dark: #171815;
@@ -9,7 +18,7 @@
   --text-light: #f5f5f0;
   --text-muted: #8f8f89;
   --border-soft: rgba(200, 241, 63, 0.22);
-  --font-display: 'Gasoek One', -apple-system, 'Pretendard', 'Malgun Gothic', sans-serif;
+  --font-display: 'ClashGrotesk-Bold', -apple-system, 'Pretendard', 'Malgun Gothic', sans-serif;
   --font-body: 'Pretendard', -apple-system, 'Malgun Gothic', sans-serif;
 }
 
@@ -361,6 +370,16 @@ body {
   background: var(--lime);
   color: var(--lime-deep);
 }
+.modal-card .btn-dark:disabled {
+  background: #3d3d3d;
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+.modal-card .btn-dark:disabled:active {
+  transform: none;
+  background: #3d3d3d;
+  color: var(--text-muted);
+}
 
 /* 좌석도 화면 */
 .topbar {
@@ -381,7 +400,8 @@ body {
 }
 .topbar .wordmark.small {
   font-size: 26px;
-  -webkit-text-stroke: 1px var(--lime);
+  color: #fff;
+  -webkit-text-stroke: 1px #fff;
 }
 .topbar .tagline {
   font-size: 10px;
@@ -558,6 +578,13 @@ body {
   font-size: 9px;
   font-weight: 600;
   color: var(--text-muted);
+}
+.table-cell-chatting {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  color: #fff;
+  margin-top: 1px;
 }
 .table-cell-btn {
   display: none;
@@ -1068,28 +1095,15 @@ body {
   display: none;
 }
 
-.push-prompt div {
-  display: flex;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-.push-prompt button,
 .inline-action {
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text-main);
-  font-size: 12px;
-  font-weight: 700;
-  padding: 7px 10px;
-}
-
-.push-prompt button:last-child,
-.inline-action {
   background: var(--lime);
   border-color: var(--lime);
   color: #141414;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 7px 10px;
 }
 
 .request-status b {
