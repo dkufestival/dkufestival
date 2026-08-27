@@ -1,4 +1,5 @@
 const participantService = require('../services/participant.service');
+const { emitPublicTableUpdate } = require('../socket/table-updates');
 
 async function getMe(req, res, next) {
   try {
@@ -14,6 +15,7 @@ async function updateMe(req, res, next) {
     const io = req.app.get('io');
     if (io) {
       io.to(`session:${req.user.sessionId}`).emit('participant:updated', { participant });
+      emitPublicTableUpdate(io, { tableIds: [req.user.tableId], reason: 'participant:updated' });
     }
     res.json({ data: participant });
   } catch (error) {

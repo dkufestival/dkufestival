@@ -2,6 +2,7 @@
 const tableService = require('../services/table.service');
 const jwt = require('jsonwebtoken');
 const env = require('../config/env');
+const { emitPublicTableUpdate } = require('../socket/table-updates');
 
 async function getTables(req, res, next) {
   try {
@@ -27,6 +28,7 @@ async function enterTable(req, res, next) {
     const token = jwt.sign({ role: 'PARTICIPANT', sessionId: session.id }, env.jwtSecret, {
       expiresIn: '12h',
     });
+    emitPublicTableUpdate(req.app.get('io'), { tableIds: [session.tableId], reason: 'table:entered' });
     res.status(201).json({ data: { session, token } });
   } catch (error) {
     next(error);
@@ -39,7 +41,7 @@ async function updateMyTable(req, res, next) {
       ? await tableService.updateMyCounts(req.user, req.body)
       : await tableService.updateMyTable(req.user.sessionId, req.body);
     const io = req.app.get('io');
-    if (io) io.to(`session:${session.id}`).emit('table:updated', { session });
+    emitPublicTableUpdate(io, { tableIds: [session.tableId], reason: 'table:counts-updated' });
     res.json({ data: session });
   } catch (error) {
     next(error);
@@ -50,7 +52,7 @@ async function updateMyAccepting(req, res, next) {
   try {
     const session = await tableService.updateMyAccepting(req.user, req.body.acceptingRequests);
     const io = req.app.get('io');
-    if (io) io.to('participants').emit('table:updated', { session });
+    emitPublicTableUpdate(io, { tableIds: [session.tableId], reason: 'table:accepting-updated' });
     res.json({ data: session });
   } catch (error) {
     next(error);

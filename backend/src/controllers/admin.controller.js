@@ -5,6 +5,7 @@ const env = require('../config/env');
 const AppError = require('../errors/AppError');
 const tableService = require('../services/table.service');
 const lifecycleService = require('../services/lifecycle.service');
+const { emitPublicTableUpdate } = require('../socket/table-updates');
 
 async function login(req, res, next) {
   try {
@@ -49,7 +50,7 @@ async function checkin(req, res, next) {
   try {
     const session = await tableService.adminCheckin(req.params.tableId, req.body);
     const io = req.app.get('io');
-    if (io) io.emit('table:updated', { session });
+    emitPublicTableUpdate(io, { tableIds: [session.tableId], reason: 'admin:checkin' });
     res.status(201).json({ data: session });
   } catch (error) {
     next(error);
@@ -60,7 +61,10 @@ async function extend(req, res, next) {
   try {
     const session = await tableService.extendTable(req.params.tableId, req.body.minutes);
     const io = req.app.get('io');
-    if (io) io.to(`session:${session.id}`).emit('table:extended', { session, paymentReference: req.body.paymentReference || null });
+    if (io) {
+      io.to(`session:${session.id}`).emit('table:extended', { session, paymentReference: req.body.paymentReference || null });
+      emitPublicTableUpdate(io, { tableIds: [session.tableId], reason: 'admin:extended' });
+    }
     res.json({ data: session });
   } catch (error) {
     next(error);
@@ -71,7 +75,10 @@ async function resetTime(req, res, next) {
   try {
     const session = await tableService.resetTime(req.params.tableId);
     const io = req.app.get('io');
-    if (io) io.to(`session:${session.id}`).emit('table:extended', { session });
+    if (io) {
+      io.to(`session:${session.id}`).emit('table:extended', { session });
+      emitPublicTableUpdate(io, { tableIds: [session.tableId], reason: 'admin:time-reset' });
+    }
     res.json({ data: session });
   } catch (error) {
     next(error);
@@ -82,7 +89,7 @@ async function counts(req, res, next) {
   try {
     const session = await tableService.updateCounts(req.params.tableId, req.body);
     const io = req.app.get('io');
-    if (io) io.to(`session:${session.id}`).emit('table:updated', { session });
+    emitPublicTableUpdate(io, { tableIds: [session.tableId], reason: 'admin:counts-updated' });
     res.json({ data: session });
   } catch (error) {
     next(error);

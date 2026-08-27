@@ -7,7 +7,6 @@ const { defaultExpiresAt } = require('./session.service');
 const lifecycleService = require('./lifecycle.service');
 
 async function getTables(options = {}) {
-  await lifecycleService.expireSessions();
   const tables = await Table.findAll({
     attributes: options.includeQrToken ? undefined : { exclude: ['qrToken'] },
     include: [{

@@ -18,6 +18,13 @@ const state = {
   gameRounds: {},
   rouletteSpinning: false,
   timer: null,
+  hasConnectedOnce: false,
+  initialSyncDone: false,
+  syncPromise: null,
+  refreshPromise: null,
+  refreshTimer: null,
+  refreshNeedsChat: false,
+  refreshPending: false,
 };
 
 function showToast(message) {
@@ -50,7 +57,8 @@ async function login() {
 async function enterAdmin() {
   showAdmin();
   bindSocket();
-  await Promise.all([loadTables(), loadChatRooms(), loadSongs()]);
+  await syncAdminState({ render: false });
+  state.initialSyncDone = true;
   renderAll();
   startTimer();
 }
@@ -58,11 +66,15 @@ async function enterAdmin() {
 function bindSocket() {
   const socket = connectSocket('ADMIN');
   if (!socket) return;
-  socket.on('table:updated', () => loadTables().then(renderAll));
-  socket.on('table:extended', () => loadTables().then(renderAll));
-  socket.on('table:checked-out', () => Promise.all([loadTables(), loadChatRooms()]).then(renderAll));
-  socket.on('chat:started', () => loadChatRooms().then(renderAll));
-  socket.on('chat:ended', () => loadChatRooms().then(renderAll));
+  socket.on('connect', () => {
+    if (state.hasConnectedOnce && state.initialSyncDone) {
+      syncAdminState().catch(() => {});
+    }
+    state.hasConnectedOnce = true;
+  });
+  socket.on('table:updated', () => scheduleAdminRefresh({ includeChatRooms: true }));
+  socket.on('chat:started', () => scheduleAdminRefresh({ includeChatRooms: true }));
+  socket.on('chat:ended', () => scheduleAdminRefresh({ includeChatRooms: true }));
   socket.on('song:requested', (song) => {
     if (!state.songs.some((item) => item.id === song.id)) state.songs.unshift(song);
     renderSongs();
@@ -118,6 +130,42 @@ async function loadChatRooms() {
 
 async function loadSongs() {
   state.songs = await songsApi.adminList();
+}
+
+async function syncAdminState(options = {}) {
+  if (state.syncPromise) return state.syncPromise;
+  state.syncPromise = (async () => {
+    await Promise.allSettled([loadTables(), loadChatRooms(), loadSongs()]);
+    if (options.render !== false) renderAll();
+    if (state.activeDetailTable) openDetail(state.activeDetailTable);
+  })().finally(() => {
+    state.syncPromise = null;
+  });
+  return state.syncPromise;
+}
+
+function scheduleAdminRefresh(options = {}) {
+  state.refreshNeedsChat = state.refreshNeedsChat || Boolean(options.includeChatRooms);
+  state.refreshPending = true;
+  if (state.refreshTimer || state.refreshPromise) return;
+  state.refreshTimer = setTimeout(() => {
+    state.refreshTimer = null;
+    state.refreshPending = false;
+    if (!state.refreshPromise) {
+      const includeChatRooms = state.refreshNeedsChat;
+      state.refreshNeedsChat = false;
+      const tasks = includeChatRooms ? [loadTables(), loadChatRooms()] : [loadTables()];
+      state.refreshPromise = Promise.allSettled(tasks)
+        .then(() => {
+          renderAll();
+          if (state.activeDetailTable) openDetail(state.activeDetailTable);
+        })
+        .finally(() => {
+          state.refreshPromise = null;
+          if (state.refreshPending) scheduleAdminRefresh({ includeChatRooms: state.refreshNeedsChat });
+        });
+    }
+  }, 120);
 }
 
 function renderAll() {
