@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <title>농구 챌린지 | 단국대 축제 주점</title>
+  <link rel="stylesheet" href="./basketball.css">
+</head>
+<body>
+  <main class="game-shell">
+    <section class="game-card" aria-label="농구 슛 게임">
+      <header class="topbar">
+        <button id="back-button" class="back-button" type="button" aria-label="게임 나가기"><i>‹</i> 돌아가기</button>
+        <h1>농구</h1>
+        <button id="reset-button" class="reset-button" type="button" aria-label="게임 다시 시작">다시</button>
+      </header>
+      <div class="court">
+        <div class="best-score"><span>최고 점수</span><strong id="best-score">0</strong></div>
+        <div class="scoreboard" aria-live="polite"><strong id="score">0</strong></div>
+        <canvas id="game-canvas" width="390" height="680" aria-label="농구공을 위로 밀어 슛하는 게임 영역"></canvas>
+        <p id="game-message" class="game-message">공을 위로 빠르게 밀어보세요</p>
+        <div id="swipe-guide" class="swipe-guide visible" aria-hidden="true"><i></i><span>SWIPE UP</span></div>
+      </div>
+      <footer>공을 위로 밀어서 슛하세요 · 놓치면 점수가 초기화돼요</footer>
+    </section>
+  </main>
+  <script type="module" src="./basketball.js"></script>
+</body>
+</html>

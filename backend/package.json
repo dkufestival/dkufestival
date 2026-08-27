@@ -1,0 +1,40 @@
+{
+  "name": "festival-backend",
+  "version": "1.0.0",
+  "description": "대학교 축제 주점 테이블 매칭 백엔드",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "migrate": "node scripts/migrate.js",
+    "migrate:down": "node scripts/migrate.js --down",
+    "seed": "node scripts/seed-tables.js",
+    "test": "node --test",
+    "check": "node scripts/check-js.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "festival",
+    "table-matching",
+    "express",
+    "socket.io"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.15.3",
+    "qrcode": "^1.5.4",
+    "sequelize": "^6.37.7",
+    "socket.io": "^4.8.1",
+    "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  }
+}

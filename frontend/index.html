@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PIU:M</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="style.css?v=35">
+</head>
+<body>
+<div class="phone">
+  <section id="screen-landing" class="screen active">
+    <div class="landing-bg"></div>
+    <div class="landing-inner">
+      <div class="logo">
+        <div class="wordmark">PIU:M</div>
+        <div class="tagline">QR 테이블 입장</div>
+        <div class="landing-divider"></div>
+      </div>
+      <div class="landing-fields">
+        <div class="field-group">
+          <label class="field-label">테이블</label>
+          <div id="table-label" class="field">QR 확인 중</div>
+          <div id="entry-status" class="occupied-notice show">QR 확인 중...</div>
+          <div class="occupied-notice show">clientId: <span id="client-id-label">-</span></div>
+        </div>
+        <div id="occupied-notice" class="occupied-notice">이미 사용 중인 테이블입니다. 닉네임만 입력하면 합류합니다.</div>
+        <div class="field-group">
+          <label class="field-label" for="nickname-input">닉네임</label>
+          <input id="nickname-input" class="field" type="text" maxlength="20" placeholder="닉네임을 입력하세요">
+        </div>
+        <div id="team-setup-fields">
+          <div class="field-group">
+            <label class="field-label">남자</label>
+            <div id="male-row" class="stepper-row">
+              <button type="button" class="step-btn" data-target="male" data-delta="-1">-</button>
+              <span class="step-value" data-count="male">0</span>
+              <button type="button" class="step-btn" data-target="male" data-delta="1">+</button>
+            </div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">여자</label>
+            <div id="female-row" class="stepper-row">
+              <button type="button" class="step-btn" data-target="female" data-delta="-1">-</button>
+              <span class="step-value" data-count="female">0</span>
+              <button type="button" class="step-btn" data-target="female" data-delta="1">+</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <button id="join-btn" class="btn-dark">입장하기</button>
+      <div class="landing-footer">테이블 QR을 스캔해 이용해 주세요.</div>
+    </div>
+  </section>
+
+  <section id="screen-seats" class="screen">
+    <header class="topbar">
+      <div class="wordmark small">PIU:M</div>
+      <div id="connection-status" class="connection-status" hidden>연결 대기</div>
+      <div class="table-tag-block">
+        <div id="table-tag" class="table-tag">TABLE -</div>
+        <div id="table-tag-time" class="table-tag-time">00:00 남음</div>
+      </div>
+    </header>
+    <div class="stats-bar">
+      <div class="stat-block"><span class="stat-mini-label">남</span><span id="stat-male" class="stat-mini-num male">0</span></div>
+      <div class="stat-block"><span class="stat-mini-label">여</span><span id="stat-female" class="stat-mini-num female">0</span></div>
+      <div class="stat-divider"></div>
+      <div class="stat-block col"><span class="stat-mini-label">남은 시간</span><span id="stat-time" class="stat-mini-num">00:00</span></div>
+      <div class="stat-divider"></div>
+      <div class="stat-block col"><span class="stat-mini-label">받은 요청</span><span id="stat-requests" class="stat-mini-num">0개</span></div>
+    </div>
+    <div id="accept-toggle-banner" class="push-prompt" hidden>
+      <span id="accept-toggle-label">채팅 요청을 받고 있어요.</span>
+      <button id="accept-toggle-btn" type="button" class="accept-toggle-btn on">
+        <span class="accept-toggle-knob"></span>
+      </button>
+    </div>
+    <div id="member-chips" class="member-chips"></div>
+    <div id="map-viewport" class="map-viewport">
+      <div id="map-canvas" class="map-canvas"></div>
+      <div class="map-controls">
+        <button id="map-zoom-in" type="button" class="map-zoom-btn">+</button>
+        <button id="map-zoom-out" type="button" class="map-zoom-btn">−</button>
+        <button id="map-zoom-reset" type="button" class="map-zoom-btn reset">⟲</button>
+      </div>
+      <div class="map-hint">두 손가락으로 확대 · 드래그로 이동</div>
+    </div>
+    <footer class="bottombar">
+      <button id="notice-btn" class="pill-btn">공지</button>
+      <button id="song-btn" class="pill-btn">신청곡</button>
+      <button id="game-btn" class="pill-btn">게임</button>
+    </footer>
+  </section>
+
+  <section id="screen-chat" class="screen">
+    <header class="topbar">
+      <div class="wordmark small">PIU:M</div>
+      <div class="table-tag-block">
+        <div id="chat-title" class="table-tag">채팅방</div>
+        <div id="chat-me-label" class="table-tag-time"></div>
+      </div>
+    </header>
+    <div id="chat-log" class="chat-log"></div>
+    <div class="chat-bottom">
+      <div class="chat-input-row">
+        <input id="chat-input" class="modal-input" placeholder="메시지 입력">
+        <button id="chat-send-btn" class="btn-dark">전송</button>
+      </div>
+      <button id="chat-leave-btn" class="btn-dark full leave">채팅방 나가기</button>
+    </div>
+  </section>
+
+  <!-- DEMO: 실제 게임 UI가 확정되면 이 임시 미션 화면을 교체합니다. -->
+  <section id="screen-game" class="screen game-screen">
+    <div class="game-screen-glow"></div>
+    <header class="game-screen-header">
+      <div class="wordmark small">PIU:M</div>
+      <div class="game-live-badge"><span></span> LIVE GAME</div>
+    </header>
+    <main class="game-screen-content">
+      <div id="game-screen-kicker" class="game-kicker">ADMIN EVENT</div>
+      <h1 id="game-screen-title" class="game-screen-title">전체 미션</h1>
+      <p id="game-screen-copy" class="game-screen-copy">관리자가 게임을 시작했습니다.<br>아래 버튼을 눌러 참여해 주세요.</p>
+      <div class="game-demo-card">
+        <div id="game-demo-icon" class="game-demo-icon">⚡</div>
+        <div id="game-demo-label" class="game-demo-label">오늘의 미션</div>
+        <div id="game-demo-mission" class="game-demo-mission">가장 빠르게<br><strong>참여 버튼</strong>을 누르세요!</div>
+      </div>
+      <button id="game-screen-action" class="game-screen-action">게임 참여하기</button>
+      <div id="game-screen-status" class="game-screen-status">응답 대기 중</div>
+    </main>
+    <footer class="game-screen-footer">게임이 끝나면 자동으로 돌아갑니다</footer>
+  </section>
+
+  <section id="screen-pinball" class="screen pinball-screen">
+    <header class="pinball-screen-header">
+      <div class="wordmark small">PIU:M</div>
+      <div class="game-live-badge"><span></span> PINBALL LIVE</div>
+    </header>
+    <div class="pinball-viewer-shell">
+      <div class="pinball-loading">관리자가 핀볼을 준비하고 있습니다</div>
+      <iframe id="pinball-viewer-frame" title="핀볼 관전 화면" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin"></iframe>
+    </div>
+    <footer class="pinball-screen-footer">관전 전용 · 게임이 끝나면 자동으로 돌아갑니다</footer>
+  </section>
+</div>
+
+<div id="modal-leave-confirm" class="modal-backdrop">
+  <div class="modal-card">
+    <div class="modal-title">채팅방을 나가시겠습니까?</div>
+    <div class="modal-detail">참여자 한 명이라도 채팅방을 나가면
+현재 채팅방이 폭파됩니다.</div>
+    <div class="modal-row">
+      <button id="leave-cancel-btn" class="btn-half accept">취소</button>
+      <button id="leave-confirm-btn" class="btn-half reject">나가기</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-chat-ended" class="modal-backdrop">
+  <div class="modal-card">
+    <div class="modal-title">채팅이 종료되었습니다</div>
+    <div id="chat-ended-detail" class="modal-detail">채팅 참여자가 채팅을 종료해 해당 채팅이 종료되었습니다.</div>
+    <button id="chat-ended-confirm-btn" class="btn-dark full">확인</button>
+  </div>
+</div>
+
+<div id="modal-send" class="modal-backdrop">
+  <div class="modal-card">
+    <button type="button" class="modal-close" data-modal="modal-send">×</button>
+    <div id="send-seat-label" class="modal-title"></div>
+    <button id="send-request-btn" class="btn-dark full">요청 보내기</button>
+  </div>
+</div>
+
+<div id="modal-incoming" class="modal-backdrop">
+  <div class="modal-card">
+    <button type="button" id="incoming-close" class="modal-close">×</button>
+    <div class="modal-title">채팅 요청이 도착했습니다</div>
+    <div id="incoming-detail" class="modal-detail"></div>
+    <div class="modal-row">
+      <button id="accept-btn" class="btn-half accept">수락</button>
+      <button id="reject-btn" class="btn-half reject">거절</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-song" class="modal-backdrop">
+  <div class="modal-card">
+    <button type="button" class="modal-close" data-modal="modal-song">×</button>
+    <div class="modal-title">신청곡</div>
+    <input id="song-input" class="modal-input" placeholder="곡명 - 가수">
+    <button id="song-submit-btn" class="btn-dark full">신청하기</button>
+    <div id="song-list" class="history-list" style="margin-top:12px;"></div>
+  </div>
+</div>
+
+<div id="modal-count" class="modal-backdrop">
+  <div class="modal-card">
+    <button type="button" class="modal-close" data-modal="modal-count">×</button>
+    <div class="modal-title">인원 변경</div>
+    <div class="stepper-row">
+      <span class="stepper-label">남자</span>
+      <div class="stepper">
+        <button type="button" class="step-btn" data-target="male" data-delta="-1">-</button>
+        <span class="step-value" data-count="male">0</span>
+        <button type="button" class="step-btn" data-target="male" data-delta="1">+</button>
+      </div>
+    </div>
+    <div class="stepper-row" style="margin-top:8px;">
+      <span class="stepper-label">여자</span>
+      <div class="stepper">
+        <button type="button" class="step-btn" data-target="female" data-delta="-1">-</button>
+        <span class="step-value" data-count="female">0</span>
+        <button type="button" class="step-btn" data-target="female" data-delta="1">+</button>
+      </div>
+    </div>
+    <button id="count-confirm-btn" class="btn-dark full">변경하기</button>
+  </div>
+</div>
+
+<div id="modal-nickname" class="modal-backdrop">
+  <div class="modal-card">
+    <button type="button" class="modal-close" data-modal="modal-nickname">×</button>
+    <div class="modal-title">닉네임 변경</div>
+    <input id="nickname-edit-input" class="modal-input" maxlength="20" placeholder="새 닉네임">
+    <button id="nickname-confirm-btn" class="btn-dark full">변경하기</button>
+  </div>
+</div>
+
+<div id="modal-notices" class="modal-backdrop">
+  <div class="modal-card">
+    <button type="button" class="modal-close" data-modal="modal-notices">×</button>
+    <div class="modal-title">공지</div>
+    <div id="notice-list" class="history-list"></div>
+  </div>
+</div>
+
+<div id="modal-game" class="modal-backdrop">
+  <div class="modal-card">
+    <button type="button" class="modal-close" data-modal="modal-game">×</button>
+    <div class="modal-title">게임</div>
+    <div id="game-panel" class="history-list"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+<script type="module" src="js/app.js?v=25"></script>
+</body>
+</html>
