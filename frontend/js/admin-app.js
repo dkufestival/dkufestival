@@ -15,6 +15,8 @@ const state = {
   activeGame: null,
   activeDetailTable: null,
   detailCounts: { male: 0, female: 0 },
+  gameRounds: {},
+  rouletteSpinning: false,
   timer: null,
 };
 
@@ -73,6 +75,12 @@ function bindSocket() {
     if (game.type === 'TIME_MATCH' && latest?.state) {
       const diff = Number(latest.state.differenceMs || 0);
       addGameLog(latest.state.success ? '시간 맞추기 성공 · 정확히 일치' : `시간 맞추기 응답 · ${Math.abs(diff)}ms ${diff < 0 ? '빠름' : '늦음'}`);
+    } else if (latest?.state) {
+      const answer = latest.state.answer ? ` · ${latest.state.answer}` : '';
+      const outcomeLabels = { WIN: '승리', DRAW: '무승부', LOSE: '패배' };
+      const result = latest.state.outcome ? ` · 참가자 ${outcomeLabels[latest.state.outcome]}`
+        : typeof latest.state.success === 'boolean' ? (latest.state.success ? ' · 정답' : ' · 오답') : '';
+      addGameLog(`${game.type} 응답${answer}${result}`);
     } else {
       addGameLog(`${game.type} 응답 수신`);
     }
@@ -80,11 +88,18 @@ function bindSocket() {
   socket.on('game:global:current', (game) => {
     state.activeGame = game;
     renderGameControls();
+    renderGameList();
   });
   socket.on('game:global:ended', (game) => {
     state.activeGame = null;
     renderGameControls();
+    renderGameList();
     addGameLog(`${game.type} 전체 게임 종료`);
+  });
+  socket.on('game:global:updated', (game) => {
+    state.activeGame = game;
+    renderGameControls();
+    renderGameList();
   });
 }
 
@@ -317,6 +332,20 @@ function renderGameControls() {
   $('game-status').textContent = state.activeGame ? `참가자 화면에서 게임이 진행 중입니다${activeTarget}.` : '게임을 시작할 수 있습니다.';
   $('broadcast-btn').hidden = Boolean(state.activeGame);
   $('end-game-btn').hidden = !state.activeGame;
+  const hasRounds = Boolean(state.activeGame?.state?.rounds?.length);
+  $('round-control').hidden = !hasRounds;
+  if (hasRounds) {
+    const index = Number(state.activeGame.state.currentRound || 0);
+    const isRoulette = state.activeGame.type === 'ROULETTE';
+    const isWordGuess = state.activeGame.type === 'WORD_GUESS';
+    const currentRound = state.activeGame.state.rounds[index] || {};
+    $('reveal-answer-btn').textContent = isRoulette ? '룰렛 돌리기' : '정답 공개';
+    $('next-prompt-btn').hidden = !isWordGuess;
+    $('next-prompt-btn').disabled = !isWordGuess || Number(state.activeGame.state.currentPrompt || 0) >= (currentRound.prompts?.length || 1) - 1;
+    $('next-round-btn').disabled = index >= state.activeGame.state.rounds.length - 1;
+    $('reveal-answer-btn').disabled = isRoulette ? state.rouletteSpinning : Boolean(state.activeGame.state.answerRevealed);
+    $('game-status').textContent += ` · ${index + 1}/${state.activeGame.state.rounds.length} 라운드`;
+  }
   $('time-target-seconds').disabled = Boolean(state.activeGame);
   $('time-target-milliseconds').disabled = Boolean(state.activeGame);
   $('pinball-names').disabled = Boolean(state.activeGame);
@@ -325,6 +354,8 @@ function renderGameControls() {
   const frame = $('pinball-admin-frame');
   const nextSrc = isPinballActive ? pinballViewerUrl(state.activeGame) : 'about:blank';
   if (frame.getAttribute('src') !== nextSrc) frame.src = nextSrc;
+  $('game-custom-setting').querySelectorAll('input, textarea, select').forEach((node) => { node.disabled = Boolean(state.activeGame); });
+  $('game-custom-setting').querySelectorAll('button').forEach((node) => { node.disabled = Boolean(state.activeGame); });
   renderStats();
 }
 
@@ -391,24 +422,123 @@ function renderTimeMatchSetting() {
   $('time-target-preview').textContent = formatTargetTime(targetTimeMs());
 }
 
+function settingField(label, id, value = '', type = 'input') {
+  const wrapper = document.createElement('label');
+  wrapper.textContent = label;
+  const field = document.createElement(type);
+  field.id = id;
+  field.value = value;
+  wrapper.appendChild(field);
+  return wrapper;
+}
+
+function renderCustomGameSetting() {
+  const box = $('game-custom-setting');
+  clear(box);
+  box.hidden = ['TIME_MATCH', 'PINBALL'].includes(state.selectedGame);
+  if (box.hidden) return;
+  const rounds = state.gameRounds[state.selectedGame] || [defaultRound(state.selectedGame)];
+  state.gameRounds[state.selectedGame] = rounds;
+  const editor = document.createElement('div');
+  editor.className = 'round-editor';
+  rounds.forEach((round, index) => editor.appendChild(renderRoundCard(round, index)));
+  editor.appendChild(button('round-add', '+ 라운드 추가', () => {
+    rounds.push(defaultRound(state.selectedGame));
+    renderCustomGameSetting();
+  }));
+  box.appendChild(editor);
+  box.querySelectorAll('input, textarea, select, button').forEach((node) => { node.disabled = Boolean(state.activeGame); });
+}
+
+function defaultRound(type) {
+  if (type === 'OX_QUIZ') return { prompt: '', answer: 'O' };
+  if (type === 'RPS') return { prompt: '가위바위보를 선택하세요', answer: 'rock' };
+  if (type === 'WORD_GUESS') return { prompts: [], answer: '' };
+  if (type === 'ROULETTE') return { options: [] };
+  return { imageUrl: '', answer: '', imageStage: 0 };
+}
+
+function roundInput(label, value, update, type = 'input') {
+  const wrapper = document.createElement('label');
+  wrapper.textContent = label;
+  const field = document.createElement(type);
+  field.value = value || '';
+  field.addEventListener('input', () => update(field.value));
+  wrapper.appendChild(field);
+  return wrapper;
+}
+
+function renderRoundCard(round, index) {
+  const card = document.createElement('div');
+  card.className = 'round-card';
+  const head = document.createElement('div');
+  head.className = 'round-card-head';
+  head.appendChild(text('span', '', `ROUND ${index + 1}`));
+  const remove = button('round-delete', '삭제', () => {
+    if (state.gameRounds[state.selectedGame].length === 1) return showToast('라운드는 최소 1개가 필요합니다.');
+    state.gameRounds[state.selectedGame].splice(index, 1);
+    renderCustomGameSetting();
+  });
+  head.appendChild(remove);
+  card.appendChild(head);
+  if (state.selectedGame === 'OX_QUIZ') {
+    card.appendChild(roundInput('질문', round.prompt, (value) => { round.prompt = value; }));
+    const answer = roundInput('정답', round.answer, (value) => { round.answer = value; }, 'select');
+    answer.lastChild.innerHTML = '<option value="O">O</option><option value="X">X</option>';
+    answer.lastChild.value = round.answer;
+    card.appendChild(answer);
+  } else if (state.selectedGame === 'RPS') {
+    card.appendChild(roundInput('라운드 안내', round.prompt, (value) => { round.prompt = value; }));
+    const answer = roundInput('진행자가 낼 것', round.answer, (value) => { round.answer = value; }, 'select');
+    answer.lastChild.innerHTML = '<option value="rock">바위 ✊</option><option value="scissors">가위 ✌️</option><option value="paper">보 ✋</option>';
+    answer.lastChild.value = round.answer;
+    card.appendChild(answer);
+  } else if (state.selectedGame === 'WORD_GUESS') {
+    card.appendChild(roundInput('제시어 여러 개 (줄바꿈 또는 쉼표로 구분)', (round.prompts || []).join('\n'), (value) => {
+      round.prompts = value.split(/[\n,]/).map((item) => item.trim()).filter(Boolean);
+    }, 'textarea'));
+    card.appendChild(roundInput('정답', round.answer, (value) => { round.answer = value; }));
+  } else if (state.selectedGame === 'ROULETTE') {
+    card.appendChild(roundInput('옵션 (줄바꿈 또는 쉼표)', (round.options || []).join('\n'), (value) => { round.options = value.split(/[\n,]/).map((item) => item.trim()).filter(Boolean); }, 'textarea'));
+  } else if (state.selectedGame === 'IMAGE_GAME') {
+    card.appendChild(roundInput('이미지 URL', round.imageUrl, (value) => { round.imageUrl = value; }));
+    card.appendChild(roundInput('정답', round.answer, (value) => { round.answer = value; }));
+  }
+  return card;
+}
+
+function selectedGameState() {
+  if (state.selectedGame === 'TIME_MATCH') return { targetMs: targetTimeMs() };
+  if (state.selectedGame === 'PINBALL') return {};
+  return { rounds: state.gameRounds[state.selectedGame] || [], currentRound: 0, answerRevealed: false };
+}
+
 function renderGameList() {
   const list = $('game-list');
   clear(list);
   GAME_TYPES.forEach((game) => {
     const item = document.createElement('div');
+    const isTimeMatch = game.id === 'TIME_MATCH';
     item.className = `game-option ${game.id === state.selectedGame ? 'selected' : ''}`;
     item.appendChild(text('span', 'game-option-name', game.name));
-    item.appendChild(text('span', 'game-option-level', game.id));
+    if (isTimeMatch) {
+      const running = state.activeGame?.type === 'TIME_MATCH';
+      item.appendChild(text('span', `game-toggle ${running ? 'on' : ''}`, running ? '켜짐' : '꺼짐'));
+    } else {
+      item.appendChild(text('span', 'game-option-level', game.id));
+    }
     item.addEventListener('click', () => {
       state.selectedGame = game.id;
       renderGameList();
       renderTimeMatchSetting();
       renderPinballSetting();
+      renderCustomGameSetting();
     });
     list.appendChild(item);
   });
   renderTimeMatchSetting();
   renderPinballSetting();
+  renderCustomGameSetting();
 }
 
 function addGameLog(message) {
@@ -484,6 +614,8 @@ function bindEvents() {
     if (state.selectedGame === 'PINBALL') {
       if (!pinball.valid) return showToast('이름 또는 이름*개수 형식으로 총 2~50개 구슬을 입력해주세요.');
     }
+    const gameState = selectedGameState();
+    if (!gameState.rounds?.length && !['TIME_MATCH', 'PINBALL'].includes(state.selectedGame)) return showToast('라운드를 추가해주세요.');
     getSocket()?.emit('game:global:start', {
       type: state.selectedGame,
       state: {
@@ -491,10 +623,12 @@ function bindEvents() {
         startedAt: new Date().toISOString(),
         ...(state.selectedGame === 'TIME_MATCH' ? { targetMs } : {}),
         ...(state.selectedGame === 'PINBALL' ? { names: pinball.entries } : {}),
+        ...(state.selectedGame !== 'PINBALL' ? gameState : {}),
       },
     }, (response) => {
       if (response?.ok) {
         state.activeGame = response.data;
+        renderGameList();
         renderGameControls();
         addGameLog(`${state.selectedGame} 전체 게임 시작`);
       } else {
@@ -511,11 +645,42 @@ function bindEvents() {
     getSocket()?.emit('game:global:end', { gameId: state.activeGame.id }, (response) => {
       if (!response?.ok) return showToast(response?.message || response?.error || '게임 종료 실패');
       state.activeGame = null;
+      renderGameList();
       renderGameControls();
       addGameLog('전체 게임 종료');
     });
   });
+  $('reveal-answer-btn').addEventListener('click', () => updateGlobalGame(state.activeGame?.type === 'ROULETTE' ? 'SPIN' : 'REVEAL'));
+  $('next-round-btn').addEventListener('click', () => updateGlobalGame('NEXT'));
+  $('next-prompt-btn').addEventListener('click', () => updateGlobalGame('NEXT_PROMPT'));
   $('notice-send-btn').addEventListener('click', () => createNotice().catch((error) => showToast(error.message)));
+}
+
+function updateGlobalGame(action) {
+  if (!state.activeGame) return;
+  if (action === 'SPIN') {
+    if (state.rouletteSpinning) return;
+    state.rouletteSpinning = true;
+    renderGameControls();
+  }
+  getSocket()?.emit('game:global:update', { gameId: state.activeGame.id, action }, (response) => {
+    if (!response?.ok) {
+      state.rouletteSpinning = false;
+      renderGameControls();
+      return showToast(response?.message || response?.error || '게임 진행 실패');
+    }
+    state.activeGame = response.data;
+    renderGameControls();
+    const message = action === 'REVEAL' ? '현재 라운드 정답 공개'
+      : action === 'SPIN' ? `룰렛 결과 · ${response.data.state?.rouletteSpin?.result}`
+        : action === 'NEXT_PROMPT' ? `${Number(response.data.state?.currentPrompt || 0) + 1}번째 제시어 공개`
+        : `${Number(response.data.state?.currentRound || 0) + 1} 라운드 시작`;
+    addGameLog(message);
+    if (action === 'SPIN') setTimeout(() => {
+      state.rouletteSpinning = false;
+      renderGameControls();
+    }, Number(response.data.state?.rouletteSpin?.durationMs || 4200));
+  });
 }
 
 function startTimer() {

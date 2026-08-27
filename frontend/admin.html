@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
-<link rel="stylesheet" href="admin.css?v=6">
+<link rel="stylesheet" href="admin.css?v=11">
 </head>
 <body>
 <section id="screen-login" class="screen active">
@@ -60,7 +60,6 @@
 
     <div id="tab-games" class="tab-panel">
       <div class="game-panel">
-        <!-- DEMO: 실제 게임 선택 기능 구현 전 Socket.IO 전체 전환 검증용 컨트롤입니다. -->
         <h3 class="panel-title">전체 참여 게임</h3>
         <div id="game-list" class="game-list"></div>
         <div id="time-match-setting" class="time-match-setting">
@@ -82,8 +81,14 @@
           <textarea id="pinball-names" class="field pinball-names" maxlength="1049" placeholder="이름을 쉼표 또는 줄바꿈으로 구분해 입력하세요.&#10;예: 민수*3, 지영, 현우*2"></textarea>
           <p><code>민수*3</code>은 민수 구슬을 3개 만듭니다. 총 2~50개 구슬을 입력할 수 있으며 마지막에 도착한 구슬이 승자입니다.</p>
         </div>
+        <div id="game-custom-setting" class="game-custom-setting" hidden></div>
         <p id="game-status" class="game-status">대기 중</p>
         <button id="broadcast-btn" class="btn-dark full">게임 시작</button>
+        <div id="round-control" class="round-control" hidden>
+          <button id="reveal-answer-btn" class="detail-btn">정답 공개</button>
+          <button id="next-prompt-btn" class="detail-btn" hidden>다음 제시어</button>
+          <button id="next-round-btn" class="detail-btn">다음 라운드</button>
+        </div>
         <button id="end-game-btn" class="btn-dark full danger" hidden>게임 종료</button>
         <div id="pinball-admin-preview" class="pinball-admin-preview" hidden>
           <div class="pinball-preview-label"><span></span> 관리자 관전 화면</div>
@@ -132,6 +137,6 @@
 <div id="admin-toast" class="toast"></div>
 
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-<script type="module" src="js/admin-app.js?v=4"></script>
+<script type="module" src="js/admin-app.js?v=11"></script>
 </body>
 </html>

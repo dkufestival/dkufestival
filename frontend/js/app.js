@@ -30,6 +30,10 @@ const state = {
   pendingTargetTable: null,
   timeMatch: { phase: 'ready', startedAt: 0, elapsedMs: 0, frame: null },
   receivedRequestCount: 0,
+  gameAnswer: null,
+  rouletteTimer: null,
+  rouletteRotation: 0,
+  revealSequenceKey: null,
 };
 
 function showToast(message) {
@@ -311,6 +315,58 @@ function bindSocket() {
     closeModal('modal-game');
     showScreen(state.activeRoomId ? 'screen-chat' : 'screen-seats');
     showToast(`${game.type} 게임이 종료되었습니다.`);
+  });
+  socket.on('game:global:updated', (game) => {
+    const previousRound = Number(state.activeGame?.state?.currentRound || 0);
+    state.activeGame = game;
+    const currentRound = Number(game.state?.currentRound || 0);
+    if (currentRound !== previousRound) {
+      state.gameAnswer = null;
+      showGlobalGameScreen();
+      showToast(`${currentRound + 1}라운드가 시작되었습니다.`);
+    } else if (game.state?.answerRevealed) {
+      if (!$('screen-game').classList.contains('active')) showGlobalGameScreen();
+      showRoundResult();
+    }
+  });
+  socket.on('game:global:round', (payload) => {
+    if (!state.activeGame || Number(payload.gameId) !== Number(state.activeGame.id)) return;
+    if ((payload.type || state.activeGame.type) === 'TIME_MATCH') return;
+    const rounds = [...(state.activeGame.state?.rounds || [])];
+    rounds[Number(payload.roundIndex || 0)] = payload.round || {};
+    state.activeGame = {
+      ...state.activeGame,
+      type: payload.type || state.activeGame.type,
+      state: { ...(state.activeGame.state || {}), rounds, currentRound: Number(payload.roundIndex || 0), answerRevealed: false },
+    };
+    showGlobalGameScreen();
+  });
+  socket.on('game:global:prompt', (payload) => {
+    if (!state.activeGame || Number(payload.gameId) !== Number(state.activeGame.id)) return;
+    state.activeGame = {
+      ...state.activeGame,
+      state: {
+        ...(state.activeGame.state || {}),
+        currentRound: Number(payload.roundIndex || 0),
+        currentPrompt: Number(payload.promptIndex || 0),
+      },
+    };
+    showGlobalGameScreen();
+    showToast(`${Number(payload.promptIndex || 0) + 1}번째 제시어가 공개되었습니다.`);
+  });
+  socket.on('game:global:answer', (payload) => {
+    if (!state.activeGame || Number(payload.gameId) !== Number(state.activeGame.id)) return;
+    const roundIndex = Number(payload.roundIndex || 0);
+    const rounds = [...(state.activeGame.state?.rounds || [])];
+    rounds[roundIndex] = { ...(rounds[roundIndex] || {}), answer: payload.answer };
+    state.activeGame = { ...state.activeGame, state: { ...(state.activeGame.state || {}), rounds, currentRound: roundIndex, answerRevealed: true } };
+    if (!$('screen-game').classList.contains('active')) showGlobalGameScreen();
+    showRoundResult();
+  });
+  socket.on('game:global:spin', (payload) => {
+    if (!state.activeGame || Number(payload.gameId) !== Number(state.activeGame.id)) return;
+    if (!$('screen-game').classList.contains('active')) showGlobalGameScreen();
+    spinRoulette(payload);
   });
   socket.on('game:invited', (game) => {
     state.activeGame = game;
@@ -794,22 +850,209 @@ function stopTimeMatch() {
 function showGlobalGameScreen() {
   const isTimeMatch = state.activeGame?.type === 'TIME_MATCH';
   $('screen-game').classList.toggle('time-match', isTimeMatch);
-  $('game-screen-title').textContent = isTimeMatch ? '시간을 멈춰라' : state.activeGame?.type === 'MISSION' ? '전체 미션' : state.activeGame?.type || '전체 게임';
+  const names = { OX_QUIZ: 'O/X 퀴즈', RPS: '가위바위보', WORD_GUESS: '제시어 맞히기', ROULETTE: '룰렛', IMAGE_GAME: '이미지 게임' };
+  $('game-screen-title').textContent = isTimeMatch ? '시간을 멈춰라' : names[state.activeGame?.type] || '전체 게임';
   $('game-screen-kicker').textContent = isTimeMatch ? 'PRECISION GAME' : 'ADMIN EVENT';
   $('game-screen-copy').innerHTML = isTimeMatch ? '중앙에서 설정한 목표 시간입니다.<br>밀리초까지 정확히 맞춰보세요.' : '관리자가 게임을 시작했습니다.<br>아래 버튼을 눌러 참여해 주세요.';
-  $('game-demo-icon').textContent = isTimeMatch ? '' : '⚡';
-  $('game-demo-label').textContent = isTimeMatch ? 'TARGET TIME' : '오늘의 미션';
-  $('game-demo-mission').innerHTML = isTimeMatch
-    ? `<span class="time-target-value">${formatGameTime(state.activeGame?.state?.targetMs)}</span><span class="time-live-value">00:00.000</span><span class="time-result">START를 눌러 시작하세요</span>`
-    : '가장 빠르게<br><strong>참여 버튼</strong>을 누르세요!';
+  $('game-demo-icon').textContent = isTimeMatch ? '' : ({ OX_QUIZ: '', RPS: '가위! 바위! 보!', WORD_GUESS: '💬', ROULETTE: '🎯', IMAGE_GAME: '🖼️' }[state.activeGame?.type] || '⚡');
+  $('game-demo-icon').classList.toggle('rps-call', state.activeGame?.type === 'RPS');
+  $('game-demo-label').textContent = isTimeMatch ? 'TARGET TIME' : 'LIVE QUESTION';
+  const mission = $('game-demo-mission');
+  clear(mission);
+  if (isTimeMatch) {
+    mission.innerHTML = `<span class="time-target-value">${formatGameTime(state.activeGame?.state?.targetMs)}</span><span class="time-live-value">00:00.000</span><span class="time-result">START를 눌러 시작하세요</span>`;
+  } else {
+    renderRecreationGame(mission);
+  }
   resetTimeMatch();
+  state.gameAnswer = null;
+  state.revealSequenceKey = null;
   $('game-screen-action').disabled = false;
+  $('game-screen-action').hidden = state.activeGame?.type === 'ROULETTE';
   $('game-screen-action').classList.remove('is-stop');
-  $('game-screen-action').textContent = isTimeMatch ? 'START' : '게임 참여하기';
+  $('game-screen-action').textContent = isTimeMatch ? 'START' : state.activeGame?.type === 'ROULETTE' ? '룰렛 돌리기' : '제출';
   $('game-screen-status').textContent = '응답 대기 중';
   showScreen('screen-game');
 }
 
+function renderRecreationGame(mission) {
+  const game = state.activeGame;
+  const roundIndex = Number(game?.state?.currentRound || 0);
+  const config = game?.state?.rounds?.[roundIndex] || game?.round || game?.state || {};
+  $('game-screen-kicker').textContent = `ROUND ${roundIndex + 1} / ${game?.state?.rounds?.length || 1}`;
+  if (game.type === 'OX_QUIZ') {
+    mission.appendChild(text('div', 'recreation-prompt', config.prompt));
+    const choices = document.createElement('div');
+    choices.className = 'game-choice-row';
+    ['O', 'X'].forEach((choice) => choices.appendChild(gameChoice(choice, choice)));
+    mission.appendChild(choices);
+  } else if (game.type === 'RPS') {
+    mission.appendChild(text('div', 'recreation-prompt', '하나를 선택하세요'));
+    const choices = document.createElement('div');
+    choices.className = 'game-choice-row three';
+    [['rock', '✊'], ['scissors', '✌️'], ['paper', '✋']].forEach(([value, label]) => choices.appendChild(gameChoice(value, label)));
+    mission.appendChild(choices);
+  } else if (game.type === 'WORD_GUESS') {
+    const prompts = config.prompts || (config.prompt ? [config.prompt] : []);
+    const promptIndex = Math.min(Number(game.state?.currentPrompt || 0), Math.max(0, prompts.length - 1));
+    const promptList = document.createElement('div');
+    promptList.className = 'word-prompt-list';
+    const visiblePrompts = prompts.slice(0, promptIndex + 1);
+    if (visiblePrompts.length) {
+      visiblePrompts.forEach((prompt) => promptList.appendChild(text('span', 'word-prompt-chip', prompt)));
+    } else {
+      promptList.appendChild(text('span', 'word-prompt-chip', '제시어 준비 중'));
+    }
+    mission.appendChild(promptList);
+    mission.appendChild(gameTextInput());
+  } else if (game.type === 'IMAGE_GAME') {
+    const frame = document.createElement('div');
+    frame.className = 'game-image-frame';
+    const image = document.createElement('img');
+    image.src = config.imageUrl;
+    image.alt = '이미지 퀴즈';
+    image.style.transform = `scale(${[3.4, 2.6, 2, 1.45, 1][Number(config.imageStage) || 0]})`;
+    frame.appendChild(image);
+    mission.appendChild(frame);
+    mission.appendChild(gameTextInput());
+  } else if (game.type === 'ROULETTE') {
+    mission.appendChild(createRouletteWheel(config.options || []));
+    mission.appendChild(text('div', 'roulette-result', '관리자가 룰렛을 돌릴 때까지 기다려 주세요.'));
+  }
+}
+
+function createRouletteWheel(options) {
+  state.rouletteRotation = 0;
+  const wrap = document.createElement('div');
+  wrap.className = 'roulette-wrap';
+  wrap.appendChild(text('div', 'roulette-pointer', '▼'));
+  const wheel = document.createElement('div');
+  wheel.className = 'roulette-wheel';
+  const colors = ['#d7ff38', '#ff6b6b', '#6bc5ff', '#ffd66b', '#b98cff', '#62e6a6', '#ff92d0', '#ff9f5b'];
+  const slice = 360 / Math.max(options.length, 1);
+  wheel.style.background = `conic-gradient(${options.map((_, index) => `${colors[index % colors.length]} ${index * slice}deg ${(index + 1) * slice}deg`).join(', ')})`;
+  options.forEach((option, index) => {
+    const label = text('span', 'roulette-label', option);
+    const centerAngle = (index * slice + slice / 2) * Math.PI / 180;
+    label.style.left = `${50 + Math.sin(centerAngle) * 31}%`;
+    label.style.top = `${50 - Math.cos(centerAngle) * 31}%`;
+    wheel.appendChild(label);
+  });
+  wheel.appendChild(text('div', 'roulette-hub', 'PIU:M'));
+  wrap.appendChild(wheel);
+  return wrap;
+}
+
+function spinRoulette(payload) {
+  const wheel = document.querySelector('.roulette-wheel');
+  const result = document.querySelector('.roulette-result');
+  const options = state.activeGame?.state?.rounds?.[Number(payload.roundIndex || 0)]?.options || [];
+  if (!wheel || !options.length) return;
+  const slice = 360 / options.length;
+  const targetAngle = (360 - (Number(payload.resultIndex) * slice + slice / 2)) % 360;
+  const rotation = Math.floor(state.rouletteRotation / 360) * 360 + 360 * 7 + targetAngle;
+  state.rouletteRotation = rotation;
+  wheel.style.transitionDuration = `${Number(payload.durationMs || 4200)}ms`;
+  requestAnimationFrame(() => { wheel.style.transform = `rotate(${rotation}deg)`; });
+  result.textContent = '룰렛이 돌아가는 중...';
+  setTimeout(() => {
+    result.textContent = `당첨: ${payload.result}`;
+  }, Number(payload.durationMs || 4200));
+}
+
+function showRoundResult() {
+  const index = Number(state.activeGame?.state?.currentRound || 0);
+  const round = state.activeGame?.state?.rounds?.[index] || {};
+  const expected = String(round.answer || '').trim();
+  const submitted = String(state.gameAnswer || '').trim();
+  const hasAnswer = Boolean(expected);
+  const correct = hasAnswer && submitted.localeCompare(expected, 'ko', { sensitivity: 'base' }) === 0;
+  document.querySelector('.round-result')?.remove();
+  const result = document.createElement('div');
+  const answerLabels = { rock: '바위 ✊', scissors: '가위 ✌️', paper: '보 ✋' };
+  if (state.activeGame?.type === 'RPS') {
+    const sequenceKey = `${state.activeGame.id}:${index}`;
+    if (state.revealSequenceKey === sequenceKey) return;
+    state.revealSequenceKey = sequenceKey;
+    const winsAgainst = { rock: 'scissors', scissors: 'paper', paper: 'rock' };
+    const outcome = submitted === expected ? 'draw' : winsAgainst[submitted] === expected ? 'win' : 'lose';
+    const labels = { win: '이겼습니다!', draw: '비겼습니다!', lose: '졌습니다!' };
+    result.className = `round-result ${submitted ? outcome : 'draw'}`;
+    result.textContent = submitted
+      ? `${labels[outcome]} · 진행자: ${answerLabels[expected] || '-'} / 참가자: ${answerLabels[submitted]}`
+      : `선택하지 않았습니다 · 진행자: ${answerLabels[expected] || '-'}`;
+    playRpsReveal(expected, result);
+    return;
+  } else {
+    result.className = `round-result ${correct ? 'correct' : 'wrong'}`;
+    result.textContent = hasAnswer ? (correct ? '정답입니다!' : `오답입니다 · 정답: ${answerLabels[expected] || expected}`) : '라운드 결과가 공개되었습니다.';
+  }
+  $('game-demo-mission').appendChild(result);
+  $('game-screen-action').disabled = true;
+  $('game-screen-action').textContent = '다음 라운드 대기';
+  $('game-screen-status').textContent = '관리자가 다음 라운드를 시작할 때까지 기다려 주세요.';
+}
+
+function playRpsReveal(expected, result) {
+  const icon = $('game-demo-icon');
+  const calls = ['가위!', '바위!', '보!'];
+  $('game-screen-action').disabled = true;
+  $('game-screen-action').textContent = '결과 공개 중';
+  $('game-screen-status').textContent = '진행자의 선택을 공개합니다.';
+  calls.forEach((call, index) => setTimeout(() => { icon.textContent = call; }, index * 650));
+  setTimeout(() => {
+    const answerLabels = { rock: '바위 ✊', scissors: '가위 ✌️', paper: '보 ✋' };
+    icon.textContent = answerLabels[expected] || '-';
+    $('game-demo-label').textContent = '진행자가 낸 것';
+  }, calls.length * 650);
+  setTimeout(() => {
+    $('game-demo-mission').appendChild(result);
+    $('game-screen-action').textContent = '다음 라운드 대기';
+    $('game-screen-status').textContent = '관리자가 다음 라운드를 시작할 때까지 기다려 주세요.';
+  }, calls.length * 650 + 550);
+}
+
+function gameChoice(value, label) {
+  const choice = button('game-choice', label, () => {
+    state.gameAnswer = value;
+    document.querySelectorAll('.game-choice').forEach((node) => node.classList.toggle('selected', node === choice));
+  });
+  return choice;
+}
+
+function gameTextInput() {
+  const input = document.createElement('input');
+  input.className = 'game-answer-input';
+  input.placeholder = '정답을 입력하세요';
+  input.addEventListener('input', () => { state.gameAnswer = input.value.trim(); });
+  return input;
+}
+
+function submitRecreationAnswer() {
+  const game = state.activeGame;
+  if (game.type === 'ROULETTE') return;
+  if (!state.gameAnswer) return showToast('답을 선택하거나 입력해 주세요.');
+  sendGameAnswer(state.gameAnswer, 'ANSWER');
+}
+
+function sendGameAnswer(answer, action) {
+  $('game-screen-action').disabled = true;
+  $('game-screen-action').textContent = '전송 중...';
+  getSocket()?.emit('game:action', {
+    gameId: state.activeGame.id,
+    action,
+    state: { answer, roundIndex: Number(state.activeGame.state?.currentRound || 0), answeredAt: new Date().toISOString() },
+  }, (response) => {
+    $('game-screen-action').textContent = response?.ok ? '참여 완료' : '다시 시도하기';
+    $('game-screen-action').disabled = Boolean(response?.ok);
+    $('game-screen-status').textContent = response?.ok ? '응답이 관리자에게 전달되었습니다.' : response?.message || '응답 전송에 실패했습니다.';
+  });
+}
+
+function renderPushPrompt() {
+  const prompt = $('push-prompt');
+  prompt.hidden = !shouldShowPushPrompt();
+}
 function startTimer() {
   if (state.timer) clearInterval(state.timer);
   state.timer = setInterval(() => {
@@ -885,23 +1128,7 @@ function bindEvents() {
       else if (state.timeMatch.phase === 'running') stopTimeMatch();
       return;
     }
-    const actionButton = $('game-screen-action');
-    actionButton.disabled = true;
-    actionButton.textContent = '응답 전송 중...';
-    getSocket()?.emit('game:action', {
-      gameId: state.activeGame.id,
-      action: 'ANSWER',
-      state: { answeredAt: new Date().toISOString() },
-    }, (response) => {
-      if (response?.ok) {
-        actionButton.textContent = '참여 완료';
-        $('game-screen-status').textContent = '응답이 관리자에게 전달되었습니다.';
-      } else {
-        actionButton.disabled = false;
-        actionButton.textContent = '다시 시도하기';
-        $('game-screen-status').textContent = response?.message || response?.error || '응답 전송에 실패했습니다.';
-      }
-    });
+    submitRecreationAnswer();
   });
   $('accept-toggle-btn').addEventListener('click', () => toggleAcceptingRequests());
 }

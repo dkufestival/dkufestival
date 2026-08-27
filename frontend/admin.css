@@ -372,6 +372,8 @@ body {
 .game-option.selected { border-color: var(--lime); background: rgba(200,241,63,0.08); }
 .game-option-name { font-size: 13px; font-weight: 700; }
 .game-option-level { font-size: 11px; color: var(--text-muted); }
+.game-toggle { min-width: 54px; padding: 7px 10px; border: 1px solid var(--border-soft); border-radius: 999px; background: #292929; color: #999; font-size: 11px; font-weight: 800; text-align: center; }
+.game-toggle.on { border-color: var(--lime); background: var(--lime); color: #111; }
 .time-match-setting { margin: 0 0 18px; padding: 18px; border: 1px solid rgba(225,225,225,.25); border-radius: 10px; background: #10110f; }
 .time-match-setting[hidden] { display: none; }
 .time-setting-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
@@ -395,6 +397,21 @@ body {
 .pinball-preview-label { display: flex; align-items: center; gap: 7px; padding: 10px 12px; color: var(--text-muted); font-size: 10px; font-weight: 800; letter-spacing: 1px; }
 .pinball-preview-label span { width: 7px; height: 7px; border-radius: 50%; background: #ff4343; box-shadow: 0 0 8px #ff4343; }
 .pinball-admin-preview iframe { display: block; width: 100%; height: 420px; border: 0; pointer-events: none; background: #0d0d12; }
+.game-custom-setting { display: grid; gap: 10px; margin: 0 0 18px; padding: 18px; border: 1px solid rgba(225,225,225,.25); border-radius: 10px; background: #10110f; }
+.game-custom-setting[hidden] { display: none; }
+.game-custom-setting label { display: grid; gap: 6px; color: var(--text-muted); font-size: 10px; font-weight: 700; }
+.game-custom-setting input, .game-custom-setting textarea, .game-custom-setting select { width: 100%; padding: 11px 12px; border: 1px solid var(--border-soft); border-radius: 7px; outline: none; color: var(--text-light); background: var(--card-dark-2); font: inherit; }
+.game-custom-setting textarea { min-height: 76px; resize: vertical; }
+.game-custom-setting input:focus, .game-custom-setting textarea:focus, .game-custom-setting select:focus { border-color: var(--lime); }
+.game-custom-setting .setting-help { margin: 0; color: var(--text-muted); font-size: 10px; line-height: 1.5; }
+.round-editor { display: grid; gap: 12px; }
+.round-card { display: grid; gap: 9px; padding: 13px; border: 1px solid var(--border-soft); border-radius: 8px; background: var(--card-dark-2); }
+.round-card-head { display: flex; align-items: center; justify-content: space-between; color: var(--text-light); font-size: 12px; font-weight: 800; }
+.round-delete { border: 0; background: transparent; color: #ff8080; cursor: pointer; }
+.round-add { padding: 11px; border: 1px dashed var(--border-soft); border-radius: 8px; background: transparent; color: var(--lime); cursor: pointer; }
+.round-control { display: flex; gap: 10px; margin: 0 0 10px; }
+.round-control .detail-btn { flex: 1; }
+.round-control[hidden] { display: none; }
 
 .toggle-row {
   display: flex;

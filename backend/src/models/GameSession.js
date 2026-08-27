@@ -10,7 +10,7 @@ const GameSession = sequelize.define(
       defaultValue: 'PAIR',
     },
     type: {
-      type: DataTypes.ENUM('MISSION', 'OX_QUIZ', 'REACTION', 'RPS', 'TIME_MATCH', 'PINBALL'),
+      type: DataTypes.ENUM('MISSION', 'OX_QUIZ', 'REACTION', 'RPS', 'TIME_MATCH', 'PINBALL', 'WORD_GUESS', 'ROULETTE', 'IMAGE_GAME'),
       allowNull: false,
     },
     status: {

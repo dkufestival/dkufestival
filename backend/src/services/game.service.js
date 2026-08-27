@@ -109,6 +109,24 @@ async function handleAction(sessionId, data, participantId) {
       stoppedAt: responseState.stoppedAt || new Date().toISOString(),
     };
   }
+  if (game.mode === 'GLOBAL' && ['OX_QUIZ', 'WORD_GUESS', 'IMAGE_GAME'].includes(game.type)) {
+    const submitted = String(responseState.answer || '').trim();
+    const round = game.state?.rounds?.[Number(game.state?.currentRound || 0)] || game.state || {};
+    const expected = String(round.answer || '').trim();
+    responseState = {
+      ...responseState,
+      answer: submitted,
+      success: submitted.localeCompare(expected, 'ko', { sensitivity: 'base' }) === 0,
+    };
+  }
+  if (game.mode === 'GLOBAL' && game.type === 'RPS') {
+    const submitted = String(responseState.answer || '').trim();
+    const round = game.state?.rounds?.[Number(game.state?.currentRound || 0)] || {};
+    const hostHand = String(round.answer || '').trim();
+    const winsAgainst = { rock: 'scissors', scissors: 'paper', paper: 'rock' };
+    const outcome = submitted === hostHand ? 'DRAW' : winsAgainst[submitted] === hostHand ? 'WIN' : 'LOSE';
+    responseState = { ...responseState, answer: submitted, hostHand, outcome };
+  }
 
   game.state = game.mode === 'GLOBAL'
     ? {
@@ -197,6 +215,8 @@ function normalizePinballEntries(values) {
 
 async function startGlobalGame(data) {
   if (!data.type) throw createServiceError('게임 종류가 필요합니다.', 'INVALID_PAYLOAD');
+  const globalTypes = ['TIME_MATCH', 'PINBALL', 'OX_QUIZ', 'RPS', 'WORD_GUESS', 'ROULETTE', 'IMAGE_GAME'];
+  if (!globalTypes.includes(data.type)) throw createServiceError('지원하지 않는 전체 게임입니다.', 'INVALID_GAME_TYPE');
   if (data.type === 'TIME_MATCH') {
     const targetMs = Number(data.state?.targetMs);
     if (!Number.isInteger(targetMs) || targetMs < 1 || targetMs > 5999999) {
@@ -214,6 +234,18 @@ async function startGlobalGame(data) {
       seed: Math.floor(Math.random() * 0xffffffff) || 1,
       startAt: Date.now() + 2000,
     };
+  } else if (data.type !== 'TIME_MATCH') {
+    const rounds = data.state?.rounds;
+    if (!Array.isArray(rounds) || !rounds.length) throw createServiceError('라운드를 1개 이상 추가해야 합니다.', 'INVALID_GAME_CONFIG');
+    const invalid = rounds.some((round) => {
+      if (data.type === 'OX_QUIZ') return !String(round.prompt || '').trim() || !['O', 'X'].includes(round.answer);
+      if (data.type === 'RPS') return !['rock', 'scissors', 'paper'].includes(round.answer);
+      if (data.type === 'WORD_GUESS') return (!Array.isArray(round.prompts) || !round.prompts.length) || !String(round.answer || '').trim();
+      if (data.type === 'ROULETTE') return !Array.isArray(round.options) || round.options.length < 2;
+      if (data.type === 'IMAGE_GAME') return !String(round.imageUrl || '').trim() || !String(round.answer || '').trim();
+      return false;
+    });
+    if (invalid) throw createServiceError('모든 라운드의 필수 설정을 입력해주세요.', 'INVALID_GAME_CONFIG');
   }
   return withGlobalGameLock(async (transaction) => {
     const activeGame = await GameSession.findOne({
@@ -236,6 +268,39 @@ function getActiveGlobalGame() {
     where: { mode: 'GLOBAL', status: 'ACTIVE' },
     order: [['startedAt', 'DESC'], ['id', 'DESC']],
   });
+}
+
+async function updateGlobalGame(data) {
+  const game = await GameSession.findOne({ where: { id: Number(data.gameId), mode: 'GLOBAL', status: 'ACTIVE' } });
+  if (!game) throw createServiceError('진행 중인 단체 게임을 찾을 수 없습니다.', 'GLOBAL_GAME_NOT_FOUND');
+  const rounds = game.state?.rounds || [];
+  const currentRound = Number(game.state?.currentRound || 0);
+  if (data.action === 'REVEAL') {
+    game.state = { ...(game.state || {}), answerRevealed: true };
+  } else if (data.action === 'SPIN') {
+    if (game.type !== 'ROULETTE') throw createServiceError('룰렛 게임이 아닙니다.', 'INVALID_GAME_ACTION');
+    const options = rounds[currentRound]?.options || [];
+    if (options.length < 2) throw createServiceError('룰렛 옵션이 부족합니다.', 'INVALID_GAME_CONFIG');
+    const resultIndex = Math.floor(Math.random() * options.length);
+    game.state = {
+      ...(game.state || {}),
+      rouletteSpin: { resultIndex, result: options[resultIndex], spinId: Date.now(), durationMs: 4200 },
+    };
+  } else if (data.action === 'NEXT_PROMPT') {
+    if (game.type !== 'WORD_GUESS') throw createServiceError('제시어 맞히기 게임이 아닙니다.', 'INVALID_GAME_ACTION');
+    const prompts = rounds[currentRound]?.prompts || [];
+    const currentPrompt = Number(game.state?.currentPrompt || 0);
+    if (currentPrompt >= prompts.length - 1) throw createServiceError('마지막 제시어입니다.', 'LAST_PROMPT');
+    game.state = { ...(game.state || {}), currentPrompt: currentPrompt + 1 };
+  } else if (data.action === 'NEXT') {
+    if (currentRound >= rounds.length - 1) throw createServiceError('마지막 라운드입니다.', 'LAST_ROUND');
+    game.state = { ...(game.state || {}), currentRound: currentRound + 1, currentPrompt: 0, answerRevealed: false, rouletteSpin: null };
+  } else {
+    throw createServiceError('지원하지 않는 게임 진행 명령입니다.', 'INVALID_GAME_ACTION');
+  }
+  game.changed('state', true);
+  await game.save();
+  return game;
 }
 
 async function endGlobalGame(data) {
@@ -261,4 +326,4 @@ async function endGlobalGame(data) {
   });
 }
 
-module.exports = { createInvite, acceptInvite, handleAction, endGame, startGlobalGame, endGlobalGame, getActiveGlobalGame, normalizePinballEntries };
+module.exports = { createInvite, acceptInvite, handleAction, endGame, startGlobalGame, updateGlobalGame, endGlobalGame, getActiveGlobalGame, normalizePinballEntries };
