@@ -455,6 +455,7 @@ body {
 .game-accordion-item summary::after { content: '▾'; color: var(--text-muted); transition: transform .15s; }
 .game-accordion-item[open] summary::after { transform: rotate(180deg); }
 .game-accordion-meta { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 11px; font-weight: 500; }
+.game-accordion-time { color: var(--text-muted); font-size: 11px; white-space: nowrap; }
 .game-accordion-badge { font-size: 10px; padding: 2px 8px; border-radius: 999px; background: rgba(225,225,225,.12); color: var(--text-muted); }
 .game-accordion-badge.live { background: rgba(196,255,60,.15); color: var(--lime); }
 .game-accordion-body { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--border-soft); margin-top: -1px; padding-top: 10px; }

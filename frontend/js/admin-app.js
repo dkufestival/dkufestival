@@ -562,6 +562,14 @@ function addGameLog(message) {
   count.textContent = `${log.querySelectorAll('.game-log-item').length}건`;
 }
 
+function formatTimeOnlyIfSameDay(startedAt, endedAt) {
+  const start = new Date(startedAt);
+  const end = new Date(endedAt);
+  const sameDay = start.toDateString() === end.toDateString();
+  if (!sameDay) return formatDateTime(endedAt);
+  return end.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+}
+
 function tableNumberForSession(sessionId) {
   const table = state.tables.find((item) => Number(item.activeSession?.id) === Number(sessionId));
   return table?.tableNumber ?? null;
@@ -663,6 +671,10 @@ function renderGameRankList() {
     summary.appendChild(text('span', '', gameName));
     const meta = document.createElement('span');
     meta.className = 'game-accordion-meta';
+    const timeLabel = record.endedAt
+      ? `${formatDateTime(record.startedAt)} ~ ${formatTimeOnlyIfSameDay(record.startedAt, record.endedAt)}`
+      : `${formatDateTime(record.startedAt)} 시작`;
+    meta.appendChild(text('span', 'game-accordion-time', timeLabel));
     meta.appendChild(text('span', `game-accordion-badge ${record.endedAt ? '' : 'live'}`, record.endedAt ? '종료' : '진행중'));
     summary.appendChild(meta);
     details.appendChild(summary);
@@ -703,7 +715,8 @@ function renderSongs() {
     const info = document.createElement('div');
     info.className = 'song-item-info';
     info.appendChild(text('div', 'song-item-title', `${song.songTitle}${song.artist ? ` - ${song.artist}` : ''}`));
-    info.appendChild(text('div', 'song-item-meta', `SESSION ${song.tableSessionId} · ${song.participant?.nickname || song.participantId} · ${song.status}`));
+    const tableLabel = song.session?.table?.tableNumber ? `TABLE ${song.session.table.tableNumber}` : `SESSION ${song.tableSessionId}`;
+    info.appendChild(text('div', 'song-item-meta', `${tableLabel} · ${formatDateTime(song.createdAt)} · ${song.participant?.nickname || song.participantId} · ${song.status}`));
     item.appendChild(info);
     if (song.status === 'REQUESTED') {
       item.appendChild(button('song-done-btn', '완료', async () => {
