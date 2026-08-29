@@ -1,4 +1,4 @@
-const { SongRequest, Participant } = require('../models');
+const { SongRequest, Participant, TableSession, Table } = require('../models');
 const AppError = require('../errors/AppError');
 
 async function create(user, data) {
@@ -28,7 +28,15 @@ async function cancel(user, requestId) {
 
 async function listAdmin() {
   return SongRequest.findAll({
-    include: [{ model: Participant, as: 'participant', attributes: ['id', 'nickname'] }],
+    include: [
+      { model: Participant, as: 'participant', attributes: ['id', 'nickname'] },
+      {
+        model: TableSession,
+        as: 'session',
+        attributes: ['id'],
+        include: [{ model: Table, as: 'table', attributes: ['tableNumber'] }],
+      },
+    ],
     order: [['createdAt', 'DESC']],
   });
 }

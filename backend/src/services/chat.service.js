@@ -278,6 +278,10 @@ async function closeRoomsForSession(sessionId, reason, options = {}) {
       status: 'ACTIVE',
       [Op.or]: [{ requesterSessionId: sessionId }, { targetSessionId: sessionId }],
     },
+    include: [
+      { model: TableSession, as: 'requesterSession', include: [{ model: Table, as: 'table', attributes: ['id', 'tableNumber'] }] },
+      { model: TableSession, as: 'targetSession', include: [{ model: Table, as: 'table', attributes: ['id', 'tableNumber'] }] },
+    ],
     transaction: options.transaction,
     lock: options.transaction?.LOCK.UPDATE,
   });

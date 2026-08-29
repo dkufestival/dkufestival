@@ -96,10 +96,17 @@
           <div class="pinball-preview-label"><span></span> 관리자 관전 화면</div>
           <iframe id="pinball-admin-frame" title="관리자 핀볼 관전 화면" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin"></iframe>
         </div>
-        <h3 class="panel-title" style="margin-top:24px;">실행 기록</h3>
-        <div id="game-log" class="game-log">
-          <div class="game-log-empty">아직 실행한 게임이 없습니다.</div>
+        <h3 class="panel-title" style="margin-top:24px;">테이블별 순위</h3>
+        <div id="game-rank-list" class="game-accordion">
+          <div class="game-accordion-empty">아직 순위를 매길 게임 결과가 없습니다.</div>
         </div>
+
+        <details class="game-accordion-item" style="margin-top:18px;">
+          <summary><span>실행 기록</span><span id="game-log-count" class="game-accordion-meta">0건</span></summary>
+          <div id="game-log" class="game-log game-accordion-body">
+            <div class="game-log-empty">아직 실행한 게임이 없습니다.</div>
+          </div>
+        </details>
       </div>
     </div>
 
@@ -139,6 +146,6 @@
 <div id="admin-toast" class="toast"></div>
 
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-<script type="module" src="js/admin-app.js?v=13"></script>
+<script type="module" src="js/admin-app.js?v=15"></script>
 </body>
 </html>

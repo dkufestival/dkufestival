@@ -36,6 +36,12 @@ const state = {
   revealSequenceKey: null,
   participationDecisions: new Map(),
   pendingParticipationGame: null,
+  hasConnectedOnce: false,
+  initialSyncDone: false,
+  syncPromise: null,
+  tableRefreshPromise: null,
+  tableRefreshTimer: null,
+  tableRefreshPending: false,
 };
 
 const gameNames = { OX_QUIZ: 'OX 퀴즈', RPS: '가위바위보', WORD_GUESS: '제시어 게임', IMAGE_GAME: '이미지 게임', TIME_MATCH: '시간 맞추기', PINBALL: '핀볼', ROULETTE: '룰렛' };
@@ -172,13 +178,8 @@ async function afterAuthenticated() {
   showScreen('screen-seats');
   initTableMap();
   bindSocket();
-  await Promise.all([
-    refreshParticipants(),
-    refreshTables(),
-    refreshChatRoom(),
-    refreshSongs(),
-    refreshNotices(),
-  ]);
+  await syncParticipantState({ render: false });
+  state.initialSyncDone = true;
   renderAll();
   startTimer();
   if (state.chatRoom?.status === 'ACTIVE') openChat(state.chatRoom.roomId);
@@ -225,6 +226,45 @@ async function refreshNotices() {
   }
 }
 
+async function syncParticipantState(options = {}) {
+  if (state.syncPromise) return state.syncPromise;
+  state.syncPromise = (async () => {
+    await Promise.allSettled([
+      refreshParticipants(),
+      refreshTables(),
+      refreshChatRoom(),
+      refreshSongs(),
+      refreshNotices(),
+    ]);
+    if (options.render !== false) renderAll();
+    if (state.chatRoom?.status === 'ACTIVE') openChat(state.chatRoom.roomId);
+  })().finally(() => {
+    state.syncPromise = null;
+  });
+  return state.syncPromise;
+}
+
+function scheduleTableRefresh() {
+  state.tableRefreshPending = true;
+  if (state.tableRefreshTimer || state.tableRefreshPromise) return;
+  state.tableRefreshTimer = setTimeout(() => {
+    state.tableRefreshTimer = null;
+    state.tableRefreshPending = false;
+    if (!state.tableRefreshPromise) {
+      state.tableRefreshPromise = refreshTables()
+        .catch(() => {})
+        .then(() => {
+          renderStats();
+          renderTables();
+        })
+        .finally(() => {
+          state.tableRefreshPromise = null;
+          if (state.tableRefreshPending) scheduleTableRefresh();
+        });
+    }
+  }, 120);
+}
+
 function bindSocket() {
   const socket = connectSocket('PARTICIPANT');
   if (!socket) return;
@@ -232,11 +272,16 @@ function bindSocket() {
   socket.on('connect', () => {
     $('connection-status').textContent = '실시간 연결됨';
     if (state.chatRoom?.status === 'ACTIVE') joinChatRoom(state.chatRoom.roomId);
+    if (state.hasConnectedOnce && state.initialSyncDone) {
+      syncParticipantState().catch(() => {});
+    }
+    state.hasConnectedOnce = true;
   });
   socket.on('disconnect', () => {
     $('connection-status').textContent = '재연결 대기';
   });
-  socket.on('participant:joined', async () => {
+  socket.on('participant:joined', async (payload = {}) => {
+    if (payload.sessionId && Number(payload.sessionId) !== Number(state.session?.id)) return;
     await refreshParticipants();
     renderParticipants();
   });
@@ -244,15 +289,13 @@ function bindSocket() {
     await refreshParticipants();
     renderParticipants();
   });
-  socket.on('participant:left', async () => {
+  socket.on('participant:left', async (payload = {}) => {
+    // Reserved for a future explicit leave flow; checkout still uses table:checked-out.
+    if (payload.sessionId && Number(payload.sessionId) !== Number(state.session?.id)) return;
     await refreshParticipants();
     renderParticipants();
   });
-  socket.on('table:updated', async () => {
-    await refreshTables();
-    renderStats();
-    renderTables();
-  });
+  socket.on('table:updated', scheduleTableRefresh);
   socket.on('table:extended', ({ session }) => {
     state.session = session;
     renderStats();

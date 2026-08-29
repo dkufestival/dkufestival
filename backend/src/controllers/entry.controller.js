@@ -1,4 +1,5 @@
 const entryService = require('../services/entry.service');
+const { emitPublicTableUpdate } = require('../socket/table-updates');
 
 async function getContext(req, res, next) {
   try {
@@ -13,11 +14,14 @@ async function enter(req, res, next) {
     const result = await entryService.enter(req.body);
     const io = req.app.get('io');
     if (io) {
-      io.to('participants').emit('participant:joined', {
+      io.to(`session:${result.session.id}`).emit('participant:joined', {
         sessionId: result.session.id,
         participant: result.participant,
       });
-      io.to(`session:${result.session.id}`).emit('table:updated', { sessionId: result.session.id });
+      emitPublicTableUpdate(io, {
+        tableIds: [result.table.id],
+        reason: result.restored ? 'entry:restored' : 'entry:joined',
+      });
     }
     res.status(result.restored ? 200 : 201).json({ data: result });
   } catch (error) {

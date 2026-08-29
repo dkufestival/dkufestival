@@ -18,7 +18,18 @@ const state = {
   gameRounds: {},
   rouletteSpinning: false,
   timer: null,
+  hasConnectedOnce: false,
+  initialSyncDone: false,
+  syncPromise: null,
+  refreshPromise: null,
+  refreshTimer: null,
+  refreshNeedsChat: false,
+  refreshPending: false,
+  gameHistory: [],
+  gameHistoryById: {},
 };
+
+const RANKED_GAME_TYPES = ['TIME_MATCH', 'RPS', 'OX_QUIZ', 'WORD_GUESS', 'IMAGE_GAME'];
 
 function showToast(message) {
   const toast = $('admin-toast');
@@ -50,7 +61,8 @@ async function login() {
 async function enterAdmin() {
   showAdmin();
   bindSocket();
-  await Promise.all([loadTables(), loadChatRooms(), loadSongs()]);
+  await syncAdminState({ render: false });
+  state.initialSyncDone = true;
   renderAll();
   startTimer();
 }
@@ -58,11 +70,15 @@ async function enterAdmin() {
 function bindSocket() {
   const socket = connectSocket('ADMIN');
   if (!socket) return;
-  socket.on('table:updated', () => loadTables().then(renderAll));
-  socket.on('table:extended', () => loadTables().then(renderAll));
-  socket.on('table:checked-out', () => Promise.all([loadTables(), loadChatRooms()]).then(renderAll));
-  socket.on('chat:started', () => loadChatRooms().then(renderAll));
-  socket.on('chat:ended', () => loadChatRooms().then(renderAll));
+  socket.on('connect', () => {
+    if (state.hasConnectedOnce && state.initialSyncDone) {
+      syncAdminState().catch(() => {});
+    }
+    state.hasConnectedOnce = true;
+  });
+  socket.on('table:updated', () => scheduleAdminRefresh({ includeChatRooms: true }));
+  socket.on('chat:started', () => scheduleAdminRefresh({ includeChatRooms: true }));
+  socket.on('chat:ended', () => scheduleAdminRefresh({ includeChatRooms: true }));
   socket.on('song:requested', (song) => {
     if (!state.songs.some((item) => item.id === song.id)) state.songs.unshift(song);
     renderSongs();
@@ -72,6 +88,7 @@ function bindSocket() {
   socket.on('game:global:state', (game) => {
     const responses = Object.values(game.state?.responses || {});
     const latest = responses.sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))[0];
+    if (latest) recordGameResponse(game, latest);
     if (game.type === 'TIME_MATCH' && latest?.state) {
       const diff = Number(latest.state.differenceMs || 0);
       addGameLog(latest.state.success ? '시간 맞추기 성공 · 정확히 일치' : `시간 맞추기 응답 · ${Math.abs(diff)}ms ${diff < 0 ? '빠름' : '늦음'}`);
@@ -86,17 +103,23 @@ function bindSocket() {
     }
     state.activeGame = game;
     renderTeamScoreboard();
+    renderGameRankList();
   });
   socket.on('game:global:current', (game) => {
     state.activeGame = game;
+    if (game) seedGameRecordFromResponses(game);
     renderGameControls();
     renderGameList();
+    renderGameRankList();
   });
   socket.on('game:global:ended', (game) => {
     state.activeGame = null;
+    const record = ensureGameRecord(game);
+    if (record) record.endedAt = game.endedAt || new Date().toISOString();
     renderGameControls();
     renderGameList();
     addGameLog(`${game.type} 전체 게임 종료`);
+    renderGameRankList();
   });
   socket.on('game:global:updated', (game) => {
     state.activeGame = game;
@@ -123,12 +146,49 @@ async function loadSongs() {
   state.songs = await songsApi.adminList();
 }
 
+async function syncAdminState(options = {}) {
+  if (state.syncPromise) return state.syncPromise;
+  state.syncPromise = (async () => {
+    await Promise.allSettled([loadTables(), loadChatRooms(), loadSongs()]);
+    if (options.render !== false) renderAll();
+    if (state.activeDetailTable) openDetail(state.activeDetailTable);
+  })().finally(() => {
+    state.syncPromise = null;
+  });
+  return state.syncPromise;
+}
+
+function scheduleAdminRefresh(options = {}) {
+  state.refreshNeedsChat = state.refreshNeedsChat || Boolean(options.includeChatRooms);
+  state.refreshPending = true;
+  if (state.refreshTimer || state.refreshPromise) return;
+  state.refreshTimer = setTimeout(() => {
+    state.refreshTimer = null;
+    state.refreshPending = false;
+    if (!state.refreshPromise) {
+      const includeChatRooms = state.refreshNeedsChat;
+      state.refreshNeedsChat = false;
+      const tasks = includeChatRooms ? [loadTables(), loadChatRooms()] : [loadTables()];
+      state.refreshPromise = Promise.allSettled(tasks)
+        .then(() => {
+          renderAll();
+          if (state.activeDetailTable) openDetail(state.activeDetailTable);
+        })
+        .finally(() => {
+          state.refreshPromise = null;
+          if (state.refreshPending) scheduleAdminRefresh({ includeChatRooms: state.refreshNeedsChat });
+        });
+    }
+  }, 120);
+}
+
 function renderAll() {
   renderStats();
   renderTableGrid();
   renderChatRooms();
   renderGameControls();
   renderGameList();
+  renderGameRankList();
   renderSongs();
   renderTeamScoreboard();
 }
@@ -572,6 +632,145 @@ function addGameLog(message) {
   const empty = log.querySelector('.game-log-empty');
   if (empty) empty.remove();
   log.prepend(text('div', 'game-log-item', `${new Date().toLocaleTimeString('ko-KR')} · ${message}`));
+  const count = $('game-log-count');
+  count.textContent = `${log.querySelectorAll('.game-log-item').length}건`;
+}
+
+function formatTimeOnlyIfSameDay(startedAt, endedAt) {
+  const start = new Date(startedAt);
+  const end = new Date(endedAt);
+  const sameDay = start.toDateString() === end.toDateString();
+  if (!sameDay) return formatDateTime(endedAt);
+  return end.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+}
+
+function tableNumberForSession(sessionId) {
+  const table = state.tables.find((item) => Number(item.activeSession?.id) === Number(sessionId));
+  return table?.tableNumber ?? null;
+}
+
+function ensureGameRecord(game) {
+  if (!game?.id) return null;
+  let record = state.gameHistoryById[game.id];
+  if (!record) {
+    record = {
+      id: game.id,
+      type: game.type,
+      startedAt: game.startedAt || new Date().toISOString(),
+      endedAt: game.endedAt || null,
+      results: {},
+    };
+    state.gameHistoryById[game.id] = record;
+    state.gameHistory.unshift(record);
+  }
+  record.type = game.type;
+  if (game.endedAt) record.endedAt = game.endedAt;
+  return record;
+}
+
+function recordGameResponse(game, response) {
+  if (!response?.sessionId) return;
+  const record = ensureGameRecord(game);
+  if (!record || !RANKED_GAME_TYPES.includes(record.type)) return;
+  const tableNumber = tableNumberForSession(response.sessionId);
+  if (!tableNumber) return;
+  const entry = record.results[tableNumber] || { tableNumber, rounds: {} };
+  if (record.type === 'TIME_MATCH') {
+    const diffMs = Math.abs(Number(response.state?.differenceMs));
+    if (Number.isFinite(diffMs) && (entry.bestDiffMs === undefined || diffMs < entry.bestDiffMs)) {
+      entry.bestDiffMs = diffMs;
+    }
+  } else {
+    const roundIndex = Number(response.state?.roundIndex ?? game.state?.currentRound ?? 0);
+    entry.rounds[roundIndex] = record.type === 'RPS' ? response.state?.outcome : Boolean(response.state?.success);
+  }
+  record.results[tableNumber] = entry;
+}
+
+function seedGameRecordFromResponses(game) {
+  const record = ensureGameRecord(game);
+  if (!record) return;
+  Object.values(game.state?.responses || {}).forEach((response) => recordGameResponse(game, response));
+}
+
+function withDenseRanks(rows, scoreOf) {
+  const sorted = [...rows].sort((a, b) => scoreOf(b) - scoreOf(a));
+  let rank = 0;
+  let prevScore = null;
+  let seen = 0;
+  return sorted.map((row) => {
+    seen += 1;
+    const score = scoreOf(row);
+    if (score !== prevScore) { rank = seen; prevScore = score; }
+    return { ...row, rank };
+  });
+}
+
+function computeRanking(record) {
+  const rows = Object.values(record.results);
+  if (record.type === 'TIME_MATCH') {
+    const finished = rows.filter((row) => Number.isFinite(row.bestDiffMs));
+    return withDenseRanks(finished, (row) => -row.bestDiffMs)
+      .map((row) => ({ ...row, scoreLabel: `오차 ${row.bestDiffMs}ms` }));
+  }
+  if (record.type === 'RPS') {
+    const withWins = rows.map((row) => ({ ...row, wins: Object.values(row.rounds).filter((o) => o === 'WIN').length }));
+    return withDenseRanks(withWins, (row) => row.wins)
+      .map((row) => ({ ...row, scoreLabel: `${row.wins}승` }));
+  }
+  const withCorrect = rows.map((row) => ({
+    ...row,
+    correct: Object.values(row.rounds).filter(Boolean).length,
+    total: Object.keys(row.rounds).length,
+  }));
+  return withDenseRanks(withCorrect, (row) => row.correct)
+    .map((row) => ({ ...row, scoreLabel: `${row.correct}/${row.total} 정답` }));
+}
+
+function renderGameRankList() {
+  const list = $('game-rank-list');
+  clear(list);
+  const records = state.gameHistory.filter((record) => RANKED_GAME_TYPES.includes(record.type) && Object.keys(record.results).length);
+  if (!records.length) {
+    list.appendChild(text('div', 'game-accordion-empty', '아직 순위를 매길 게임 결과가 없습니다.'));
+    return;
+  }
+  records.forEach((record) => {
+    const details = document.createElement('details');
+    details.className = 'game-accordion-item';
+    if (state.activeGame?.id === record.id) details.open = true;
+
+    const summary = document.createElement('summary');
+    const gameName = GAME_TYPES.find((game) => game.id === record.type)?.name || record.type;
+    summary.appendChild(text('span', '', gameName));
+    const meta = document.createElement('span');
+    meta.className = 'game-accordion-meta';
+    const timeLabel = record.endedAt
+      ? `${formatDateTime(record.startedAt)} ~ ${formatTimeOnlyIfSameDay(record.startedAt, record.endedAt)}`
+      : `${formatDateTime(record.startedAt)} 시작`;
+    meta.appendChild(text('span', 'game-accordion-time', timeLabel));
+    meta.appendChild(text('span', `game-accordion-badge ${record.endedAt ? '' : 'live'}`, record.endedAt ? '종료' : '진행중'));
+    summary.appendChild(meta);
+    details.appendChild(summary);
+
+    const body = document.createElement('div');
+    body.className = 'game-accordion-body';
+    const ranked = computeRanking(record);
+    if (!ranked.length) {
+      body.appendChild(text('div', 'rank-empty', '아직 참여한 테이블이 없습니다.'));
+    } else {
+      ranked.forEach((row) => {
+        const rowEl = document.createElement('div');
+        rowEl.className = 'rank-row';
+        rowEl.appendChild(text('span', 'rank-pos', `${row.rank}위`));
+        rowEl.appendChild(text('span', 'rank-table-num', `TABLE ${row.tableNumber}`));
+        rowEl.appendChild(text('span', 'rank-score', row.scoreLabel));
+        body.appendChild(rowEl);
+      });
+    }
+    details.appendChild(body);
+    list.appendChild(details);
+  });
 }
 
 function renderSongs() {
@@ -590,7 +789,8 @@ function renderSongs() {
     const info = document.createElement('div');
     info.className = 'song-item-info';
     info.appendChild(text('div', 'song-item-title', `${song.songTitle}${song.artist ? ` - ${song.artist}` : ''}`));
-    info.appendChild(text('div', 'song-item-meta', `SESSION ${song.tableSessionId} · ${song.participant?.nickname || song.participantId} · ${song.status}`));
+    const tableLabel = song.session?.table?.tableNumber ? `TABLE ${song.session.table.tableNumber}` : `SESSION ${song.tableSessionId}`;
+    info.appendChild(text('div', 'song-item-meta', `${tableLabel} · ${formatDateTime(song.createdAt)} · ${song.participant?.nickname || song.participantId} · ${song.status}`));
     item.appendChild(info);
     if (song.status === 'REQUESTED') {
       item.appendChild(button('song-done-btn', '완료', async () => {
@@ -654,9 +854,11 @@ function bindEvents() {
     }, (response) => {
       if (response?.ok) {
         state.activeGame = response.data;
+        ensureGameRecord(response.data);
         renderGameList();
         renderGameControls();
         addGameLog(`${state.selectedGame} 전체 게임 시작`);
+        renderGameRankList();
       } else {
         showToast(response?.message || response?.error || '게임 시작 실패');
       }

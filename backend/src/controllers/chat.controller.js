@@ -1,5 +1,6 @@
 const chatService = require('../services/chat.service');
 const notificationService = require('../services/notification.service');
+const { emitPublicTableUpdate, roomTableIds } = require('../socket/table-updates');
 
 function sessionRooms(room) {
   return [`session:${room.requesterSessionId}`, `session:${room.targetSessionId}`];
@@ -65,6 +66,7 @@ async function acceptRequest(req, res, next) {
         roomId: room.id,
         message: '채팅이 시작되었습니다.',
       });
+      emitPublicTableUpdate(io, { tableIds: roomTableIds(room), reason: 'chat:started' });
     }
     notificationService.notifySessions([room.requesterSessionId, room.targetSessionId], {
       title: '채팅 시작',
@@ -138,6 +140,7 @@ async function endRoom(req, res, next) {
     if (io) {
       emitToRoomParties(io, room, 'chat:ended', room);
       io.in(`chat:${room.id}`).socketsLeave(`chat:${room.id}`);
+      emitPublicTableUpdate(io, { tableIds: roomTableIds(room), reason: 'chat:ended' });
     }
     notificationService.notifySessions([room.requesterSessionId, room.targetSessionId], {
       title: '채팅 종료',
@@ -168,6 +171,7 @@ async function adminEndRoom(req, res, next) {
     if (io) {
       emitToRoomParties(io, room, 'chat:ended', room);
       io.in(`chat:${room.id}`).socketsLeave(`chat:${room.id}`);
+      emitPublicTableUpdate(io, { tableIds: roomTableIds(room), reason: 'chat:admin-ended' });
     }
     notificationService.notifySessions([room.requesterSessionId, room.targetSessionId], {
       title: '채팅 강제 종료',
