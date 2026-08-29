@@ -22,7 +22,7 @@ async function writeQrPng(table) {
 async function seedTables() {
   try {
     await sequelize.authenticate();
-    await sequelize.sync();
+    await sequelize.sync({ alter: env.db.alter });
 
     for (let tableNumber = 1; tableNumber <= env.tableCount; tableNumber += 1) {
       const [, created] = await Table.findOrCreate({

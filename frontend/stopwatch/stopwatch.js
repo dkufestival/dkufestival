@@ -9,6 +9,7 @@ const state = {
   startedAt: 0,
   elapsedMs: 0,
   frame: null,
+  resultRedirectTimer: null,
 };
 
 function formatTime(totalMs) {
@@ -97,7 +98,7 @@ function stopRun() {
   const success = differenceMs === 0;
   const label = success
     ? 'PERFECT! 정확히 일치했습니다.'
-    : `${Math.abs(differenceMs)}ms ${differenceMs < 0 ? '빨랐어요.' : '늦었어요.'}`;
+    : `${Math.abs(differenceMs)}ms ${differenceMs < 0 ? '빨랐습니다.' : '늦었습니다.'}`;
   setResult(label, success ? 'good' : 'bad');
   setStatus('결과 전송 중');
   $('action-button').disabled = true;
@@ -115,8 +116,15 @@ function stopRun() {
       stoppedAt: new Date().toISOString(),
     },
   }, (response) => {
-    setStatus(response?.ok ? '결과가 관리자에게 전달되었습니다.' : response?.message || response?.error || '결과 전송에 실패했습니다.');
+    setStatus(response?.ok
+      ? '결과가 관리자에게 전달되었습니다. 3초 후 메인 화면으로 이동합니다.'
+      : `${response?.message || response?.error || '결과 전송에 실패했습니다.'} 3초 후 메인 화면으로 이동합니다.`);
   });
+
+  if (state.resultRedirectTimer) clearTimeout(state.resultRedirectTimer);
+  state.resultRedirectTimer = setTimeout(() => {
+    location.href = '/';
+  }, 3000);
 }
 
 function bindSocket() {

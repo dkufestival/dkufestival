@@ -34,7 +34,48 @@ const state = {
   rouletteTimer: null,
   rouletteRotation: 0,
   revealSequenceKey: null,
+  participationDecisions: new Map(),
+  pendingParticipationGame: null,
 };
+
+const gameNames = { OX_QUIZ: 'OX 퀴즈', RPS: '가위바위보', WORD_GUESS: '제시어 게임', IMAGE_GAME: '이미지 게임', TIME_MATCH: '시간 맞추기', PINBALL: '핀볼', ROULETTE: '룰렛' };
+
+function isParticipating(gameId) {
+  return state.participationDecisions.get(Number(gameId)) === true;
+}
+
+function requestGameParticipation(game) {
+  if (!game || state.participationDecisions.has(Number(game.id))) return;
+  if (game.type === 'PINBALL') {
+    state.participationDecisions.set(Number(game.id), true);
+    showToast('핀볼 게임이 시작되었습니다.');
+    showPinballScreen(game);
+    return;
+  }
+  if (game.type === 'TIME_MATCH') {
+    showToast('스톱워치 게임이 시작되었습니다. 게임 메뉴에서 입장할 수 있습니다.');
+    return;
+  }
+  state.pendingParticipationGame = game;
+  $('game-participation-title').textContent = `${gameNames[game.type] || game.type}이(가) 시작됩니다.`;
+  openModal('modal-game-participation');
+}
+
+function decideGameParticipation(joined) {
+  const game = state.pendingParticipationGame;
+  if (!game) return;
+  state.participationDecisions.set(Number(game.id), joined);
+  state.pendingParticipationGame = null;
+  closeModal('modal-game-participation');
+  getSocket()?.emit('game:action', { gameId: game.id, action: 'PARTICIPATION', state: { joined } });
+  if (!joined) {
+    showToast('이번 게임에 참가하지 않습니다.');
+    return;
+  }
+  if (game.type === 'PINBALL') showPinballScreen(game);
+  else if (game.type !== 'TIME_MATCH') showGlobalGameScreen();
+  else showToast('게임 화면의 스톱워치 입장 버튼을 눌러주세요.');
+}
 
 function showToast(message) {
   const toast = $('toast');
@@ -296,20 +337,18 @@ function bindSocket() {
   });
   socket.on('game:global:started', (game) => {
     state.activeGame = game;
+    requestGameParticipation(game);
     renderGame();
-    if (game.type === 'PINBALL') showPinballScreen(game);
-    else if (game.type !== 'TIME_MATCH') showGlobalGameScreen();
-    showToast('전체 게임이 시작되었습니다.');
   });
   socket.on('game:global:current', (game) => {
     state.activeGame = game;
+    requestGameParticipation(game);
     renderGame();
-    if (game.type === 'PINBALL') showPinballScreen(game);
-    else if (game.type !== 'TIME_MATCH') showGlobalGameScreen();
   });
   socket.on('game:global:ended', (game) => {
     resetTimeMatch();
     state.activeGame = null;
+    state.participationDecisions.delete(Number(game.id));
     $('pinball-viewer-frame').src = 'about:blank';
     renderGame();
     closeModal('modal-game');
@@ -322,16 +361,18 @@ function bindSocket() {
     const currentRound = Number(game.state?.currentRound || 0);
     if (currentRound !== previousRound) {
       state.gameAnswer = null;
-      showGlobalGameScreen();
+      if (isParticipating(game.id)) showGlobalGameScreen();
       showToast(`${currentRound + 1}라운드가 시작되었습니다.`);
     } else if (game.state?.answerRevealed) {
-      if (!$('screen-game').classList.contains('active')) showGlobalGameScreen();
-      showRoundResult();
+      if (isParticipating(game.id)) {
+        if (!$('screen-game').classList.contains('active')) showGlobalGameScreen();
+        showRoundResult();
+      }
     }
   });
   socket.on('game:global:round', (payload) => {
     if (!state.activeGame || Number(payload.gameId) !== Number(state.activeGame.id)) return;
-    if ((payload.type || state.activeGame.type) === 'TIME_MATCH') return;
+    if (['TIME_MATCH', 'PINBALL'].includes(payload.type || state.activeGame.type)) return;
     const rounds = [...(state.activeGame.state?.rounds || [])];
     rounds[Number(payload.roundIndex || 0)] = payload.round || {};
     state.activeGame = {
@@ -339,7 +380,7 @@ function bindSocket() {
       type: payload.type || state.activeGame.type,
       state: { ...(state.activeGame.state || {}), rounds, currentRound: Number(payload.roundIndex || 0), answerRevealed: false },
     };
-    showGlobalGameScreen();
+    if (isParticipating(state.activeGame.id)) showGlobalGameScreen();
   });
   socket.on('game:global:prompt', (payload) => {
     if (!state.activeGame || Number(payload.gameId) !== Number(state.activeGame.id)) return;
@@ -351,8 +392,10 @@ function bindSocket() {
         currentPrompt: Number(payload.promptIndex || 0),
       },
     };
-    showGlobalGameScreen();
-    showToast(`${Number(payload.promptIndex || 0) + 1}번째 제시어가 공개되었습니다.`);
+    if (isParticipating(state.activeGame.id)) {
+      showGlobalGameScreen();
+      showToast(`${Number(payload.promptIndex || 0) + 1}번째 제시어가 공개되었습니다.`);
+    }
   });
   socket.on('game:global:answer', (payload) => {
     if (!state.activeGame || Number(payload.gameId) !== Number(state.activeGame.id)) return;
@@ -360,13 +403,17 @@ function bindSocket() {
     const rounds = [...(state.activeGame.state?.rounds || [])];
     rounds[roundIndex] = { ...(rounds[roundIndex] || {}), answer: payload.answer };
     state.activeGame = { ...state.activeGame, state: { ...(state.activeGame.state || {}), rounds, currentRound: roundIndex, answerRevealed: true } };
-    if (!$('screen-game').classList.contains('active')) showGlobalGameScreen();
-    showRoundResult();
+    if (isParticipating(state.activeGame.id)) {
+      if (!$('screen-game').classList.contains('active')) showGlobalGameScreen();
+      showRoundResult();
+    }
   });
   socket.on('game:global:spin', (payload) => {
     if (!state.activeGame || Number(payload.gameId) !== Number(state.activeGame.id)) return;
-    if (!$('screen-game').classList.contains('active')) showGlobalGameScreen();
-    spinRoulette(payload);
+    if (isParticipating(state.activeGame.id)) {
+      if (!$('screen-game').classList.contains('active')) showGlobalGameScreen();
+      spinRoulette(payload);
+    }
   });
   socket.on('game:invited', (game) => {
     state.activeGame = game;
@@ -765,12 +812,17 @@ function pinballViewerUrl(game) {
     seed: String(game?.state?.seed || 1),
     startAt: String(game?.state?.startAt || Date.now()),
   });
-  return `/pinball-viewer/?${params}`;
+  return `/pinball-local/?${params}`;
 }
 
 function showPinballScreen(game) {
   if (!game || game.type !== 'PINBALL') return;
   const frame = $('pinball-viewer-frame');
+  const loading = document.querySelector('.pinball-loading');
+  if (loading) {
+    loading.hidden = false;
+    loading.textContent = '핀볼 게임을 불러오는 중입니다...';
+  }
   const nextSrc = pinballViewerUrl(game);
   if (frame.getAttribute('src') !== nextSrc) frame.src = nextSrc;
   showScreen('screen-pinball');
@@ -1131,6 +1183,12 @@ function bindEvents() {
     submitRecreationAnswer();
   });
   $('accept-toggle-btn').addEventListener('click', () => toggleAcceptingRequests());
+  $('pinball-viewer-frame').addEventListener('load', () => {
+    const loading = document.querySelector('.pinball-loading');
+    if (loading) loading.hidden = true;
+  });
+  $('game-participation-accept').addEventListener('click', () => decideGameParticipation(true));
+  $('game-participation-decline').addEventListener('click', () => decideGameParticipation(false));
 }
 
 async function restoreFromToken() {

@@ -207,21 +207,21 @@ export default function TeamScoreNoticeScreen() {
           <Text style={styles.panelTitle}>점수판</Text>
           {sortedScoreboard.length === 0 ? (
             <Text style={styles.emptyText}>팀을 먼저 만들어주세요.</Text>
-          ) : sortedScoreboard.map((team) => (
+          ) : sortedScoreboard.map((team, index) => (
             <View key={team.teamId} style={styles.scoreRow}>
               <View>
-                <Text style={styles.scoreName}>{team.name}</Text>
+                <Text style={styles.scoreName}>{index + 1}위 · {team.name}</Text>
                 <Text style={styles.scoreValue}>{team.score}점</Text>
               </View>
               <View style={styles.scoreButtons}>
-                <TouchableOpacity style={styles.scoreButton} onPress={() => changeScore(team.teamId, -1)}>
-                  <Text style={styles.scoreButtonText}>-1</Text>
+                <TouchableOpacity style={styles.scoreButton} onPress={() => changeScore(team.teamId, -10)}>
+                  <Text style={styles.scoreButtonText}>-10</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.scoreButton} onPress={() => changeScore(team.teamId, 1)}>
-                  <Text style={styles.scoreButtonText}>+1</Text>
+                <TouchableOpacity style={styles.scoreButton} onPress={() => changeScore(team.teamId, 10)}>
+                  <Text style={styles.scoreButtonText}>+10</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.scoreButton} onPress={() => changeScore(team.teamId, 5)}>
-                  <Text style={styles.scoreButtonText}>+5</Text>
+                <TouchableOpacity style={styles.scoreButton} onPress={() => changeScore(team.teamId, 50)}>
+                  <Text style={styles.scoreButtonText}>+50</Text>
                 </TouchableOpacity>
               </View>
             </View>

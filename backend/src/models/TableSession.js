@@ -43,6 +43,11 @@ const TableSession = sequelize.define(
       allowNull: false,
       defaultValue: true,
     },
+    score: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
     startedAt: {
       type: DataTypes.DATE,
       allowNull: false,

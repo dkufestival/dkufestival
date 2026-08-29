@@ -128,6 +128,24 @@ async function handleAction(sessionId, data, participantId) {
     responseState = { ...responseState, answer: submitted, hostHand, outcome };
   }
 
+  if (game.mode === 'GLOBAL' && data.action === 'PARTICIPATION') {
+    game.state = {
+      ...(game.state || {}),
+      participants: {
+        ...((game.state || {}).participants || {}),
+        [participantId || sessionId]: {
+          participantId: participantId || null,
+          sessionId: Number(sessionId),
+          joined: Boolean(data.state?.joined),
+          updatedAt: new Date().toISOString(),
+        },
+      },
+    };
+    game.changed('state', true);
+    await game.save();
+    return game;
+  }
+
   game.state = game.mode === 'GLOBAL'
     ? {
         ...(game.state || {}),
@@ -153,6 +171,74 @@ async function handleAction(sessionId, data, participantId) {
   game.changed('state', true);
   await game.save();
   return game;
+}
+
+function normalizedAnswer(value) {
+  return String(value || '').trim().toLocaleLowerCase('ko');
+}
+
+function rpsScore(player, host) {
+  if (player === host) return 4;
+  const winsAgainst = { rock: 'scissors', scissors: 'paper', paper: 'rock' };
+  return winsAgainst[player] === host ? 10 : 0;
+}
+
+async function scoreCurrentRound(game) {
+  const state = game.state || {};
+  const roundIndex = Number(state.currentRound || 0);
+  if (state.scoredRounds?.[roundIndex]) return state.scoreboard || [];
+  if (!['OX_QUIZ', 'RPS', 'WORD_GUESS', 'IMAGE_GAME'].includes(game.type)) return state.scoreboard || [];
+
+  const round = state.rounds?.[roundIndex] || {};
+  const responses = Object.values(state.responses || {}).filter((response) => (
+    Number(response.state?.roundIndex) === roundIndex && response.state?.answer
+  ));
+  const joined = Object.values(state.participants || {}).filter((entry) => entry.joined);
+  const participantGroups = new Map();
+  (joined.length ? joined : responses).forEach((entry) => {
+    const sessionId = Number(entry.sessionId);
+    if (!participantGroups.has(sessionId)) participantGroups.set(sessionId, new Set());
+    participantGroups.get(sessionId).add(Number(entry.participantId || sessionId));
+  });
+
+  const totals = new Map();
+  responses.forEach((response) => {
+    const sessionId = Number(response.sessionId);
+    const submitted = normalizedAnswer(response.state?.answer);
+    const expected = normalizedAnswer(round.answer);
+    let points = 0;
+    if (game.type === 'RPS') points = rpsScore(submitted, expected);
+    else if (submitted === expected) points = 50;
+    totals.set(sessionId, (totals.get(sessionId) || 0) + points);
+  });
+
+  const sessionIds = new Set([...participantGroups.keys(), ...totals.keys()]);
+  const deltas = [];
+  for (const sessionId of sessionIds) {
+    const rawTotal = totals.get(sessionId) || 0;
+    let delta = rawTotal;
+    if (game.type === 'OX_QUIZ') {
+      const count = Math.max(1, participantGroups.get(sessionId)?.size || 0);
+      delta = Math.round((rawTotal / count) / 10) * 10;
+    } else if (game.type === 'RPS') {
+      const count = Math.max(1, participantGroups.get(sessionId)?.size || 0);
+      delta = Math.round(rawTotal / count);
+    }
+    if (delta) await TableSession.increment('score', { by: delta, where: { id: sessionId } });
+    deltas.push({ sessionId, delta });
+  }
+
+  const sessions = await TableSession.findAll({
+    where: { status: 'ACTIVE' },
+    include: [{ association: 'table', attributes: ['tableNumber'] }],
+    order: [['score', 'DESC'], ['id', 'ASC']],
+  });
+  return sessions.map((session) => ({
+    sessionId: session.id,
+    tableNumber: session.table?.tableNumber,
+    score: Number(session.score || 0),
+    delta: deltas.find((item) => item.sessionId === session.id)?.delta || 0,
+  }));
 }
 
 async function endGame(sessionId, data) {
@@ -276,7 +362,13 @@ async function updateGlobalGame(data) {
   const rounds = game.state?.rounds || [];
   const currentRound = Number(game.state?.currentRound || 0);
   if (data.action === 'REVEAL') {
-    game.state = { ...(game.state || {}), answerRevealed: true };
+    const scoreboard = await scoreCurrentRound(game);
+    game.state = {
+      ...(game.state || {}),
+      answerRevealed: true,
+      scoreboard,
+      scoredRounds: { ...((game.state || {}).scoredRounds || {}), [currentRound]: true },
+    };
   } else if (data.action === 'SPIN') {
     if (game.type !== 'ROULETTE') throw createServiceError('룰렛 게임이 아닙니다.', 'INVALID_GAME_ACTION');
     const options = rounds[currentRound]?.options || [];
@@ -326,4 +418,4 @@ async function endGlobalGame(data) {
   });
 }
 
-module.exports = { createInvite, acceptInvite, handleAction, endGame, startGlobalGame, updateGlobalGame, endGlobalGame, getActiveGlobalGame, normalizePinballEntries };
+module.exports = { createInvite, acceptInvite, handleAction, endGame, startGlobalGame, updateGlobalGame, endGlobalGame, getActiveGlobalGame, normalizePinballEntries, rpsScore };

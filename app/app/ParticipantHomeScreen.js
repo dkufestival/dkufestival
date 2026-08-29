@@ -23,6 +23,10 @@ export default function ParticipantHomeScreen() {
   const [scoreboard, setScoreboard] = useState([]);
   const [notices, setNotices] = useState([]);
   const [latestNotice, setLatestNotice] = useState(null);
+  const [pendingActivity, setPendingActivity] = useState(null);
+  const [pendingSpecialGame, setPendingSpecialGame] = useState(null);
+  const acceptedActivityTypeRef = useRef(null);
+  const declinedActivityTypeRef = useRef(null);
 
   const applyCollaborationState = (data = {}) => {
     if (Array.isArray(data.teams)) setTeams(data.teams);
@@ -60,9 +64,14 @@ export default function ParticipantHomeScreen() {
     setActivity(nextActivity);
     if (reportingRef.current || flowLockRef.current) return;
     if (!nextActivity) {
+      acceptedActivityTypeRef.current = null;
+      declinedActivityTypeRef.current = null;
+      setPendingActivity(null);
       setFlow((currentFlow) => currentFlow === 'activity' ? 'waiting' : currentFlow);
-    } else {
+    } else if (acceptedActivityTypeRef.current === nextActivity.type) {
       setFlow('activity');
+    } else if (declinedActivityTypeRef.current !== nextActivity.type) {
+      setPendingActivity(nextActivity);
     }
   }, []);
 
@@ -75,13 +84,7 @@ export default function ParticipantHomeScreen() {
         Alert.alert('참가 불가', '개인활동보고 중에는 게임에 참가할 수 없습니다.');
         return;
       }
-      router.replace({
-        pathname: '/MissionPhotoPlayScreen',
-        params: {
-          roomCode: data.roomCode || '',
-          missionText: data.missionText || '',
-        },
-      });
+      setPendingSpecialGame({ kind: 'MISSION_PHOTO', title: '미션 포토', data });
     };
 
     const handleMusicQuizNavigate = ({ roomCode = '' } = {}) => {
@@ -91,7 +94,7 @@ export default function ParticipantHomeScreen() {
         Alert.alert('참가 불가', '개인활동보고 중에는 게임에 참가할 수 없습니다.');
         return;
       }
-      router.replace({ pathname: '/MusicquizPlayerScreen', params: { roomCode } });
+      setPendingSpecialGame({ kind: 'MUSIC', title: '음악 퀴즈', data: { roomCode } });
     };
 
     const joinSocketRoom = async () => {
@@ -170,6 +173,9 @@ export default function ParticipantHomeScreen() {
       if (eventRoomCode && eventRoomCode !== normalizeRoomCode(roomCode)) return;
 
       setActivity(null);
+      setPendingActivity(null);
+      acceptedActivityTypeRef.current = null;
+      declinedActivityTypeRef.current = null;
       setFlow('waiting');
     };
 
@@ -276,6 +282,27 @@ export default function ParticipantHomeScreen() {
     };
   }, [loadCurrentActivity]);
 
+  useEffect(() => {
+    if (!roomCode) return undefined;
+    let mounted = true;
+
+    const refreshCollaborationState = async () => {
+      try {
+        const data = await apiRequest(`/rooms/${roomCode}/collaboration`);
+        if (mounted) applyCollaborationState(data);
+      } catch (_error) {
+        // 실시간 소켓이 정상인 동안 일시적인 재조회 실패는 화면 흐름을 막지 않습니다.
+      }
+    };
+
+    refreshCollaborationState();
+    const timer = setInterval(refreshCollaborationState, 5000);
+    return () => {
+      mounted = false;
+      clearInterval(timer);
+    };
+  }, [roomCode]);
+
   const clearReport = async () => {
     const memberId = getCurrentMember()?.memberId;
     if (!memberId) {
@@ -319,6 +346,40 @@ export default function ParticipantHomeScreen() {
     return <ActionAloneScreen onReturn={clearReport} onSchedule={() => router.push('/ScheduleScreen?readonly=1')} onExit={leaveRoom} liveState={{ teams, members, scoreboard, notices, latestNotice }} />;
   }
 
+  if (pendingSpecialGame) {
+    return (
+      <GameParticipationScreen
+        activity={{ title: pendingSpecialGame.title }}
+        onJoin={() => {
+          const selectedGame = pendingSpecialGame;
+          acceptedActivityTypeRef.current = selectedGame.kind;
+          declinedActivityTypeRef.current = null;
+          setPendingActivity(null);
+          setPendingSpecialGame(null);
+          if (selectedGame.kind === 'MISSION_PHOTO') {
+            router.replace({
+              pathname: '/MissionPhotoPlayScreen',
+              params: {
+                roomCode: selectedGame.data.roomCode || '',
+                missionText: selectedGame.data.missionText || '',
+              },
+            });
+            return;
+          }
+          router.replace({ pathname: '/MusicquizPlayerScreen', params: { roomCode: selectedGame.data.roomCode || '' } });
+        }}
+        onDecline={() => {
+          declinedActivityTypeRef.current = pendingSpecialGame.kind;
+          acceptedActivityTypeRef.current = null;
+          setPendingActivity(null);
+          setPendingSpecialGame(null);
+          setFlow('waiting');
+        }}
+        onExit={leaveRoom}
+      />
+    );
+  }
+
   if (flow === 'activity') {
     return <ActivityScreen activity={activity} onExit={leaveRoom} onReport={() => {
       flowLockRef.current = true;
@@ -326,10 +387,47 @@ export default function ParticipantHomeScreen() {
     }} />;
   }
 
+  if (pendingActivity) {
+    return (
+      <GameParticipationScreen
+        activity={pendingActivity}
+        onJoin={() => {
+          acceptedActivityTypeRef.current = pendingActivity.type;
+          declinedActivityTypeRef.current = null;
+          setPendingActivity(null);
+          setFlow('activity');
+        }}
+        onDecline={() => {
+          declinedActivityTypeRef.current = pendingActivity.type;
+          acceptedActivityTypeRef.current = null;
+          setPendingActivity(null);
+          setFlow('waiting');
+        }}
+        onExit={leaveRoom}
+      />
+    );
+  }
+
   return <WaitingForMcScreen onReport={() => {
     flowLockRef.current = true;
     setFlow('report');
   }} onSchedule={() => router.push('/ScheduleScreen?readonly=1')} onExit={leaveRoom} liveState={{ teams, members, scoreboard, notices, latestNotice }} />;
+}
+
+function GameParticipationScreen({ activity, onJoin, onDecline, onExit }) {
+  return (
+    <PlayceLayout showExit onExit={onExit}>
+      <View style={styles.participationWrap}>
+        <Text style={styles.participationEyebrow}>게임 시작 안내</Text>
+        <Text style={styles.participationTitle}>{activity?.title || '레크레이션'}</Text>
+        <Text style={styles.participationQuestion}>이 게임에 참가하시겠습니까?</Text>
+        <View style={styles.participationButtons}>
+          <PlayceButton label="참가하기" onPress={onJoin} />
+          <PlayceButton label="참가하지 않기" onPress={onDecline} />
+        </View>
+      </View>
+    </PlayceLayout>
+  );
 }
 
 function ActivityScreen({ activity, onExit, onReport }) {
@@ -810,6 +908,11 @@ const styles = StyleSheet.create({
   myScoreText: { color: '#fff' },
   statusWrap: { flex: 1, justifyContent: 'center', paddingBottom: 61 },
   statusText: { color: '#fff', fontFamily: 'monospace', fontSize: 23, fontWeight: '900', lineHeight: 30, textAlign: 'center' },
+  participationWrap: { flex: 1, justifyContent: 'center', paddingBottom: 72 },
+  participationEyebrow: { color: '#aaa', fontSize: 14, fontWeight: '800', textAlign: 'center', marginBottom: 10 },
+  participationTitle: { color: '#fff', fontSize: 32, fontWeight: '900', textAlign: 'center' },
+  participationQuestion: { color: '#fff', fontSize: 20, fontWeight: '700', textAlign: 'center', marginTop: 18, marginBottom: 36 },
+  participationButtons: { gap: 12 },
   activityTitle: { color: '#fff', fontSize: 28, fontWeight: 'bold', textAlign: 'center', marginTop: 24 },
   helperText: { color: '#aaa', fontSize: 13, textAlign: 'center', marginTop: 16 },
   activityWrap: { flex: 1, justifyContent: 'center', gap: 18, paddingBottom: 68 },

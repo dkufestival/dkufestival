@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const { getConnection } = require('../db/mysql');
-const { awardCorrectAnswersForQuestion } = require('../services/scoreService');
+const { awardGameScoresForQuestion } = require('../services/scoreService');
 const teamService = require('../services/teamService');
 
 const router = express.Router();
@@ -964,7 +964,7 @@ router.post('/recreation/:type/reveal-answer', async (req, res) => {
         promptIndex: Number(roomRows[0]?.current_prompt_index || promptIndex || 0),
       });
 
-      const scoreboard = await awardCorrectAnswersForQuestion(pool, roomId, questionId, 1, `auto-${game.game_type}`);
+      const scoreboard = await awardGameScoresForQuestion(pool, roomId, questionId, game.game_type);
       const io = req.app.get('io');
       if (io) {
         const [rooms] = await pool.execute('SELECT room_code FROM rooms WHERE room_id = ?', [roomId]);

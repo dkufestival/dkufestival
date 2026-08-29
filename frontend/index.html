@@ -6,7 +6,7 @@
 <title>PIU:M</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="style.css?v=35">
+<link rel="stylesheet" href="style.css?v=36">
 </head>
 <body>
 <div class="phone">
@@ -246,9 +246,21 @@
   </div>
 </div>
 
+<div id="modal-game-participation" class="modal-backdrop">
+  <div class="modal-card">
+    <div class="modal-title">게임 시작 안내</div>
+    <div id="game-participation-title" class="modal-detail">전체 게임이 시작됩니다.</div>
+    <p>이 게임에 참가하시겠습니까?</p>
+    <div class="modal-row">
+      <button id="game-participation-accept" class="btn-dark full">참가하기</button>
+      <button id="game-participation-decline" class="btn-dark full">참가하지<br>않기</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-<script type="module" src="js/app.js?v=25"></script>
+<script type="module" src="js/app.js?v=32"></script>
 </body>
 </html>

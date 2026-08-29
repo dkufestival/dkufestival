@@ -84,6 +84,8 @@ function bindSocket() {
     } else {
       addGameLog(`${game.type} 응답 수신`);
     }
+    state.activeGame = game;
+    renderTeamScoreboard();
   });
   socket.on('game:global:current', (game) => {
     state.activeGame = game;
@@ -100,6 +102,7 @@ function bindSocket() {
     state.activeGame = game;
     renderGameControls();
     renderGameList();
+    renderTeamScoreboard();
   });
 }
 
@@ -127,6 +130,29 @@ function renderAll() {
   renderGameControls();
   renderGameList();
   renderSongs();
+  renderTeamScoreboard();
+}
+
+function renderTeamScoreboard() {
+  const box = $('team-scoreboard');
+  if (!box) return;
+  clear(box);
+  const liveScores = state.activeGame?.state?.scoreboard || [];
+  const scores = liveScores.length
+    ? liveScores
+    : state.tables
+      .filter((table) => table.activeSession)
+      .map((table) => ({ tableNumber: table.tableNumber, score: Number(table.activeSession.score || 0), delta: 0 }));
+  scores
+    .sort((a, b) => Number(b.score) - Number(a.score) || Number(a.tableNumber) - Number(b.tableNumber))
+    .forEach((team, index) => {
+      const row = document.createElement('div');
+      row.className = 'game-log-item';
+      const delta = Number(team.delta || 0);
+      row.textContent = `${index + 1}위 · TABLE ${team.tableNumber || '-'} · ${Number(team.score || 0)}점${delta ? ` (이번 라운드 +${delta})` : ''}`;
+      box.appendChild(row);
+    });
+  if (!scores.length) box.appendChild(text('div', 'game-log-empty', '활성 팀이 없습니다.'));
 }
 
 function renderStats() {
@@ -392,7 +418,7 @@ function pinballViewerUrl(game) {
     seed: String(game.state?.seed || 1),
     startAt: String(game.state?.startAt || Date.now()),
   });
-  return `/pinball-viewer/?${params}`;
+  return `/pinball-local/?${params}`;
 }
 
 function renderPinballSetting() {

@@ -13,6 +13,6 @@ test('time match game is registered in the model and central controls', () => {
   assert.match(modelSource, /'TIME_MATCH'/);
   assert.match(serviceSource, /differenceMs = elapsedMs - targetMs/);
   assert.match(adminSource, /state\.selectedGame === 'TIME_MATCH'/);
-  assert.match(socketSource, /game\.type !== 'TIME_MATCH'/);
+  assert.match(socketSource, /\['TIME_MATCH', 'PINBALL'\]\.includes\(game\.type\)/);
   assert.match(participantSource, /if \(game\.type !== 'TIME_MATCH'\) showGlobalGameScreen\(\)/);
 });

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>핀볼 레이스</title>
+  <link rel="stylesheet" href="pinball.css?v=1">
+</head>
+<body>
+  <main>
+    <header><strong>PINBALL RACE</strong><span id="status">구슬 준비 중</span></header>
+    <canvas id="board"></canvas>
+    <ol id="ranking"></ol>
+    <aside id="editor" hidden>
+      <strong>맵 편집기</strong>
+      <div class="editor-tools">
+        <button data-tool="select" class="active">선택/이동</button>
+        <button data-tool="peg">점 추가</button>
+        <button data-tool="bumper">범퍼 추가</button>
+        <button data-tool="spinner">회전대 추가</button>
+        <button data-tool="rail">레일 추가</button>
+      </div>
+      <label>맵 위치 <input id="editor-scroll" type="range" min="0" max="1850" value="0"></label>
+      <div class="editor-actions">
+        <button id="editor-delete">선택 삭제</button>
+        <button id="editor-save">저장</button>
+        <button id="editor-copy">JSON 복사</button>
+        <button id="editor-reset">초기화</button>
+      </div>
+      <small id="editor-help">장애물을 선택한 뒤 드래그해서 이동하세요.</small>
+    </aside>
+  </main>
+  <script type="module" src="pinball.js?v=12"></script>
+</body>
+</html>

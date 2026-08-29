@@ -1,0 +1,21 @@
+* { box-sizing: border-box; }
+html, body, main { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+body { color: #fff; background: #090a0f; font-family: Pretendard, system-ui, sans-serif; }
+main { position: relative; display: flex; flex-direction: column; }
+header { position: absolute; z-index: 2; top: 10px; left: 12px; right: 12px; display: flex; justify-content: space-between; align-items: center; pointer-events: none; }
+header strong { font-size: 13px; letter-spacing: 2px; }
+header span { color: #b9ff45; font-size: 11px; font-weight: 800; }
+#board { display: block; width: 100%; height: 100%; }
+#ranking { position: absolute; z-index: 2; right: 10px; bottom: 12px; width: 128px; max-height: 38%; margin: 0; padding: 8px 8px 8px 31px; overflow: hidden; border: 1px solid rgba(255,255,255,.16); border-radius: 12px; background: rgba(5,6,10,.78); font-size: 11px; font-weight: 800; backdrop-filter: blur(8px); }
+#ranking:empty { display: none; }
+#ranking li { padding: 3px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#editor { position: absolute; z-index: 5; top: 42px; left: 10px; width: min(280px, calc(100% - 20px)); padding: 12px; border: 1px solid rgba(255,255,255,.2); border-radius: 14px; background: rgba(8,10,18,.94); box-shadow: 0 12px 35px rgba(0,0,0,.4); }
+#editor strong { display: block; margin-bottom: 9px; }
+.editor-tools, .editor-actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+#editor button { min-height: 34px; border: 1px solid #465172; border-radius: 8px; color: #fff; background: #20263a; font-weight: 700; cursor: pointer; }
+#editor button.active { border-color: #70efff; color: #061015; background: #70efff; }
+#editor label { display: grid; gap: 4px; margin: 10px 0; color: #cbd3ef; font-size: 12px; }
+#editor input { width: 100%; }
+#editor small { display: block; margin-top: 9px; color: #b7c1e5; line-height: 1.4; }
+body.editing #ranking { display: none; }
+body.editing #board { cursor: crosshair; }
