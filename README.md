@@ -33,7 +33,7 @@ FRONTEND_URL=https://dkufestival-app-production.up.railway.app
 JWT_SECRET=<long-random-secret>
 ADMIN_ID=<admin-id>
 ADMIN_PASSWORD=<admin-password>
-TABLE_COUNT=20
+TABLE_COUNT=80
 QR_OUTPUT_DIR=./qr-codes
 ```
 
