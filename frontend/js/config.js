@@ -1,4 +1,4 @@
-const defaultServerUrl = window.location.port === '5174'
+const defaultServerUrl = ['5174', '5500'].includes(window.location.port)
   ? `${window.location.protocol}//${window.location.hostname || 'localhost'}:3000`
   : window.location.origin;
 

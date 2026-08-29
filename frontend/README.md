@@ -1,77 +1,53 @@
 # Frontend
 
-정적 HTML/CSS/JavaScript 프론트입니다. Express 백엔드가 이 디렉터리를
-정적 파일로 함께 제공하므로 별도의 프런트엔드 서버는 필요하지 않습니다.
+정적 HTML/CSS/JavaScript 프론트엔드입니다. 배포 환경에서는 백엔드 Express 서버가 `frontend` 디렉터리를 함께 서빙하므로 별도의 프론트 서버가 필요하지 않습니다.
 
-## 실행
+## 배포 후 접속
 
-저장소 루트에서 백엔드 서버 하나만 실행합니다.
+```text
+사용자 화면: https://dkufestival-app-production.up.railway.app/index.html?qr=<qrToken>
+관리자 화면: https://dkufestival-app-production.up.railway.app/admin.html
+농구 게임:   https://dkufestival-app-production.up.railway.app/basketball/
+스톱워치:    https://dkufestival-app-production.up.railway.app/stopwatch/
+```
+
+`frontend/js/config.js`는 배포 환경에서 `window.location.origin`을 API와 Socket.IO 주소로 사용합니다. 즉 프론트와 백엔드가 같은 도메인에서 제공되면 별도 설정이 필요 없습니다.
+
+## 로컬 실행
+
+저장소 루트에서 백엔드 서버 하나만 실행하면 프론트까지 함께 확인할 수 있습니다.
 
 ```bash
 npm run dev
 ```
 
-사용자 화면:
-
 ```text
-http://localhost:3000/index.html?qr=<qrToken>
+사용자 화면: http://localhost:3000/index.html?qr=<qrToken>
+관리자 화면: http://localhost:3000/admin.html
+농구 게임:   http://localhost:3000/basketball/
+스톱워치:    http://localhost:3000/stopwatch/
 ```
 
-관리자 화면:
+프론트만 별도 정적 서버로 확인할 수도 있습니다.
 
-```text
-http://localhost:3000/admin.html
+```bash
+cd frontend
+python -m http.server 5174
 ```
 
-농구게임:
+이 경우 API와 Socket.IO는 자동으로 `http://localhost:3000`을 사용합니다.
 
-```text
-http://localhost:3000/basketball/
-```
+## 주요 화면
 
-핀볼 관전 화면은 관리자가 이름을 입력해 시작하면 사용자 화면에 자동으로 표시됩니다.
-외부 [Marble Roulette](https://lazygyu.github.io/roulette/)를 관전 모드로 불러오며 사용자는 조작할 수 없습니다.
-`민수*3`처럼 입력하면 같은 이름의 구슬을 여러 개 만들 수 있으며 마지막에 도착한 구슬이 승자가 됩니다.
-
-스톱워치 게임:
-
-```text
-http://localhost:3000/stopwatch/
-```
-
-## 사용자 UX
-
-1. QR로 테이블에 입장합니다.
-2. 첫 입장자는 대표가 되고 남/여 인원을 설정합니다.
-3. 대표만 다른 사용 중 테이블에 `채팅 요청` 버튼을 볼 수 있습니다.
-4. 요청을 보내면 1분 카운트다운 대기 UI가 표시됩니다.
-5. 대상 테이블 일반 참가자는 요청 안내만 보고, 대표만 수락/거절할 수 있습니다.
-6. 수락되면 양쪽 테이블 모든 참가자에게 기존 채팅 모달이 열립니다.
-7. 새로고침/재연결 후에도 `/api/chat/active`와 `chat:active`로 활성 채팅을 복구합니다.
-8. 아무 참가자나 종료 버튼을 누를 수 있고, 확인 후 양쪽 테이블 모두 메인 화면으로 돌아갑니다.
-
-채팅 중에도 공지, 신청곡, 게임 모달은 사용할 수 있습니다.
+1. QR 링크로 테이블에 입장합니다.
+2. 첫 입장자는 호스트가 되며 테이블 인원을 설정합니다.
+3. 호스트만 다른 사용 중 테이블에 채팅 요청을 보낼 수 있습니다.
+4. 요청은 1분 동안 대기 상태이고, 상대 테이블 호스트가 수락하면 채팅방이 활성화됩니다.
+5. 활성 채팅은 새로고침이나 재접속 후에도 복구됩니다.
+6. 관리자는 공지, 신청곡, 게임, 테이블 상태를 `admin.html`에서 관리합니다.
 
 ## 알림
 
-`frontend/sw.js`, `manifest.webmanifest`, `frontend/js/push.js`가 Web Push를 담당합니다. 사용자가 `알림 켜기`를 누를 때만 브라우저 권한을 요청합니다. 권한 거절 또는 Push 미지원 브라우저에서는 Socket 인앱 알림만 사용합니다.
+`sw.js`, `manifest.webmanifest`, `js/push.js`가 Web Push를 담당합니다. 사용자가 알림을 켠 경우에만 브라우저 권한을 요청합니다.
 
-iOS는 홈 화면에 추가된 PWA 환경에서만 Push가 동작할 수 있습니다.
-
-## 로컬 다중 브라우저 테스트
-
-1. 백엔드 실행 후 서로 다른 테이블 QR 두 개를 준비합니다.
-2. 브라우저 A에서 TABLE 1 대표로 입장합니다.
-3. 브라우저 B에서 TABLE 2 대표로 입장합니다.
-4. 각 테이블에 시크릿 창 등으로 일반 참가자를 추가합니다.
-5. A 대표가 B에 채팅 요청을 보냅니다.
-6. B 일반 참가자에는 수락/거절 버튼이 없는지 확인합니다.
-7. B 대표가 수락하면 양쪽 모든 화면이 채팅으로 이동하는지 확인합니다.
-8. 새로고침 후 채팅이 복구되는지 확인합니다.
-9. 일반 참가자가 종료하면 양쪽 모든 화면이 메인으로 돌아오는지 확인합니다.
-
-모바일 viewport 확인 대상:
-
-- 360 x 800
-- 390 x 844
-- 412 x 915
+iOS는 홈 화면에 추가한 PWA 환경에서만 Push가 동작할 수 있습니다.
