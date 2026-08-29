@@ -3,35 +3,45 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#10120f">
+  <meta name="theme-color" content="#0a0a0a">
   <title>스톱워치 게임 | piu:m</title>
-  <link rel="stylesheet" href="./stopwatch.css">
+  <link rel="stylesheet" href="./stopwatch.css?v=3">
 </head>
 <body>
   <main class="game-shell">
     <section class="game-card" aria-label="스톱워치 목표 시간 게임">
       <header class="topbar">
         <button id="back-button" class="back-button" type="button" aria-label="돌아가기"><i>‹</i> 돌아가기</button>
-        <h1>스톱워치</h1>
-        <button id="reset-button" class="reset-button" type="button">초기화</button>
+        <h1 class="page-title">스톱워치</h1>
       </header>
 
-      <section class="target-panel">
-        <span>목표 시간</span>
-        <strong id="target-time">--:--.---</strong>
-      </section>
+      <section class="sw-screen">
+        <div class="sw-target-card">
+          <span class="sw-target-label">목표 시간</span>
+          <strong id="target-time" class="sw-target-value">--:--.---</strong>
+        </div>
 
-      <section class="watch-panel">
-        <div id="elapsed-time" class="elapsed-time">00:00.000</div>
-        <p id="result-text" class="result-text">관리자가 스톱워치 게임을 시작하면 참여할 수 있습니다.</p>
-      </section>
+        <div class="sw-elapsed-wrap">
+          <div id="elapsed-time" class="sw-elapsed-value">00:00.000</div>
+          <p id="result-text" class="sw-notice">관리자가 스톱워치 게임을 시작하면 참여할 수 있습니다.</p>
+        </div>
 
-      <button id="action-button" class="action-button" type="button" disabled>대기 중</button>
-      <p id="status-text" class="status-text">서버 연결 중</p>
+        <button id="action-button" class="action-button" type="button" disabled>대기 중</button>
+
+        <div id="attempts-list" class="attempts-list" hidden>
+          <div class="attempts-head">
+            <span>시도 기록</span>
+            <span id="attempts-count">0/1</span>
+          </div>
+          <div id="attempts-rows" class="attempts-rows"></div>
+        </div>
+
+        <p id="status-text" class="sw-status">서버 연결 중</p>
+      </section>
     </section>
   </main>
 
   <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-  <script type="module" src="./stopwatch.js?v=2"></script>
+  <script type="module" src="./stopwatch.js?v=4"></script>
 </body>
 </html>

@@ -948,10 +948,12 @@ function showGlobalGameScreen() {
   const names = { OX_QUIZ: 'O/X 퀴즈', RPS: '가위바위보', WORD_GUESS: '제시어 맞히기', ROULETTE: '룰렛', IMAGE_GAME: '이미지 게임' };
   $('game-screen-title').textContent = isTimeMatch ? '시간을 멈춰라' : names[state.activeGame?.type] || '전체 게임';
   $('game-screen-kicker').textContent = isTimeMatch ? 'PRECISION GAME' : 'ADMIN EVENT';
-  $('game-screen-copy').innerHTML = isTimeMatch ? '중앙에서 설정한 목표 시간입니다.<br>밀리초까지 정확히 맞춰보세요.' : '관리자가 게임을 시작했습니다.<br>아래 버튼을 눌러 참여해 주세요.';
-  $('game-demo-icon').textContent = isTimeMatch ? '' : ({ OX_QUIZ: '', RPS: '가위! 바위! 보!', WORD_GUESS: '💬', ROULETTE: '🎯', IMAGE_GAME: '🖼️' }[state.activeGame?.type] || '⚡');
+  $('game-screen-copy').innerHTML = isTimeMatch ? '중앙에서 설정한 목표 시간입니다.<br>밀리초까지 정확히 맞춰보세요.' : '';
+  $('game-screen-copy').hidden = !isTimeMatch;
+  $('game-demo-icon').textContent = isTimeMatch ? '' : ({ WORD_GUESS: '💬', ROULETTE: '🎯', IMAGE_GAME: '🖼️' }[state.activeGame?.type] || '');
   $('game-demo-icon').classList.toggle('rps-call', state.activeGame?.type === 'RPS');
-  $('game-demo-label').textContent = isTimeMatch ? 'TARGET TIME' : 'LIVE QUESTION';
+  $('game-demo-label').textContent = isTimeMatch ? 'TARGET TIME' : '';
+  $('game-demo-label').hidden = !isTimeMatch;
   const mission = $('game-demo-mission');
   clear(mission);
   if (isTimeMatch) {
@@ -1073,9 +1075,9 @@ function showRoundResult() {
     const outcome = submitted === expected ? 'draw' : winsAgainst[submitted] === expected ? 'win' : 'lose';
     const labels = { win: '이겼습니다!', draw: '비겼습니다!', lose: '졌습니다!' };
     result.className = `round-result ${submitted ? outcome : 'draw'}`;
-    result.textContent = submitted
-      ? `${labels[outcome]} · 진행자: ${answerLabels[expected] || '-'} / 참가자: ${answerLabels[submitted]}`
-      : `선택하지 않았습니다 · 진행자: ${answerLabels[expected] || '-'}`;
+    result.innerHTML = submitted
+      ? `${labels[outcome]}<br>진행자: ${answerLabels[expected] || '-'}<br>참가자: ${answerLabels[submitted]}`
+      : `선택하지 않았습니다<br>진행자: ${answerLabels[expected] || '-'}`;
     playRpsReveal(expected, result);
     return;
   } else {

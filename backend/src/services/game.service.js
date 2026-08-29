@@ -1,5 +1,5 @@
 const { Op, QueryTypes } = require('sequelize');
-const { GameSession, TableSession } = require('../models');
+const { GameSession, TableSession, Participant } = require('../models');
 
 function createServiceError(message, code) {
   const error = new Error(message);
@@ -100,13 +100,34 @@ async function handleAction(sessionId, data, participantId) {
     if (!Number.isInteger(elapsedMs) || elapsedMs < 0 || !Number.isInteger(targetMs)) {
       throw createServiceError('유효한 시간 기록이 필요합니다.', 'INVALID_TIME_RESULT');
     }
+    const responseKey = participantId || sessionId;
+    const baseMaxAttempts = Number(game.state?.maxAttempts) || 1;
+    const bonusAttempts = Number(game.state?.bonuses?.[responseKey]) || 0;
+    const maxAttempts = baseMaxAttempts + bonusAttempts;
+    const priorAttempts = game.state?.responses?.[responseKey]?.state?.attempts || [];
+    if (priorAttempts.length >= maxAttempts) {
+      throw createServiceError('이미 모든 기회를 사용했습니다.', 'ATTEMPTS_EXCEEDED');
+    }
     const differenceMs = elapsedMs - targetMs;
+    const attempt = {
+      attemptNumber: priorAttempts.length + 1,
+      elapsedMs,
+      differenceMs,
+      success: differenceMs === 0,
+      stoppedAt: responseState.stoppedAt || new Date().toISOString(),
+    };
+    const attempts = [...priorAttempts, attempt];
+    const best = attempts.reduce((a, b) => (Math.abs(b.differenceMs) < Math.abs(a.differenceMs) ? b : a));
     responseState = {
       elapsedMs,
       targetMs,
       differenceMs,
       success: differenceMs === 0,
-      stoppedAt: responseState.stoppedAt || new Date().toISOString(),
+      stoppedAt: attempt.stoppedAt,
+      attempts,
+      attemptsUsed: attempts.length,
+      maxAttempts,
+      best,
     };
   }
   if (game.mode === 'GLOBAL' && ['OX_QUIZ', 'WORD_GUESS', 'IMAGE_GAME'].includes(game.type)) {
@@ -308,6 +329,10 @@ async function startGlobalGame(data) {
     if (!Number.isInteger(targetMs) || targetMs < 1 || targetMs > 5999999) {
       throw createServiceError('목표 시간은 1ms 이상 99분 59.999초 이하로 설정해야 합니다.', 'INVALID_TARGET_TIME');
     }
+    const maxAttempts = Number(data.state?.maxAttempts);
+    if (!Number.isInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 20) {
+      throw createServiceError('참가자별 기회는 1~20회 사이로 설정해야 합니다.', 'INVALID_MAX_ATTEMPTS');
+    }
   }
   let gameState = data.state || {};
   if (data.type === 'PINBALL') {
@@ -347,6 +372,95 @@ async function startGlobalGame(data) {
       startedAt: new Date(),
     }, { transaction });
   });
+}
+
+async function grantAttempts(data) {
+  const game = await GameSession.findOne({ where: { id: Number(data.gameId), mode: 'GLOBAL', status: 'ACTIVE' } });
+  if (!game) throw createServiceError('진행 중인 단체 게임을 찾을 수 없습니다.', 'GLOBAL_GAME_NOT_FOUND');
+  if (game.type !== 'TIME_MATCH') throw createServiceError('시간 맞추기 게임에만 기회를 추가할 수 있습니다.', 'INVALID_GAME_TYPE');
+
+  const amount = Number(data.amount);
+  if (!Number.isInteger(amount) || amount < 1 || amount > 20) {
+    throw createServiceError('추가 기회는 1~20 사이로 입력해주세요.', 'INVALID_ATTEMPTS_AMOUNT');
+  }
+
+  const tableSessionId = Number(data.tableSessionId);
+  if (!tableSessionId) throw createServiceError('테이블을 선택해주세요.', 'INVALID_PAYLOAD');
+
+  const requestedIds = Array.isArray(data.participantIds)
+    ? [...new Set(data.participantIds.map(Number).filter(Boolean))]
+    : [];
+
+  let participantIds = requestedIds;
+  if (!requestedIds.length) {
+    const members = await Participant.findAll({ where: { tableSessionId } });
+    participantIds = members.map((member) => member.id);
+  } else {
+    const members = await Participant.findAll({ where: { tableSessionId, id: { [Op.in]: requestedIds } } });
+    if (members.length !== requestedIds.length) {
+      throw createServiceError('선택한 참가자 중 해당 테이블에 없는 사람이 있습니다.', 'INVALID_PARTICIPANT');
+    }
+  }
+  if (!participantIds.length) throw createServiceError('해당 테이블에 등록된 참가자가 없습니다.', 'NO_PARTICIPANTS');
+
+  const bonuses = { ...(game.state?.bonuses || {}) };
+  participantIds.forEach((id) => {
+    bonuses[id] = (Number(bonuses[id]) || 0) + amount;
+  });
+  game.state = { ...(game.state || {}), bonuses };
+  game.changed('state', true);
+  await game.save();
+  return { game, tableSessionId, participantIds, amount };
+}
+
+async function revokeAttempts(data) {
+  const game = await GameSession.findOne({ where: { id: Number(data.gameId), mode: 'GLOBAL', status: 'ACTIVE' } });
+  if (!game) throw createServiceError('진행 중인 단체 게임을 찾을 수 없습니다.', 'GLOBAL_GAME_NOT_FOUND');
+  if (game.type !== 'TIME_MATCH') throw createServiceError('시간 맞추기 게임에서만 기회를 취소할 수 있습니다.', 'INVALID_GAME_TYPE');
+
+  const amount = Number(data.amount);
+  if (!Number.isInteger(amount) || amount < 1 || amount > 20) {
+    throw createServiceError('취소할 기회는 1~20 사이로 입력해주세요.', 'INVALID_ATTEMPTS_AMOUNT');
+  }
+
+  const participantIds = Array.isArray(data.participantIds)
+    ? [...new Set(data.participantIds.map(Number).filter(Boolean))]
+    : [];
+  if (!participantIds.length) throw createServiceError('취소할 참가자가 없습니다.', 'INVALID_PAYLOAD');
+
+  const baseMaxAttempts = Number(game.state?.maxAttempts) || 1;
+  const bonuses = { ...(game.state?.bonuses || {}) };
+  const responses = game.state?.responses || {};
+
+  const blocked = participantIds.some((id) => {
+    const currentBonus = Number(bonuses[id]) || 0;
+    const attemptsUsed = responses[id]?.state?.attempts?.length || 0;
+    const remaining = (baseMaxAttempts + currentBonus) - attemptsUsed;
+    return remaining < amount;
+  });
+  if (blocked) {
+    throw createServiceError('이미 사용한 기회가 있어 취소할 수 없습니다.', 'ATTEMPTS_ALREADY_USED');
+  }
+
+  participantIds.forEach((id) => {
+    const next = (Number(bonuses[id]) || 0) - amount;
+    if (next > 0) bonuses[id] = next;
+    else delete bonuses[id];
+  });
+  game.state = { ...(game.state || {}), bonuses };
+  game.changed('state', true);
+  await game.save();
+  return { game, tableSessionId: Number(data.tableSessionId), participantIds, amount };
+}
+
+async function getMyGlobalResponse(gameId, sessionId, participantId) {
+  const game = await GameSession.findOne({ where: { id: Number(gameId), mode: 'GLOBAL' } });
+  if (!game) throw createServiceError('게임을 찾을 수 없습니다.', 'GAME_NOT_FOUND');
+  const key = participantId || sessionId;
+  const attempts = game.state?.responses?.[key]?.state?.attempts || [];
+  const baseMaxAttempts = Number(game.state?.maxAttempts) || 1;
+  const bonusAttempts = Number(game.state?.bonuses?.[key]) || 0;
+  return { attempts, maxAttempts: baseMaxAttempts + bonusAttempts, bonusAttempts };
 }
 
 function getActiveGlobalGame() {
@@ -418,4 +532,4 @@ async function endGlobalGame(data) {
   });
 }
 
-module.exports = { createInvite, acceptInvite, handleAction, endGame, startGlobalGame, updateGlobalGame, endGlobalGame, getActiveGlobalGame, normalizePinballEntries, rpsScore };
+module.exports = { createInvite, acceptInvite, handleAction, endGame, startGlobalGame, updateGlobalGame, endGlobalGame, getActiveGlobalGame, getMyGlobalResponse, grantAttempts, revokeAttempts, normalizePinballEntries, rpsScore };

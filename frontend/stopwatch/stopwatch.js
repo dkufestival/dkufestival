@@ -9,6 +9,8 @@ const state = {
   startedAt: 0,
   elapsedMs: 0,
   frame: null,
+  attempts: [],
+  maxAttempts: 1,
   resultRedirectTimer: null,
 };
 
@@ -18,6 +20,12 @@ function formatTime(totalMs) {
   const seconds = Math.floor((value % 60000) / 1000);
   const milliseconds = value % 1000;
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`;
+}
+
+function formatDiff(diffMs) {
+  const value = Number(diffMs) || 0;
+  if (value === 0) return '±0ms';
+  return `${value < 0 ? '-' : '+'}${Math.abs(value)}ms`;
 }
 
 function setStatus(message) {
@@ -44,9 +52,92 @@ function resetRun() {
   renderElapsed();
 }
 
+function renderAttempts() {
+  const list = $('attempts-list');
+  const rows = $('attempts-rows');
+  rows.innerHTML = '';
+  $('attempts-count').textContent = `${state.attempts.length}/${state.maxAttempts}`;
+  list.hidden = !state.game;
+  if (!state.game || !state.attempts.length) return;
+
+  let bestIndex = 0;
+  state.attempts.forEach((attempt, index) => {
+    if (Math.abs(attempt.differenceMs) < Math.abs(state.attempts[bestIndex].differenceMs)) bestIndex = index;
+  });
+
+  state.attempts.forEach((attempt, index) => {
+    const row = document.createElement('div');
+    row.className = 'attempt-row';
+    if (attempt.success) row.classList.add('perfect');
+    if (index === bestIndex && state.attempts.length > 1) row.classList.add('best');
+
+    const label = document.createElement('span');
+    label.className = 'attempt-row-label';
+    const labelText = document.createElement('span');
+    labelText.textContent = `시도 ${attempt.attemptNumber || index + 1}`;
+    label.appendChild(labelText);
+    if (index === bestIndex && state.attempts.length > 1) {
+      const tag = document.createElement('span');
+      tag.className = 'attempt-row-tag';
+      tag.textContent = '최고 기록';
+      label.appendChild(tag);
+    }
+
+    const value = document.createElement('span');
+    value.className = 'attempt-row-value';
+    value.textContent = formatTime(attempt.elapsedMs);
+    const diff = document.createElement('span');
+    diff.className = 'attempt-row-diff';
+    diff.textContent = attempt.success ? 'PERFECT' : formatDiff(attempt.differenceMs);
+    value.appendChild(diff);
+
+    row.appendChild(label);
+    row.appendChild(value);
+    rows.appendChild(row);
+  });
+}
+
+function updateActionAvailability() {
+  if (!state.game || state.phase === 'running') return;
+  const btn = $('action-button');
+  const remaining = state.maxAttempts - state.attempts.length;
+  if (remaining <= 0) {
+    state.phase = 'exhausted';
+    btn.disabled = true;
+    btn.classList.remove('is-stop');
+    btn.textContent = '기회 소진';
+    setResult(`모든 기회(${state.maxAttempts}회)를 사용했습니다.`);
+    setStatus('3초 후 메인 화면으로 이동합니다.');
+    if (state.resultRedirectTimer) clearTimeout(state.resultRedirectTimer);
+    state.resultRedirectTimer = setTimeout(() => {
+      location.href = '/';
+    }, 3000);
+  } else {
+    state.phase = 'ready';
+    btn.disabled = false;
+    btn.classList.remove('is-stop');
+    btn.textContent = state.attempts.length > 0 ? `다시 시도 (${remaining}회 남음)` : 'START';
+  }
+}
+
+function syncMyAttempts(gameId) {
+  const socket = getSocket();
+  if (!socket) return;
+  socket.emit('game:global:my-response', { gameId }, (response) => {
+    if (!state.game || state.game.id !== gameId) return;
+    const data = response?.ok ? response.data : null;
+    state.attempts = data?.attempts || [];
+    if (data?.maxAttempts) state.maxAttempts = data.maxAttempts;
+    renderAttempts();
+    updateActionAvailability();
+  });
+}
+
 function renderGame(game) {
   if (!game || game.type !== 'TIME_MATCH' || game.status !== 'ACTIVE') {
     state.game = null;
+    state.attempts = [];
+    state.maxAttempts = 1;
     resetRun();
     $('target-time').textContent = '--:--.---';
     $('action-button').disabled = true;
@@ -54,17 +145,21 @@ function renderGame(game) {
     $('action-button').textContent = '대기 중';
     setResult('관리자가 스톱워치 게임을 시작하면 참여할 수 있습니다.');
     setStatus('진행 중인 스톱워치 게임이 없습니다.');
+    renderAttempts();
     return;
   }
 
   state.game = game;
+  state.maxAttempts = Number(game.state?.maxAttempts) || 1;
   resetRun();
   $('target-time').textContent = formatTime(game.state?.targetMs);
-  $('action-button').disabled = false;
+  $('action-button').disabled = true;
   $('action-button').classList.remove('is-stop');
-  $('action-button').textContent = 'START';
-  setResult('START를 누른 뒤 목표 시간에 맞춰 STOP을 누르세요.');
+  $('action-button').textContent = '불러오는 중';
+  setResult('내 기록을 불러오는 중입니다.');
   setStatus('스톱워치 게임 준비 완료');
+  renderAttempts();
+  syncMyAttempts(game.id);
 }
 
 function tick(now) {
@@ -103,10 +198,11 @@ function stopRun() {
   setStatus('결과 전송 중');
   $('action-button').disabled = true;
   $('action-button').classList.remove('is-stop');
-  $('action-button').textContent = success ? 'PERFECT' : '제출 완료';
+  $('action-button').textContent = '전송 중';
 
+  const gameId = state.game.id;
   getSocket()?.emit('game:action', {
-    gameId: state.game.id,
+    gameId,
     action: 'STOP',
     state: {
       elapsedMs: state.elapsedMs,
@@ -116,15 +212,9 @@ function stopRun() {
       stoppedAt: new Date().toISOString(),
     },
   }, (response) => {
-    setStatus(response?.ok
-      ? '결과가 관리자에게 전달되었습니다. 3초 후 메인 화면으로 이동합니다.'
-      : `${response?.message || response?.error || '결과 전송에 실패했습니다.'} 3초 후 메인 화면으로 이동합니다.`);
+    setStatus(response?.ok ? '결과가 관리자에게 전달되었습니다.' : response?.message || response?.error || '결과 전송에 실패했습니다.');
+    syncMyAttempts(gameId);
   });
-
-  if (state.resultRedirectTimer) clearTimeout(state.resultRedirectTimer);
-  state.resultRedirectTimer = setTimeout(() => {
-    location.href = '/';
-  }, 3000);
 }
 
 function bindSocket() {
@@ -145,16 +235,14 @@ function bindSocket() {
   socket.on('game:global:current', renderGame);
   socket.on('game:global:started', renderGame);
   socket.on('game:global:ended', () => renderGame(null));
+  socket.on('game:global:attempts-granted', ({ gameId } = {}) => {
+    if (state.game && gameId === state.game.id) syncMyAttempts(gameId);
+  });
 }
 
 $('action-button').addEventListener('click', () => {
   if (state.phase === 'ready') startRun();
   else if (state.phase === 'running') stopRun();
-});
-
-$('reset-button').addEventListener('click', () => {
-  if (!state.game || state.phase === 'running') return;
-  renderGame(state.game);
 });
 
 $('back-button').addEventListener('click', () => {

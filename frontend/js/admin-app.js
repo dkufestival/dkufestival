@@ -27,6 +27,11 @@ const state = {
   refreshPending: false,
   gameHistory: [],
   gameHistoryById: {},
+  attemptsSelectedGame: 'TIME_MATCH',
+  attemptsSelectedTable: null,
+  attemptsSelectedParticipantIds: new Set(),
+  attemptsGrantHistory: [],
+  gameUpdateInFlight: false,
 };
 
 const RANKED_GAME_TYPES = ['TIME_MATCH', 'RPS', 'OX_QUIZ', 'WORD_GUESS', 'IMAGE_GAME'];
@@ -495,6 +500,10 @@ function targetTimeMs() {
   return seconds * 1000 + milliseconds;
 }
 
+function targetAttempts() {
+  return Math.max(1, Math.min(20, Number($('time-target-attempts').value) || 1));
+}
+
 function formatTargetTime(targetMs) {
   const value = Math.max(0, Number(targetMs) || 0);
   const minutes = Math.floor(value / 60000);
@@ -594,7 +603,7 @@ function renderRoundCard(round, index) {
 }
 
 function selectedGameState() {
-  if (state.selectedGame === 'TIME_MATCH') return { targetMs: targetTimeMs() };
+  if (state.selectedGame === 'TIME_MATCH') return { targetMs: targetTimeMs(), maxAttempts: targetAttempts() };
   if (state.selectedGame === 'PINBALL') return {};
   return { rounds: state.gameRounds[state.selectedGame] || [], currentRound: 0, answerRevealed: false };
 }
@@ -882,16 +891,170 @@ function bindEvents() {
   $('next-round-btn').addEventListener('click', () => updateGlobalGame('NEXT'));
   $('next-prompt-btn').addEventListener('click', () => updateGlobalGame('NEXT_PROMPT'));
   $('notice-send-btn').addEventListener('click', () => createNotice().catch((error) => showToast(error.message)));
+
+  renderAttemptsGameList();
+  renderAttemptsHistory();
+  $('attempts-table-search').addEventListener('input', renderAttemptsTableResult);
+  $('grant-attempts-btn').addEventListener('click', submitGrantAttempts);
+}
+
+function renderAttemptsGameList() {
+  const list = $('attempts-game-list');
+  clear(list);
+  GAME_TYPES.forEach((game) => {
+    const item = document.createElement('div');
+    item.className = `game-option ${game.id === state.attemptsSelectedGame ? 'selected' : ''}`;
+    item.appendChild(text('span', 'game-option-name', game.name));
+    item.appendChild(text('span', 'game-option-level', game.id));
+    item.addEventListener('click', () => {
+      state.attemptsSelectedGame = game.id;
+      renderAttemptsGameList();
+    });
+    list.appendChild(item);
+  });
+}
+
+function renderAttemptsTableResult() {
+  const result = $('attempts-table-result');
+  clear(result);
+  const query = $('attempts-table-search').value.trim();
+  state.attemptsSelectedTable = null;
+  state.attemptsSelectedParticipantIds = new Set();
+  if (!query) {
+    result.appendChild(text('div', 'attempts-table-empty', '테이블 번호를 입력해주세요.'));
+    return;
+  }
+  const table = state.tables.find((item) => String(item.tableNumber) === query);
+  if (!table) {
+    result.appendChild(text('div', 'attempts-table-empty', '해당 번호의 테이블을 찾을 수 없습니다.'));
+    return;
+  }
+  if (!table.activeSession || !(table.activeSession.participants || []).length) {
+    result.appendChild(text('div', 'attempts-table-empty', '아직 입장한 참가자가 없는 테이블입니다.'));
+    return;
+  }
+  state.attemptsSelectedTable = table;
+  const list = document.createElement('div');
+  list.className = 'attempts-participant-list';
+  table.activeSession.participants.forEach((participant) => {
+    const chip = document.createElement('div');
+    chip.className = 'participant-pick';
+    chip.appendChild(text('span', '', participant.nickname));
+    if (participant.isHost) chip.appendChild(text('span', 'host-tag', '대표'));
+    chip.addEventListener('click', () => {
+      if (state.attemptsSelectedParticipantIds.has(participant.id)) {
+        state.attemptsSelectedParticipantIds.delete(participant.id);
+      } else {
+        state.attemptsSelectedParticipantIds.add(participant.id);
+      }
+      chip.classList.toggle('selected', state.attemptsSelectedParticipantIds.has(participant.id));
+    });
+    list.appendChild(chip);
+  });
+  result.appendChild(list);
+}
+
+function submitGrantAttempts() {
+  const table = state.attemptsSelectedTable;
+  if (!table) return showToast('테이블을 먼저 검색해주세요.');
+  if (!state.activeGame || state.activeGame.type !== state.attemptsSelectedGame) {
+    return showToast('선택한 게임이 현재 진행 중이 아닙니다.');
+  }
+  const amount = Math.max(1, Math.min(20, Number($('attempts-amount').value) || 1));
+  const requestedParticipantIds = [...state.attemptsSelectedParticipantIds];
+  const gameId = state.activeGame.id;
+  const tableSessionId = table.activeSession.id;
+  const tableNumber = table.tableNumber;
+  const wasWholeTable = !requestedParticipantIds.length;
+  getSocket()?.emit('game:global:grant-attempts', {
+    gameId,
+    tableSessionId,
+    participantIds: requestedParticipantIds,
+    amount,
+  }, (response) => {
+    if (!response?.ok) {
+      $('grant-attempts-status').textContent = response?.message || response?.error || '기회 지급 실패';
+      return showToast(response?.message || response?.error || '기회 지급 실패');
+    }
+    const participantIds = response.data?.participantIds || requestedParticipantIds;
+    const members = table.activeSession?.participants || [];
+    const nicknameOf = (id) => members.find((member) => member.id === id)?.nickname || `#${id}`;
+    const names = participantIds.map(nicknameOf);
+    const namesText = names.length <= 3 ? names.join(', ') : `${names.slice(0, 3).join(', ')} 외 ${names.length - 3}명`;
+    const target = wasWholeTable ? `TABLE ${tableNumber} 전체 (${namesText})` : `TABLE ${tableNumber} · ${namesText}`;
+    $('grant-attempts-status').textContent = `${target}에게 기회 ${amount}회를 지급했습니다.`;
+    showToast('기회를 지급했습니다.');
+    state.attemptsGrantHistory.unshift({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      gameId,
+      tableSessionId,
+      tableNumber,
+      target,
+      amount,
+      participantIds,
+      cancelled: false,
+      createdAt: new Date(),
+    });
+    renderAttemptsHistory();
+  });
+}
+
+function renderAttemptsHistory() {
+  const list = $('attempts-history-list');
+  clear(list);
+  if (!state.attemptsGrantHistory.length) {
+    list.appendChild(text('div', 'attempts-history-empty', '아직 지급한 기회가 없습니다.'));
+    return;
+  }
+  state.attemptsGrantHistory.forEach((record) => {
+    const item = document.createElement('div');
+    item.className = `attempts-history-item ${record.cancelled ? 'cancelled' : ''}`;
+
+    const info = document.createElement('div');
+    info.className = 'attempts-history-info';
+    info.appendChild(text('span', 'attempts-history-target', `${record.target} · +${record.amount}회`));
+    const metaText = record.cancelled
+      ? `${formatDateTime(record.createdAt)} · 취소됨`
+      : formatDateTime(record.createdAt);
+    info.appendChild(text('span', `attempts-history-meta ${record.cancelled ? 'cancelled-tag' : ''}`, metaText));
+    item.appendChild(info);
+
+    if (!record.cancelled) {
+      item.appendChild(button('attempts-history-cancel', '취소', () => cancelGrantHistory(record)));
+    }
+    list.appendChild(item);
+  });
+}
+
+function cancelGrantHistory(record) {
+  getSocket()?.emit('game:global:revoke-attempts', {
+    gameId: record.gameId,
+    tableSessionId: record.tableSessionId,
+    participantIds: record.participantIds,
+    amount: record.amount,
+  }, (response) => {
+    if (!response?.ok) {
+      return showToast(response?.message || response?.error || '기회 취소 실패');
+    }
+    record.cancelled = true;
+    renderAttemptsHistory();
+    showToast('기회 지급을 취소했습니다.');
+  });
 }
 
 function updateGlobalGame(action) {
-  if (!state.activeGame) return;
+  if (!state.activeGame || state.gameUpdateInFlight) return;
   if (action === 'SPIN') {
     if (state.rouletteSpinning) return;
     state.rouletteSpinning = true;
     renderGameControls();
   }
+  state.gameUpdateInFlight = true;
+  $('reveal-answer-btn').disabled = true;
+  $('next-round-btn').disabled = true;
+  $('next-prompt-btn').disabled = true;
   getSocket()?.emit('game:global:update', { gameId: state.activeGame.id, action }, (response) => {
+    state.gameUpdateInFlight = false;
     if (!response?.ok) {
       state.rouletteSpinning = false;
       renderGameControls();

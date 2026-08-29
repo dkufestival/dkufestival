@@ -106,6 +106,42 @@ function registerGameSocket(io, socket) {
     }
   });
 
+  // [프론트 연동] payload: { gameId }. 참가자 본인의 단체 게임 응답(시도 기록)만 조회합니다. 방송되지 않습니다.
+  socket.on('game:global:my-response', async (payload = {}, callback) => {
+    try {
+      if (socket.data.user.role !== 'PARTICIPANT') throw new Error('PARTICIPANT_REQUIRED');
+      const sessionId = socket.data.sessionId;
+      const myState = await gameService.getMyGlobalResponse(payload.gameId, sessionId, socket.data.participantId);
+      reply(callback, { ok: true, data: myState });
+    } catch (error) {
+      reply(callback, { ok: false, error: error.code || 'GAME_ERROR', message: error.message });
+    }
+  });
+
+  // [프론트 연동] payload: { gameId, tableSessionId, participantIds?, amount }. participantIds가 비어있으면 해당 테이블 전체에 지급합니다.
+  socket.on('game:global:grant-attempts', async (payload = {}, callback) => {
+    try {
+      if (socket.data.user.role !== 'ADMIN') throw new Error('ADMIN_REQUIRED');
+      const result = await gameService.grantAttempts(payload);
+      io.to(sessionRoom(result.tableSessionId)).emit('game:global:attempts-granted', { gameId: result.game.id });
+      reply(callback, { ok: true, data: { participantIds: result.participantIds, amount: result.amount } });
+    } catch (error) {
+      reply(callback, { ok: false, error: error.code || error.message || 'GAME_ERROR', message: error.message });
+    }
+  });
+
+  // [프론트 연동] payload: { gameId, tableSessionId, participantIds, amount }. 남은 기회가 amount보다 적으면 거부됩니다.
+  socket.on('game:global:revoke-attempts', async (payload = {}, callback) => {
+    try {
+      if (socket.data.user.role !== 'ADMIN') throw new Error('ADMIN_REQUIRED');
+      const result = await gameService.revokeAttempts(payload);
+      io.to(sessionRoom(result.tableSessionId)).emit('game:global:attempts-granted', { gameId: result.game.id });
+      reply(callback, { ok: true, data: { participantIds: result.participantIds, amount: result.amount } });
+    } catch (error) {
+      reply(callback, { ok: false, error: error.code || error.message || 'GAME_ERROR', message: error.message });
+    }
+  });
+
   socket.on('game:global:start', async (payload = {}, callback) => {
     try {
       if (socket.data.user.role !== 'ADMIN') throw new Error('ADMIN_REQUIRED');
