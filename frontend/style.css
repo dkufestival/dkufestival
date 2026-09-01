@@ -30,6 +30,7 @@ body {
   justify-content: center;
   align-items: flex-start;
   min-height: 100vh;
+  min-height: 100dvh;
   padding: 20px 0;
 }
 
@@ -37,11 +38,28 @@ body {
   width: min(100%, 430px);
   height: 844px;
   max-height: 92vh;
+  max-height: 92dvh;
   background: #000;
   border-radius: 20px;
   overflow: hidden;
   position: relative;
   box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+}
+
+/* 실제 모바일 화면에서는 목업 카드가 아니라 화면을 꽉 채움 */
+@media (max-width: 430px) {
+  body {
+    padding: 0;
+    align-items: stretch;
+  }
+  .phone {
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    max-height: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
 }
 .phone::after {
   content: '';
