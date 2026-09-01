@@ -22,7 +22,7 @@ function formatTime(totalMs) {
 }
 
 function formatDiff(diffMs) {
-  const value = Number(diffMs) || 0;
+  const value = (Number(diffMs) || 0) / 10;
   if (value === 0) return '±0ms';
   return `${value < 0 ? '-' : '+'}${Math.abs(value)}ms`;
 }
@@ -192,7 +192,7 @@ function stopRun() {
   const success = differenceMs === 0;
   const label = success
     ? 'PERFECT! 정확히 일치했습니다.'
-    : `${Math.abs(differenceMs)}ms ${differenceMs < 0 ? '빨랐습니다.' : '늦었습니다.'}`;
+    : `${Math.abs(differenceMs) / 10}ms ${differenceMs < 0 ? '빨랐습니다.' : '늦었습니다.'}`;
   setResult(label, success ? 'good' : 'bad');
   setStatus('결과 전송 중');
   $('action-button').disabled = true;

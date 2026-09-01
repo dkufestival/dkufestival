@@ -37,6 +37,10 @@ test('pinball entries support repeated marbles and enforce the total limit', () 
     marbleCount: 4,
   });
   assert.equal(normalizePinballEntries(['민수']), null);
-  assert.equal(normalizePinballEntries(['민수*51', '지영']), null);
+  assert.deepEqual(normalizePinballEntries(['민수*79', '지영']), {
+    entries: ['민수*79', '지영'],
+    marbleCount: 80,
+  });
+  assert.equal(normalizePinballEntries(['민수*80', '지영']), null);
   assert.equal(normalizePinballEntries(['민수/2', '지영']), null);
 });

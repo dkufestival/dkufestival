@@ -23,8 +23,8 @@ const random = seededRandom(params.get('seed'));
 const rawNames = (params.get('names') || '').split(',').map((v) => v.trim()).filter(Boolean);
 const names = rawNames.flatMap((value) => {
   const match = /^(.*?)(?:\*(\d+))?$/.exec(value);
-  return Array.from({ length: Math.max(1, Math.min(50, Number(match?.[2] || 1))) }, () => match?.[1] || value);
-}).slice(0, 50);
+  return Array.from({ length: Math.max(1, Math.min(80, Number(match?.[2] || 1))) }, () => match?.[1] || value);
+}).slice(0, 80);
 const colors = ['#ff5d73', '#55d6ff', '#ffe45e', '#a8ff60', '#c998ff', '#ff9f43', '#66f2c2', '#ff7ee2'];
 const STEP = 1 / 120;
 const BOARD_WIDTH = 390;
@@ -46,6 +46,14 @@ let started = false;
 let renderScale = 1;
 let viewportHeight = 700;
 let cameraY = 0;
+let winnerAnnounced = false;
+
+function announceWinner(ball) {
+  if (winnerAnnounced) return;
+  winnerAnnounced = true;
+  document.getElementById('winner-name').textContent = ball.name;
+  document.getElementById('winner-popup').hidden = false;
+}
 
 function resize() {
   const rect = canvas.getBoundingClientRect();
@@ -346,6 +354,7 @@ function updateBall(ball) {
   if (ball.y >= height - 45 && Math.abs(ball.x - width / 2) <= exitHalf - ball.radius * .2) {
     ball.finished = true;
     finishOrder.push(ball);
+    if (finishOrder.length === 1) announceWinner(ball);
     renderResults();
     if (finishOrder.length + eliminatedOrder.length < balls.length) statusNode.textContent = `${finishOrder.length}위 탈출`;
     return;
@@ -358,6 +367,7 @@ function updateBall(ball) {
   if (ball.y > height + ball.radius) {
     ball.finished = true;
     finishOrder.push(ball);
+    if (finishOrder.length === 1) announceWinner(ball);
     renderResults();
     if (finishOrder.length + eliminatedOrder.length < balls.length) statusNode.textContent = `${finishOrder.length}위 탈출`;
   }
@@ -418,8 +428,8 @@ function draw() {
   balls.filter((ball) => !ball.finished && !ball.eliminated).forEach((ball) => {
     ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
     ctx.fillStyle = ball.color; ctx.shadowColor = ball.color; ctx.shadowBlur = 12; ctx.fill(); ctx.shadowBlur = 0;
-    ctx.fillStyle = '#08090d'; ctx.font = `800 ${Math.max(8, ball.radius - 2)}px sans-serif`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(ball.id + 1), ball.x, ball.y + .5);
+    ctx.fillStyle = '#08090d'; ctx.font = `900 ${Math.max(5, ball.radius * .72)}px sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(ball.name, ball.x, ball.y + .5, ball.radius * 1.7);
   });
   if (editMode) {
     ctx.fillStyle = 'rgba(112,239,255,.75)';

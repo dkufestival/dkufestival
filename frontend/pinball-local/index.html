@@ -4,13 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>핀볼 레이스</title>
-  <link rel="stylesheet" href="pinball.css?v=1">
+  <link rel="stylesheet" href="pinball.css?v=2">
 </head>
 <body>
   <main>
     <header><strong>PINBALL RACE</strong><span id="status">구슬 준비 중</span></header>
     <canvas id="board"></canvas>
     <ol id="ranking"></ol>
+    <section id="winner-popup" class="winner-popup" role="status" aria-live="assertive" hidden>
+      <div class="winner-card">
+        <span class="winner-kicker">PINBALL WINNER</span>
+        <strong id="winner-name"></strong>
+        <p>1등으로 도착했습니다!</p>
+      </div>
+    </section>
     <aside id="editor" hidden>
       <strong>맵 편집기</strong>
       <div class="editor-tools">
@@ -30,6 +37,6 @@
       <small id="editor-help">장애물을 선택한 뒤 드래그해서 이동하세요.</small>
     </aside>
   </main>
-  <script type="module" src="pinball.js?v=12"></script>
+  <script type="module" src="pinball.js?v=13"></script>
 </body>
 </html>

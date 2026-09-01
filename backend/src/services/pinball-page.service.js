@@ -61,7 +61,7 @@ const viewerBootstrap = String.raw`
       .split(',')
       .map((name) => name.trim())
       .filter(Boolean)
-      .slice(0, 50);
+      .slice(0, 80);
     if (!names.length) return;
 
     const seed = Number(params.get('seed')) >>> 0 || 1;

@@ -301,7 +301,7 @@ async function withGlobalGameLock(work) {
 }
 
 function normalizePinballEntries(values) {
-  if (!Array.isArray(values) || !values.length || values.length > 50) return null;
+  if (!Array.isArray(values) || !values.length || values.length > 80) return null;
   const entries = [];
   let marbleCount = 0;
 
@@ -310,9 +310,9 @@ function normalizePinballEntries(values) {
     const match = /^([^,/*]+?)(?:\*(\d+))?$/.exec(value);
     const name = match?.[1]?.trim();
     const count = Number(match?.[2] || 1);
-    if (!name || name.length > 20 || !Number.isInteger(count) || count < 1 || count > 50) return null;
+    if (!name || name.length > 20 || !Number.isInteger(count) || count < 1 || count > 80) return null;
     marbleCount += count;
-    if (marbleCount > 50) return null;
+    if (marbleCount > 80) return null;
     entries.push(count > 1 ? `${name}*${count}` : name);
   }
 
@@ -337,7 +337,7 @@ async function startGlobalGame(data) {
   let gameState = data.state || {};
   if (data.type === 'PINBALL') {
     const parsed = normalizePinballEntries(gameState.names);
-    if (!parsed) throw createServiceError('핀볼 구슬은 이름 또는 이름*개수 형식으로 총 2~50개를 입력해야 합니다.', 'INVALID_PINBALL_NAMES');
+    if (!parsed) throw createServiceError('핀볼 구슬은 이름 또는 이름*개수 형식으로 총 2~80개를 입력해야 합니다.', 'INVALID_PINBALL_NAMES');
     gameState = {
       startedBy: 'admin',
       names: parsed.entries,

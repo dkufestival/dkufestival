@@ -473,7 +473,7 @@ function parsePinballEntries() {
     const match = /^([^,/*]+?)(?:\*(\d+))?$/.exec(value);
     const name = match?.[1]?.trim();
     const count = Number(match?.[2] || 1);
-    if (!name || name.length > 20 || !Number.isInteger(count) || count < 1 || count > 50) {
+    if (!name || name.length > 20 || !Number.isInteger(count) || count < 1 || count > 80) {
       return { valid: false, entries: [], marbleCount: 0 };
     }
     marbleCount += count;
@@ -481,7 +481,7 @@ function parsePinballEntries() {
   }
 
   return {
-    valid: entries.length > 0 && marbleCount >= 2 && marbleCount <= 50,
+    valid: entries.length > 0 && marbleCount >= 2 && marbleCount <= 80,
     entries,
     marbleCount,
   };
@@ -884,7 +884,7 @@ function bindEvents() {
     if (state.selectedGame === 'TIME_MATCH' && targetMs < 10) return showToast('목표 시간을 0.01초 이상 입력해주세요.');
     const pinball = parsePinballEntries();
     if (state.selectedGame === 'PINBALL') {
-      if (!pinball.valid) return showToast('이름 또는 이름*개수 형식으로 총 2~50개 구슬을 입력해주세요.');
+      if (!pinball.valid) return showToast('이름 또는 이름*개수 형식으로 총 2~80개 구슬을 입력해주세요.');
     }
     const gameState = selectedGameState();
     if (!gameState.rounds?.length && !['TIME_MATCH', 'PINBALL'].includes(state.selectedGame)) return showToast('라운드를 추가해주세요.');

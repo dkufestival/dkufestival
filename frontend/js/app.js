@@ -971,7 +971,7 @@ function stopTimeMatch() {
   const mission = $('game-demo-mission');
   mission.querySelector('.time-result').textContent = success
     ? 'PERFECT! 정확히 일치했습니다'
-    : `${Math.abs(differenceMs)}ms ${differenceMs < 0 ? '빨랐어요' : '늦었어요'}`;
+    : `${Math.abs(differenceMs) / 10}ms ${differenceMs < 0 ? '빨랐어요' : '늦었어요'}`;
   const actionButton = $('game-screen-action');
   actionButton.disabled = true;
   actionButton.classList.remove('is-stop');
