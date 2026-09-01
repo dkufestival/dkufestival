@@ -121,7 +121,7 @@ function bindSocket() {
     if (latest) recordGameResponse(game, latest);
     if (game.type === 'TIME_MATCH' && latest?.state) {
       const diff = Number(latest.state.differenceMs || 0);
-      addGameLog(latest.state.success ? '시간 맞추기 성공 · 정확히 일치' : `시간 맞추기 응답 · ${Math.abs(diff)}ms ${diff < 0 ? '빠름' : '늦음'}`);
+      addGameLog(latest.state.success ? '시간 맞추기 성공 · 정확히 일치' : `시간 맞추기 응답 · ${(Math.abs(diff) / 1000).toFixed(2)}초 ${diff < 0 ? '빠름' : '늦음'}`);
     } else if (latest?.state) {
       addGameLog(`${game.type} 참가 응답 수신`);
     } else {
@@ -884,7 +884,7 @@ function computeRanking(record) {
   if (record.type === 'TIME_MATCH') {
     const finished = rows.filter((row) => Number.isFinite(row.bestDiffMs));
     return withDenseRanks(finished, (row) => -row.bestDiffMs)
-      .map((row) => ({ ...row, scoreLabel: `오차 ${row.bestDiffMs}ms` }));
+      .map((row) => ({ ...row, scoreLabel: `오차 ${(row.bestDiffMs / 1000).toFixed(2)}초` }));
   }
   if (record.type === 'RPS') {
     const withWins = rows.map((row) => ({ ...row, wins: Object.values(row.rounds).filter((o) => o === 'WIN').length }));
