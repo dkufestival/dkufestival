@@ -17,8 +17,8 @@ function formatTime(totalMs) {
   const value = Math.max(0, Math.floor(Number(totalMs) || 0));
   const minutes = Math.floor(value / 60000);
   const seconds = Math.floor((value % 60000) / 1000);
-  const milliseconds = value % 1000;
-  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`;
+  const centiseconds = Math.floor((value % 1000) / 10);
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(centiseconds).padStart(2, '0')}`;
 }
 
 function formatDiff(diffMs) {
@@ -43,7 +43,7 @@ function renderElapsed() {
   const elapsed = $('elapsed-time');
   elapsed.querySelector('[data-time-part="minutes"]').textContent = String(Math.floor(value / 60000)).padStart(2, '0');
   elapsed.querySelector('[data-time-part="seconds"]').textContent = String(Math.floor((value % 60000) / 1000)).padStart(2, '0');
-  elapsed.querySelector('[data-time-part="milliseconds"]').textContent = String(value % 1000).padStart(3, '0');
+  elapsed.querySelector('[data-time-part="centiseconds"]').textContent = String(Math.floor((value % 1000) / 10)).padStart(2, '0');
   elapsed.setAttribute('aria-label', formatTime(value));
 }
 
@@ -138,7 +138,7 @@ function renderGame(game) {
     state.attempts = [];
     state.maxAttempts = 1;
     resetRun();
-    $('target-time').textContent = '--:--.---';
+    $('target-time').textContent = '--:--.--';
     $('action-button').disabled = true;
     $('action-button').classList.remove('is-stop');
     $('action-button').textContent = '대기 중';
@@ -183,7 +183,7 @@ function stopRun() {
   if (!state.game || state.phase !== 'running') return;
   if (state.frame) cancelAnimationFrame(state.frame);
   state.frame = null;
-  state.elapsedMs = Math.floor(performance.now() - state.startedAt);
+  state.elapsedMs = Math.floor((performance.now() - state.startedAt) / 10) * 10;
   state.phase = 'done';
   renderElapsed();
 

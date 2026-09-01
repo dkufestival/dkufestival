@@ -66,11 +66,11 @@
         <div id="time-match-setting" class="time-match-setting">
           <div class="time-setting-head">
             <span>중앙 목표 시간</span>
-            <strong id="time-target-preview">00:05.000</strong>
+            <strong id="time-target-preview">00:05.00</strong>
           </div>
           <div class="time-setting-inputs">
             <label><span>초</span><input id="time-target-seconds" type="number" min="0" max="5999" value="5"></label>
-            <label><span>밀리초</span><input id="time-target-milliseconds" type="number" min="0" max="999" value="000"></label>
+            <label><span>1/100초</span><input id="time-target-milliseconds" type="number" min="0" max="99" value="00"></label>
           </div>
           <div class="time-setting-inputs">
             <label style="grid-column: 1 / -1;"><span>참가자별 기회</span><input id="time-target-attempts" type="number" min="1" max="20" value="1"></label>
@@ -178,6 +178,6 @@
 <div id="admin-toast" class="toast"></div>
 
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-<script type="module" src="js/admin-app.js?v=20"></script>
+<script type="module" src="js/admin-app.js?v=21"></script>
 </body>
 </html>

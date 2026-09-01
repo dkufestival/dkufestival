@@ -502,8 +502,8 @@ function renderPinballSetting() {
 
 function targetTimeMs() {
   const seconds = Math.max(0, Math.min(5999, Number($('time-target-seconds').value) || 0));
-  const milliseconds = Math.max(0, Math.min(999, Number($('time-target-milliseconds').value) || 0));
-  return seconds * 1000 + milliseconds;
+  const centiseconds = Math.max(0, Math.min(99, Number($('time-target-milliseconds').value) || 0));
+  return seconds * 1000 + centiseconds * 10;
 }
 
 function targetAttempts() {
@@ -514,8 +514,8 @@ function formatTargetTime(targetMs) {
   const value = Math.max(0, Number(targetMs) || 0);
   const minutes = Math.floor(value / 60000);
   const seconds = Math.floor((value % 60000) / 1000);
-  const milliseconds = Math.floor(value % 1000);
-  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`;
+  const centiseconds = Math.floor((value % 1000) / 10);
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(centiseconds).padStart(2, '0')}`;
 }
 
 function renderTimeMatchSetting() {
@@ -876,7 +876,7 @@ function bindEvents() {
   $('detail-overlay').addEventListener('click', closeDetail);
   $('broadcast-btn').addEventListener('click', () => {
     const targetMs = targetTimeMs();
-    if (state.selectedGame === 'TIME_MATCH' && targetMs < 1) return showToast('목표 시간을 1ms 이상 입력해주세요.');
+    if (state.selectedGame === 'TIME_MATCH' && targetMs < 10) return showToast('목표 시간을 0.01초 이상 입력해주세요.');
     const pinball = parsePinballEntries();
     if (state.selectedGame === 'PINBALL') {
       if (!pinball.valid) return showToast('이름 또는 이름*개수 형식으로 총 2~50개 구슬을 입력해주세요.');

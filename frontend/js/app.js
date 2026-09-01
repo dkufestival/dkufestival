@@ -373,7 +373,7 @@ function bindSocket() {
   });
   socket.on('game:global:current', (game) => {
     state.activeGame = game;
-    requestGameParticipation(game);
+    if (game?.type !== 'TIME_MATCH') requestGameParticipation(game);
     renderGame();
   });
   socket.on('game:global:ended', (game) => {
@@ -926,8 +926,8 @@ function formatGameTime(totalMs) {
   const value = Math.max(0, Math.floor(Number(totalMs) || 0));
   const minutes = Math.floor(value / 60000);
   const seconds = Math.floor((value % 60000) / 1000);
-  const milliseconds = value % 1000;
-  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`;
+  const centiseconds = Math.floor((value % 1000) / 10);
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(centiseconds).padStart(2, '0')}`;
 }
 
 function resetTimeMatch() {
@@ -961,7 +961,7 @@ function stopTimeMatch() {
   if (state.timeMatch.phase !== 'running') return;
   if (state.timeMatch.frame) cancelAnimationFrame(state.timeMatch.frame);
   state.timeMatch.frame = null;
-  state.timeMatch.elapsedMs = Math.floor(performance.now() - state.timeMatch.startedAt);
+  state.timeMatch.elapsedMs = Math.floor((performance.now() - state.timeMatch.startedAt) / 10) * 10;
   state.timeMatch.phase = 'stopped';
   updateTimeMatchDisplay();
 
@@ -999,7 +999,7 @@ function showGlobalGameScreen() {
   const names = { OX_QUIZ: 'O/X 퀴즈', RPS: '가위바위보', WORD_GUESS: '제시어 맞히기', ROULETTE: '룰렛', IMAGE_GAME: '이미지 게임' };
   $('game-screen-title').textContent = isTimeMatch ? '시간을 멈춰라' : names[state.activeGame?.type] || '전체 게임';
   $('game-screen-kicker').textContent = isTimeMatch ? 'PRECISION GAME' : 'ADMIN EVENT';
-  $('game-screen-copy').innerHTML = isTimeMatch ? '중앙에서 설정한 목표 시간입니다.<br>밀리초까지 정확히 맞춰보세요.' : '';
+  $('game-screen-copy').innerHTML = isTimeMatch ? '중앙에서 설정한 목표 시간입니다.<br>1/100초까지 정확히 맞춰보세요.' : '';
   $('game-screen-copy').hidden = !isTimeMatch;
   $('game-demo-icon').textContent = isTimeMatch ? '' : ({ WORD_GUESS: '💬', ROULETTE: '🎯', IMAGE_GAME: '🖼️' }[state.activeGame?.type] || '');
   $('game-demo-icon').classList.toggle('rps-call', state.activeGame?.type === 'RPS');
@@ -1008,7 +1008,7 @@ function showGlobalGameScreen() {
   const mission = $('game-demo-mission');
   clear(mission);
   if (isTimeMatch) {
-    mission.innerHTML = `<span class="time-target-value">${formatGameTime(state.activeGame?.state?.targetMs)}</span><span class="time-live-value">00:00.000</span><span class="time-result">START를 눌러 시작하세요</span>`;
+    mission.innerHTML = `<span class="time-target-value">${formatGameTime(state.activeGame?.state?.targetMs)}</span><span class="time-live-value">00:00.00</span><span class="time-result">START를 눌러 시작하세요</span>`;
   } else {
     renderRecreationGame(mission);
   }

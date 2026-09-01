@@ -136,10 +136,10 @@ body {
 }
 .sw-elapsed-value {
   display: grid;
-  grid-template-columns: 2ch .6ch 2ch .6ch 3ch;
+  grid-template-columns: 2ch .6ch 2ch .6ch 2ch;
   align-items: baseline;
   justify-content: center;
-  width: 8.2ch;
+  width: 7.2ch;
   font-family: ui-monospace, 'SFMono-Regular', Menlo, Monaco, Consolas, monospace;
   font-size: clamp(44px, 13vw, 60px);
   font-weight: 700;
