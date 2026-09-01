@@ -72,9 +72,8 @@ VAPID 미설정 시 Push API는 `PUSH_NOT_CONFIGURED`를 반환합니다. 일반
 - `PATCH /api/participants/me`
 - `GET /api/notices`
 - `POST /api/notices`
-- `POST /api/song-requests`
-- `GET /api/song-requests/me`
-- `DELETE /api/song-requests/:requestId`
+- `GET /api/global-chat`
+- `POST /api/global-chat`
 - `POST /api/admin/login`
 - `GET /api/admin/tables`
 - `POST /api/admin/tables/:tableId/checkin`
@@ -85,5 +84,3 @@ VAPID 미설정 시 Push API는 `PUSH_NOT_CONFIGURED`를 반환합니다. 일반
 - `POST /api/admin/tables/:tableId/qr/regenerate`
 - `PATCH /api/admin/tables/:tableId/qr/enable`
 - `PATCH /api/admin/tables/:tableId/qr/disable`
-- `GET /api/admin/song-requests`
-- `PATCH /api/admin/song-requests/:requestId/complete`

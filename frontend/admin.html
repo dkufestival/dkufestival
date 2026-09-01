@@ -33,7 +33,8 @@
       <button class="nav-btn active" data-tab="tables">테이블 현황</button>
       <button class="nav-btn" data-tab="chats">채팅 관리</button>
       <button class="nav-btn" data-tab="games">게임 관리</button>
-      <button class="nav-btn" data-tab="songs">신청곡 <span id="song-nav-badge" class="nav-badge" data-zero="true">0</span></button>
+      <button class="nav-btn" data-tab="globalchat">전체채팅</button>
+      <button class="nav-btn" data-tab="board">게시판</button>
       <button class="nav-btn" data-tab="notices">공지</button>
       <button class="nav-btn" data-tab="attempts">기회 추가</button>
     </nav>
@@ -126,10 +127,21 @@
       </div>
     </div>
 
-    <div id="tab-songs" class="tab-panel">
+    <div id="tab-globalchat" class="tab-panel">
       <div class="game-panel" style="max-width:620px;">
-        <h3 class="panel-title">받은 신청곡</h3>
-        <div id="song-request-list" class="song-list"></div>
+        <h3 class="panel-title">전체채팅</h3>
+        <div id="global-chat-log" class="global-chat-log admin-global-chat-log"></div>
+        <div class="chat-input-row">
+          <input id="global-chat-input" class="field" maxlength="500" placeholder="관리자로 메시지 보내기" style="margin-bottom:0;">
+          <button id="global-chat-send-btn" class="btn-dark">전송</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-board" class="tab-panel">
+      <div class="game-panel" style="max-width:620px;">
+        <h3 class="panel-title">게시판</h3>
+        <div id="board-post-list" class="admin-list"></div>
       </div>
     </div>
 

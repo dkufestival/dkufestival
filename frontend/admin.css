@@ -485,7 +485,7 @@ body {
 .basketball-ranking-player small { margin-left: 6px; color: var(--text-muted); font-size: 10px; font-weight: 500; }
 .basketball-ranking-score { color: var(--text-light); font-size: 15px; font-weight: 900; font-variant-numeric: tabular-nums; }
 
-/* 신청곡 */
+/* 채팅방 목록 / 공지 내역 (공용 리스트 아이템 스타일) */
 .song-list { display: flex; flex-direction: column; gap: 8px; }
 .song-empty { color: var(--text-muted); font-size: 12px; padding: 6px 0; }
 .song-item {
@@ -552,6 +552,31 @@ body {
   cursor: pointer;
 }
 .notice-delete-btn:hover { border-color: #ff5c4d; color: #ff5c4d; }
+
+.global-chat-log {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+  overflow-y: auto;
+}
+.admin-global-chat-log {
+  height: 50vh;
+  padding: 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border-soft);
+  background: var(--card-dark-2);
+}
+.chat-input-row { display: flex; gap: 8px; }
+.chat-input-row .field { flex: 1; }
+.bubble-group { display: flex; flex-direction: column; max-width: 75%; }
+.bubble-group.me { align-self: flex-end; align-items: flex-end; }
+.bubble-group.other { align-self: flex-start; align-items: flex-start; }
+.bubble-name { font-size: 10px; font-weight: 700; color: var(--text-muted); margin: 0 4px 2px; }
+.chat-bubble { padding: 8px 12px; border-radius: 14px; font-size: 12px; line-height: 1.4; }
+.chat-bubble.me { background: var(--lime); color: var(--lime-deep); }
+.chat-bubble.other { background: rgba(255,255,255,0.08); color: var(--text-light); }
+.chat-bubble.admin { background: rgba(255, 196, 84, 0.18); color: #ffce7a; }
 
 .toast {
   position: fixed;

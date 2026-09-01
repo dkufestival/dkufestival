@@ -1,12 +1,13 @@
 import { setToastHandler } from './api.js';
 import { clearParticipantAuth, getClientId, getParticipantAuth, saveParticipantAuth } from './auth.js';
 import { connectSocket, getSocket } from './socket.js';
-import { $, button, clear, formatRemaining, text } from './dom.js';
+import { $, button, clear, formatDateTime, formatRemaining, text } from './dom.js';
 import { entryApi } from './entry.js';
 import { tablesApi } from './tables.js?v=2';
 import { participantsApi } from './participants.js';
 import { chatApi } from './chat.js';
-import { songsApi } from './songs.js';
+import { globalChatApi } from './globalChat.js';
+import { boardApi } from './board.js';
 import { noticesApi } from './notices.js?v=2';
 import { STORAGE_KEYS } from './config.js';
 import { initMapZoom } from './mapzoom.js?v=2';
@@ -23,6 +24,11 @@ const state = {
   chatRoom: null,
   messages: new Map(),
   notices: [],
+  globalChatMessages: [],
+  globalChatLoaded: false,
+  boardPosts: [],
+  boardLoaded: false,
+  activeBoardPost: null,
   activeRoomId: null,
   activeGame: null,
   entryContext: null,
@@ -378,6 +384,20 @@ function bindSocket() {
   socket.on('notice:deleted', ({ id }) => {
     state.notices = state.notices.filter((notice) => notice.id !== id);
     renderNotices();
+  });
+  socket.on('globalChat:message', (message) => {
+    state.globalChatMessages.push(message);
+    if ($('modal-global-chat').classList.contains('active')) renderGlobalChat();
+  });
+  socket.on('board:created', (post) => {
+    if (state.boardPosts.some((entry) => entry.id === post.id)) return;
+    state.boardPosts.unshift(post);
+    if ($('modal-board').classList.contains('active') && !$('board-list-view').hidden) renderBoardList();
+  });
+  socket.on('board:deleted', ({ id }) => {
+    state.boardPosts = state.boardPosts.filter((post) => post.id !== id);
+    if (state.activeBoardPost?.id === id) showBoardList();
+    if ($('modal-board').classList.contains('active') && !$('board-list-view').hidden) renderBoardList();
   });
   socket.on('game:global:started', (game) => {
     state.activeGame = game;
@@ -797,6 +817,102 @@ function sendChatMessage() {
     if (!response?.ok) return showToast(response?.message || response?.error || '메시지 전송 실패');
     input.value = '';
   });
+}
+
+function renderGlobalChat() {
+  const log = $('global-chat-log');
+  clear(log);
+  state.globalChatMessages.forEach((message) => {
+    const isAdmin = message.senderRole === 'ADMIN';
+    const mine = !isAdmin && message.senderParticipantId === state.participant?.id;
+    const tableNumber = message.senderParticipant?.session?.table?.tableNumber;
+    const name = isAdmin ? '관리자' : (message.senderParticipant?.nickname || '참가자');
+    const label = !isAdmin && tableNumber ? `${name} · T${tableNumber}` : name;
+    const group = document.createElement('div');
+    group.className = `bubble-group ${mine ? 'me' : 'other'}`;
+    group.appendChild(text('div', 'bubble-name', label));
+    group.appendChild(text('div', `chat-bubble ${mine ? 'me' : isAdmin ? 'admin' : 'other'}`, message.content));
+    log.appendChild(group);
+  });
+  log.scrollTop = log.scrollHeight;
+}
+
+async function sendGlobalChatMessage() {
+  const input = $('global-chat-input');
+  const content = input.value.trim();
+  if (!content) return;
+  await globalChatApi.send(content);
+  input.value = '';
+}
+
+function renderBoardList() {
+  const list = $('board-list');
+  clear(list);
+  if (!state.boardPosts.length) {
+    list.appendChild(text('div', 'history-empty', '게시글이 없습니다.'));
+    return;
+  }
+  state.boardPosts.forEach((post) => {
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    const info = document.createElement('div');
+    info.className = 'history-info';
+    info.appendChild(text('div', 'history-seat-name', post.title));
+    const authorName = post.author?.nickname || '참가자';
+    const tableNumber = post.author?.session?.table?.tableNumber;
+    info.appendChild(text('div', 'history-preview', tableNumber ? `${authorName} · T${tableNumber}` : authorName));
+    item.appendChild(info);
+    item.addEventListener('click', () => showBoardDetail(post));
+    list.appendChild(item);
+  });
+}
+
+function showBoardList() {
+  state.activeBoardPost = null;
+  $('board-write-view').hidden = true;
+  $('board-detail-view').hidden = true;
+  $('board-list-view').hidden = false;
+}
+
+function showBoardWrite() {
+  $('board-title-input').value = '';
+  $('board-content-input').value = '';
+  $('board-list-view').hidden = true;
+  $('board-detail-view').hidden = true;
+  $('board-write-view').hidden = false;
+}
+
+function showBoardDetail(post) {
+  state.activeBoardPost = post;
+  $('board-detail-title').textContent = post.title;
+  $('board-detail-content').textContent = post.content;
+  const authorName = post.author?.nickname || '참가자';
+  const tableNumber = post.author?.session?.table?.tableNumber;
+  const who = tableNumber ? `${authorName} · T${tableNumber}` : authorName;
+  $('board-detail-meta').textContent = `${who} · ${formatDateTime(post.createdAt)}`;
+  $('board-delete-btn').hidden = post.authorParticipantId !== state.participant?.id;
+  $('board-list-view').hidden = true;
+  $('board-write-view').hidden = true;
+  $('board-detail-view').hidden = false;
+}
+
+async function submitBoardPost() {
+  const title = $('board-title-input').value.trim();
+  const content = $('board-content-input').value.trim();
+  if (!title || !content) return showToast('제목과 내용을 입력해 주세요.');
+  const post = await boardApi.create(title, content);
+  if (!state.boardPosts.some((entry) => entry.id === post.id)) state.boardPosts.unshift(post);
+  showBoardList();
+  renderBoardList();
+}
+
+async function deleteActiveBoardPost() {
+  if (!state.activeBoardPost) return;
+  const id = state.activeBoardPost.id;
+  await boardApi.remove(id);
+  state.boardPosts = state.boardPosts.filter((post) => post.id !== id);
+  showBoardList();
+  renderBoardList();
 }
 
 function renderNotices() {
@@ -1291,16 +1407,32 @@ function bindEvents() {
     closeModal('modal-count');
     renderStats();
   });
-  $('song-btn').addEventListener('click', () => openModal('modal-song'));
-  $('song-submit-btn').addEventListener('click', async () => {
-    const raw = $('song-input').value.trim();
-    if (!raw) return showToast('신청곡을 입력해 주세요.');
-    const [songTitle, ...artistParts] = raw.split('-').map((part) => part.trim());
-    await songsApi.create({ songTitle, artist: artistParts.join(' - ') || undefined });
-    $('song-input').value = '';
-    closeModal('modal-song');
-    showToast('신청곡이 접수되었습니다.');
+  $('global-chat-btn').addEventListener('click', async () => {
+    openModal('modal-global-chat');
+    if (!state.globalChatLoaded) {
+      state.globalChatMessages = await globalChatApi.list();
+      state.globalChatLoaded = true;
+    }
+    renderGlobalChat();
   });
+  $('global-chat-send-btn').addEventListener('click', sendGlobalChatMessage);
+  $('global-chat-input').addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') sendGlobalChatMessage();
+  });
+  $('board-btn').addEventListener('click', async () => {
+    openModal('modal-board');
+    showBoardList();
+    if (!state.boardLoaded) {
+      state.boardPosts = await boardApi.list();
+      state.boardLoaded = true;
+    }
+    renderBoardList();
+  });
+  $('board-write-btn').addEventListener('click', showBoardWrite);
+  $('board-write-back').addEventListener('click', showBoardList);
+  $('board-detail-back').addEventListener('click', showBoardList);
+  $('board-submit-btn').addEventListener('click', () => submitBoardPost().catch((error) => showToast(error.message)));
+  $('board-delete-btn').addEventListener('click', () => deleteActiveBoardPost().catch((error) => showToast(error.message)));
   $('notice-btn').addEventListener('click', () => {
     localStorage.setItem(STORAGE_KEYS.seenNoticeCount, String(state.notices.length));
     renderNotices();

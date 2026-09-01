@@ -3,7 +3,8 @@ import { clearAdminToken, getAdminToken, saveAdminToken } from './auth.js';
 import { connectSocket, getSocket } from './socket.js';
 import { $, button, clear, formatDateTime, formatRemaining, text } from './dom.js';
 import { adminApi } from './admin-api.js';
-import { songsApi } from './songs.js';
+import { globalChatApi } from './globalChat.js';
+import { boardApi } from './board.js';
 import { noticesApi } from './notices.js?v=2';
 import { GAME_TYPES } from './games.js';
 import { basketballApi } from './basketball-api.js';
@@ -11,8 +12,10 @@ import { basketballApi } from './basketball-api.js';
 const state = {
   tables: [],
   chatRooms: [],
-  songs: [],
   notices: [],
+  globalChatMessages: [],
+  globalChatLoaded: false,
+  boardPosts: [],
   selectedGame: 'PINBALL',
   activeGame: null,
   activeDetailTable: null,
@@ -87,12 +90,18 @@ function bindSocket() {
   socket.on('table:updated', () => scheduleAdminRefresh({ includeChatRooms: true }));
   socket.on('chat:started', () => scheduleAdminRefresh({ includeChatRooms: true }));
   socket.on('chat:ended', () => scheduleAdminRefresh({ includeChatRooms: true }));
-  socket.on('song:requested', (song) => {
-    if (!state.songs.some((item) => item.id === song.id)) state.songs.unshift(song);
-    renderSongs();
+  socket.on('globalChat:message', (message) => {
+    state.globalChatMessages.push(message);
+    renderGlobalChat();
   });
-  socket.on('song:cancelled', updateSong);
-  socket.on('song:completed', updateSong);
+  socket.on('board:created', (post) => {
+    state.boardPosts.unshift(post);
+    renderBoard();
+  });
+  socket.on('board:deleted', ({ id }) => {
+    state.boardPosts = state.boardPosts.filter((post) => post.id !== id);
+    renderBoard();
+  });
   socket.on('game:global:state', (game) => {
     const responses = Object.values(game.state?.responses || {});
     const latest = responses.sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))[0];
@@ -141,26 +150,12 @@ function bindSocket() {
   });
 }
 
-function updateSong(song) {
-  if (song.status === 'COMPLETED') {
-    state.songs = state.songs.filter((item) => item.id !== song.id);
-    renderSongs();
-    return;
-  }
-  state.songs = state.songs.map((item) => item.id === song.id ? song : item);
-  renderSongs();
-}
-
 async function loadTables() {
   state.tables = await adminApi.tables();
 }
 
 async function loadChatRooms() {
   state.chatRooms = await adminApi.chatRooms('ACTIVE');
-}
-
-async function loadSongs() {
-  state.songs = (await songsApi.adminList()).filter((song) => song.status !== 'COMPLETED');
 }
 
 async function loadNotices() {
@@ -171,10 +166,19 @@ async function loadBasketballLeaderboard() {
   state.basketballLeaderboard = (await basketballApi.leaderboard()).slice(0, 3);
 }
 
+async function loadGlobalChat() {
+  state.globalChatMessages = await globalChatApi.list('ADMIN');
+  state.globalChatLoaded = true;
+}
+
+async function loadBoard() {
+  state.boardPosts = await boardApi.list('ADMIN');
+}
+
 async function syncAdminState(options = {}) {
   if (state.syncPromise) return state.syncPromise;
   state.syncPromise = (async () => {
-    await Promise.allSettled([loadTables(), loadChatRooms(), loadSongs(), loadNotices(), loadBasketballLeaderboard()]);
+    await Promise.allSettled([loadTables(), loadChatRooms(), loadNotices(), loadGlobalChat(), loadBoard(), loadBasketballLeaderboard()]);
     if (options.render !== false) renderAll();
     if (state.activeDetailTable) openDetail(state.activeDetailTable);
   })().finally(() => {
@@ -214,7 +218,8 @@ function renderAll() {
   renderGameControls();
   renderGameList();
   renderGameRankList();
-  renderSongs();
+  renderGlobalChat();
+  renderBoard();
   renderNoticeHistory();
   renderTeamScoreboard();
   renderBasketballLeaderboard();
@@ -839,31 +844,54 @@ function renderGameRankList() {
   });
 }
 
-function renderSongs() {
-  const badge = $('song-nav-badge');
-  badge.textContent = state.songs.filter((song) => song.status === 'REQUESTED').length;
-  badge.dataset.zero = badge.textContent === '0' ? 'true' : 'false';
-  const list = $('song-request-list');
+function renderGlobalChat() {
+  const log = $('global-chat-log');
+  clear(log);
+  state.globalChatMessages.forEach((message) => {
+    const isAdmin = message.senderRole === 'ADMIN';
+    const tableNumber = message.senderParticipant?.session?.table?.tableNumber;
+    const name = isAdmin ? '관리자' : (message.senderParticipant?.nickname || '참가자');
+    const label = !isAdmin && tableNumber ? `${name} · T${tableNumber}` : name;
+    const group = document.createElement('div');
+    group.className = `bubble-group ${isAdmin ? 'me' : 'other'}`;
+    group.appendChild(text('div', 'bubble-name', label));
+    group.appendChild(text('div', `chat-bubble ${isAdmin ? 'admin' : 'other'}`, message.content));
+    log.appendChild(group);
+  });
+  log.scrollTop = log.scrollHeight;
+}
+
+async function sendGlobalChatMessage() {
+  const input = $('global-chat-input');
+  const content = input.value.trim();
+  if (!content) return;
+  await globalChatApi.send(content, 'ADMIN');
+  input.value = '';
+}
+
+function renderBoard() {
+  const list = $('board-post-list');
   clear(list);
-  if (!state.songs.length) {
-    list.appendChild(text('div', 'song-empty', '아직 신청곡이 없습니다.'));
+  if (!state.boardPosts.length) {
+    list.appendChild(text('div', 'song-empty', '게시글이 없습니다.'));
     return;
   }
-  state.songs.forEach((song) => {
+  state.boardPosts.forEach((post) => {
     const item = document.createElement('div');
-    item.className = 'song-item';
+    item.className = 'admin-list-item';
     const info = document.createElement('div');
-    info.className = 'song-item-info';
-    info.appendChild(text('div', 'song-item-title', `${song.songTitle}${song.artist ? ` - ${song.artist}` : ''}`));
-    const tableLabel = song.session?.table?.tableNumber ? `TABLE ${song.session.table.tableNumber}` : `SESSION ${song.tableSessionId}`;
-    info.appendChild(text('div', 'song-item-meta', `${tableLabel} · ${formatDateTime(song.createdAt)} · ${song.participant?.nickname || song.participantId} · ${song.status}`));
+    info.className = 'admin-list-info';
+    info.appendChild(text('div', 'notice-item-title', post.title));
+    const authorName = post.author?.nickname || '참가자';
+    const tableNumber = post.author?.session?.table?.tableNumber;
+    const who = tableNumber ? `${authorName} · T${tableNumber}` : authorName;
+    info.appendChild(text('div', 'notice-item-meta', `${who} · ${formatDateTime(post.createdAt)}`));
     item.appendChild(info);
-    if (song.status === 'REQUESTED') {
-      item.appendChild(button('song-done-btn', '완료', async () => {
-        const updated = await songsApi.complete(song.id);
-        updateSong(updated);
-      }));
-    }
+    item.appendChild(button('notice-delete-btn', '삭제', async () => {
+      await boardApi.remove(post.id, 'ADMIN');
+      state.boardPosts = state.boardPosts.filter((entry) => entry.id !== post.id);
+      renderBoard();
+    }));
     list.appendChild(item);
   });
 }
@@ -975,6 +1003,10 @@ function bindEvents() {
   $('next-round-btn').addEventListener('click', () => updateGlobalGame('NEXT'));
   $('next-prompt-btn').addEventListener('click', () => updateGlobalGame('NEXT_PROMPT'));
   $('notice-send-btn').addEventListener('click', () => createNotice().catch((error) => showToast(error.message)));
+  $('global-chat-send-btn').addEventListener('click', () => sendGlobalChatMessage().catch((error) => showToast(error.message)));
+  $('global-chat-input').addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') sendGlobalChatMessage().catch((error) => showToast(error.message));
+  });
 
   renderAttemptsGameList();
   renderAttemptsHistory();

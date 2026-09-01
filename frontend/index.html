@@ -6,7 +6,7 @@
 <title>PIU:M</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="style.css?v=49">
+<link rel="stylesheet" href="style.css?v=51">
 </head>
 <body>
 <div class="phone">
@@ -89,7 +89,8 @@
     </div>
     <footer class="bottombar">
       <button id="notice-btn" class="pill-btn">공지<span id="notice-badge" class="notice-badge" hidden>0</span></button>
-      <button id="song-btn" class="pill-btn">신청곡</button>
+      <button id="global-chat-btn" class="pill-btn">전체채팅</button>
+      <button id="board-btn" class="pill-btn">게시판</button>
       <button id="game-btn" class="pill-btn">게임</button>
     </footer>
   </section>
@@ -195,12 +196,41 @@
   </div>
 </div>
 
-<div id="modal-song" class="modal-backdrop">
+<div id="modal-global-chat" class="modal-backdrop">
   <div class="modal-card">
-    <button type="button" class="modal-close" data-modal="modal-song">×</button>
-    <div class="modal-title">신청곡</div>
-    <input id="song-input" class="modal-input" placeholder="곡명 - 가수">
-    <button id="song-submit-btn" class="btn-dark full">신청하기</button>
+    <button type="button" class="modal-close" data-modal="modal-global-chat">×</button>
+    <div class="modal-title">전체채팅</div>
+    <div id="global-chat-log" class="global-chat-log"></div>
+    <div class="chat-input-row">
+      <input id="global-chat-input" class="modal-input" maxlength="500" placeholder="메시지를 입력하세요">
+      <button id="global-chat-send-btn" class="btn-dark">전송</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-board" class="modal-backdrop">
+  <div class="modal-card">
+    <button type="button" class="modal-close" data-modal="modal-board">×</button>
+    <div id="board-list-view">
+      <div class="modal-title">게시판</div>
+      <button id="board-write-btn" class="btn-dark full" style="margin-bottom:12px;">글쓰기</button>
+      <div id="board-list" class="history-list"></div>
+    </div>
+    <div id="board-write-view" hidden>
+      <button type="button" id="board-write-back" class="notice-detail-back">‹ 취소</button>
+      <input id="board-title-input" class="modal-input" maxlength="150" placeholder="제목" style="margin-bottom:10px;">
+      <textarea id="board-content-input" class="modal-textarea" maxlength="3000" placeholder="내용" style="height:140px;margin-bottom:10px;"></textarea>
+      <button id="board-submit-btn" class="btn-dark full">등록하기</button>
+    </div>
+    <div id="board-detail-view" hidden>
+      <div class="notice-detail-header">
+        <button type="button" id="board-detail-back" class="notice-detail-back">‹ 목록으로</button>
+        <div id="board-detail-title" class="modal-title"></div>
+      </div>
+      <div id="board-detail-meta" class="board-detail-meta"></div>
+      <div id="board-detail-content" class="modal-detail"></div>
+      <button id="board-delete-btn" class="btn-dark full danger" hidden>삭제하기</button>
+    </div>
   </div>
 </div>
 
@@ -278,6 +308,6 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-<script type="module" src="js/app.js?v=42"></script>
+<script type="module" src="js/app.js?v=44"></script>
 </body>
 </html>

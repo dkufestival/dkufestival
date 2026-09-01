@@ -6,7 +6,8 @@ const ChatMessage = require('./ChatMessage');
 const GameSession = require('./GameSession');
 const Notice = require('./Notice');
 const Participant = require('./Participant');
-const SongRequest = require('./SongRequest');
+const GlobalChatMessage = require('./GlobalChatMessage');
+const BoardPost = require('./BoardPost');
 const PushSubscription = require('./PushSubscription');
 const TableRequestBlock = require('./TableRequestBlock');
 const BasketballScore = require('./BasketballScore');
@@ -60,10 +61,11 @@ BasketballScore.belongsTo(Participant, { foreignKey: 'participantId', as: 'parti
 TableSession.hasMany(BasketballScore, { foreignKey: 'tableSessionId', as: 'basketballScores', constraints: false });
 BasketballScore.belongsTo(TableSession, { foreignKey: 'tableSessionId', as: 'tableSession', constraints: false });
 
-TableSession.hasMany(SongRequest, { foreignKey: 'tableSessionId', as: 'songRequests', constraints: false });
-SongRequest.belongsTo(TableSession, { foreignKey: 'tableSessionId', as: 'session', constraints: false });
-Participant.hasMany(SongRequest, { foreignKey: 'participantId', as: 'songRequests', constraints: false });
-SongRequest.belongsTo(Participant, { foreignKey: 'participantId', as: 'participant', constraints: false });
+Participant.hasMany(GlobalChatMessage, { foreignKey: 'senderParticipantId', as: 'globalChatMessages', constraints: false });
+GlobalChatMessage.belongsTo(Participant, { foreignKey: 'senderParticipantId', as: 'senderParticipant', constraints: false });
+
+Participant.hasMany(BoardPost, { foreignKey: 'authorParticipantId', as: 'boardPosts', constraints: false });
+BoardPost.belongsTo(Participant, { foreignKey: 'authorParticipantId', as: 'author', constraints: false });
 
 module.exports = {
   Table,
@@ -73,7 +75,8 @@ module.exports = {
   GameSession,
   Notice,
   Participant,
-  SongRequest,
+  GlobalChatMessage,
+  BoardPost,
   PushSubscription,
   TableRequestBlock,
   BasketballScore,

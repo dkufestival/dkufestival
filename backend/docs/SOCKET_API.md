@@ -51,7 +51,6 @@ io(SERVER_URL, { auth: { token } });
 - `table:extended`
 - `table:checked-out`
 - `notice:created`
-- `song:requested`
-- `song:cancelled`
-- `song:completed`
+- `notice:deleted`
+- `globalChat:message`
 - `game:*`
