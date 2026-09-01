@@ -11,6 +11,7 @@ export function initMapZoom({ viewport, canvas, minScale: baseMinScale = 1, maxS
   let pinchStartDist = 0;
   let pinchStartScale = 1;
   let lastTap = 0;
+  let enabled = true;
 
   function apply() {
     canvas.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
@@ -58,6 +59,7 @@ export function initMapZoom({ viewport, canvas, minScale: baseMinScale = 1, maxS
   }
 
   viewport.addEventListener('wheel', (event) => {
+    if (!enabled) return;
     event.preventDefault();
     const rect = viewport.getBoundingClientRect();
     const cx = event.clientX - rect.left;
@@ -66,13 +68,14 @@ export function initMapZoom({ viewport, canvas, minScale: baseMinScale = 1, maxS
   }, { passive: false });
 
   viewport.addEventListener('mousedown', (event) => {
+    if (!enabled) return;
     dragging = true;
     moved = false;
     lastX = event.clientX;
     lastY = event.clientY;
   });
   window.addEventListener('mousemove', (event) => {
-    if (!dragging) return;
+    if (!enabled || !dragging) return;
     x += event.clientX - lastX;
     y += event.clientY - lastY;
     lastX = event.clientX;
@@ -83,6 +86,7 @@ export function initMapZoom({ viewport, canvas, minScale: baseMinScale = 1, maxS
   window.addEventListener('mouseup', () => { dragging = false; });
 
   viewport.addEventListener('touchstart', (event) => {
+    if (!enabled) return;
     if (event.touches.length === 1) {
       dragging = true;
       moved = false;
@@ -104,6 +108,7 @@ export function initMapZoom({ viewport, canvas, minScale: baseMinScale = 1, maxS
   }, { passive: true });
 
   viewport.addEventListener('touchmove', (event) => {
+    if (!enabled) return;
     if (event.touches.length === 1 && dragging) {
       const dx = event.touches[0].clientX - lastX;
       const dy = event.touches[0].clientY - lastY;
@@ -138,5 +143,9 @@ export function initMapZoom({ viewport, canvas, minScale: baseMinScale = 1, maxS
     getScale: () => scale,
     hasMoved: () => moved,
     refreshMinScale,
+    setEnabled: (value) => {
+      enabled = Boolean(value);
+      if (!enabled) dragging = false;
+    },
   };
 }

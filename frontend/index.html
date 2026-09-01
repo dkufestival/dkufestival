@@ -6,7 +6,7 @@
 <title>PIU:M</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="style.css?v=51">
+<link rel="stylesheet" href="style.css?v=52">
 </head>
 <body>
 <div class="phone">
@@ -79,13 +79,23 @@
     </div>
     <div id="member-chips" class="member-chips"></div>
     <div id="map-viewport" class="map-viewport">
-      <div id="map-canvas" class="map-canvas"></div>
-      <div class="map-controls">
-        <button id="map-zoom-in" type="button" class="map-zoom-btn">+</button>
-        <button id="map-zoom-out" type="button" class="map-zoom-btn">−</button>
-        <button id="map-zoom-reset" type="button" class="map-zoom-btn reset">⟲</button>
+      <div id="map-view" class="map-view">
+        <div id="map-canvas" class="map-canvas"></div>
+        <div class="map-controls">
+          <button id="map-zoom-in" type="button" class="map-zoom-btn">+</button>
+          <button id="map-zoom-out" type="button" class="map-zoom-btn">−</button>
+          <button id="map-zoom-reset" type="button" class="map-zoom-btn reset">⟲</button>
+        </div>
+        <div class="map-hint">두 손가락으로 확대 · 드래그로 이동</div>
       </div>
-      <div class="map-hint">두 손가락으로 확대 · 드래그로 이동</div>
+      <section id="global-chat-panel" class="global-chat-panel" aria-label="전체채팅" hidden>
+        <div id="global-chat-log" class="global-chat-log"></div>
+        <div id="global-chat-empty" class="global-chat-empty">아직 메시지가 없습니다.</div>
+        <div class="global-chat-input-row">
+          <input id="global-chat-input" class="modal-input" maxlength="500" placeholder="메시지 입력..." autocomplete="off">
+          <button id="global-chat-send-btn" class="btn-dark" type="button">전송</button>
+        </div>
+      </section>
     </div>
     <footer class="bottombar">
       <button id="notice-btn" class="pill-btn">공지<span id="notice-badge" class="notice-badge" hidden>0</span></button>
@@ -196,18 +206,6 @@
   </div>
 </div>
 
-<div id="modal-global-chat" class="modal-backdrop">
-  <div class="modal-card">
-    <button type="button" class="modal-close" data-modal="modal-global-chat">×</button>
-    <div class="modal-title">전체채팅</div>
-    <div id="global-chat-log" class="global-chat-log"></div>
-    <div class="chat-input-row">
-      <input id="global-chat-input" class="modal-input" maxlength="500" placeholder="메시지를 입력하세요">
-      <button id="global-chat-send-btn" class="btn-dark">전송</button>
-    </div>
-  </div>
-</div>
-
 <div id="modal-board" class="modal-backdrop">
   <div class="modal-card">
     <button type="button" class="modal-close" data-modal="modal-board">×</button>
@@ -308,6 +306,6 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-<script type="module" src="js/app.js?v=44"></script>
+<script type="module" src="js/app.js?v=45"></script>
 </body>
 </html>

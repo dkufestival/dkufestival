@@ -10,7 +10,7 @@ import { globalChatApi } from './globalChat.js';
 import { boardApi } from './board.js';
 import { noticesApi } from './notices.js?v=2';
 import { STORAGE_KEYS } from './config.js';
-import { initMapZoom } from './mapzoom.js?v=2';
+import { initMapZoom } from './mapzoom.js?v=3';
 import { basketballApi } from './basketball-api.js';
 
 const state = {
@@ -26,6 +26,8 @@ const state = {
   notices: [],
   globalChatMessages: [],
   globalChatLoaded: false,
+  globalChatSending: false,
+  seatViewMode: 'map',
   boardPosts: [],
   boardLoaded: false,
   activeBoardPost: null,
@@ -386,8 +388,8 @@ function bindSocket() {
     renderNotices();
   });
   socket.on('globalChat:message', (message) => {
-    state.globalChatMessages.push(message);
-    if ($('modal-global-chat').classList.contains('active')) renderGlobalChat();
+    mergeGlobalChatMessages([message]);
+    if (state.seatViewMode === 'globalChat') renderGlobalChat();
   });
   socket.on('board:created', (post) => {
     if (state.boardPosts.some((entry) => entry.id === post.id)) return;
@@ -506,6 +508,7 @@ function renderAll() {
   renderStats();
   renderParticipants();
   renderTables();
+  renderSeatView();
   renderChatRequest();
   renderNotices();
   renderGame();
@@ -825,24 +828,80 @@ function renderGlobalChat() {
   state.globalChatMessages.forEach((message) => {
     const isAdmin = message.senderRole === 'ADMIN';
     const mine = !isAdmin && message.senderParticipantId === state.participant?.id;
-    const tableNumber = message.senderParticipant?.session?.table?.tableNumber;
+    const session = message.senderParticipant?.session;
+    const tableNumber = session?.table?.tableNumber;
     const name = isAdmin ? '관리자' : (message.senderParticipant?.nickname || '참가자');
-    const label = !isAdmin && tableNumber ? `${name} · T${tableNumber}` : name;
-    const group = document.createElement('div');
-    group.className = `bubble-group ${mine ? 'me' : 'other'}`;
-    group.appendChild(text('div', 'bubble-name', label));
-    group.appendChild(text('div', `chat-bubble ${mine ? 'me' : isAdmin ? 'admin' : 'other'}`, message.content));
-    log.appendChild(group);
+    const label = isAdmin ? name : `${name}(${tableNumber ?? '-'})`;
+    const hasMale = Number(session?.maleCount || 0) > 0;
+    const hasFemale = Number(session?.femaleCount || 0) > 0;
+    const genderClass = isAdmin ? 'admin' : hasMale && hasFemale ? 'mixed' : hasFemale ? 'female' : hasMale ? 'male' : '';
+    const row = document.createElement('article');
+    row.className = `global-chat-message${mine ? ' mine' : ''}${isAdmin ? ' admin' : ''}`;
+    row.appendChild(text('span', `global-chat-icon ${genderClass}`));
+    const body = document.createElement('div');
+    body.className = 'global-chat-message-body';
+    const head = document.createElement('div');
+    head.className = 'global-chat-message-head';
+    head.appendChild(text('strong', 'global-chat-message-name', label));
+    const createdAt = new Date(message.createdAt);
+    head.appendChild(text('time', 'global-chat-message-time', Number.isNaN(createdAt.getTime()) ? '' : createdAt.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })));
+    body.appendChild(head);
+    body.appendChild(text('div', 'global-chat-message-content', message.content || ''));
+    row.appendChild(body);
+    log.appendChild(row);
   });
+  $('global-chat-empty').hidden = state.globalChatMessages.length > 0;
   log.scrollTop = log.scrollHeight;
 }
 
-async function sendGlobalChatMessage() {
+function mergeGlobalChatMessages(messages) {
+  const byId = new Map(state.globalChatMessages.map((message) => [String(message.id), message]));
+  messages.forEach((message) => {
+    if (message?.id == null) return;
+    byId.set(String(message.id), message);
+  });
+  state.globalChatMessages = [...byId.values()].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+}
+
+function renderSeatView() {
+  const globalChatOpen = state.seatViewMode === 'globalChat';
+  $('map-view').hidden = globalChatOpen;
+  $('global-chat-panel').hidden = !globalChatOpen;
+  $('map-viewport').classList.toggle('global-chat-mode', globalChatOpen);
+  mapZoom?.setEnabled(!globalChatOpen);
+  $('global-chat-btn').textContent = globalChatOpen ? '맵' : '전체채팅';
+  if (globalChatOpen) renderGlobalChat();
+}
+
+async function toggleGlobalChat() {
+  state.seatViewMode = state.seatViewMode === 'map' ? 'globalChat' : 'map';
+  renderSeatView();
+  if (state.seatViewMode !== 'globalChat' || state.globalChatLoaded) return;
+  try {
+    const messages = await globalChatApi.list();
+    mergeGlobalChatMessages(messages);
+    state.globalChatLoaded = true;
+    if (state.seatViewMode === 'globalChat') renderGlobalChat();
+  } catch (error) {
+    showToast(error.message || '전체채팅을 불러오지 못했습니다.');
+  }
+}
+
+function sendGlobalChatMessage() {
   const input = $('global-chat-input');
   const content = input.value.trim();
-  if (!content) return;
-  await globalChatApi.send(content);
-  input.value = '';
+  if (!content || state.globalChatSending) return;
+  const socket = getSocket();
+  if (!socket?.connected) return showToast('서버 연결을 확인해 주세요.');
+  state.globalChatSending = true;
+  $('global-chat-send-btn').disabled = true;
+  socket.timeout(5000).emit('globalChat:send', { content }, (error, response) => {
+    state.globalChatSending = false;
+    $('global-chat-send-btn').disabled = false;
+    if (error || !response?.ok) return showToast(response?.message || response?.error || '메시지 전송에 실패했습니다.');
+    input.value = '';
+    input.focus();
+  });
 }
 
 function renderBoardList() {
@@ -1407,17 +1466,13 @@ function bindEvents() {
     closeModal('modal-count');
     renderStats();
   });
-  $('global-chat-btn').addEventListener('click', async () => {
-    openModal('modal-global-chat');
-    if (!state.globalChatLoaded) {
-      state.globalChatMessages = await globalChatApi.list();
-      state.globalChatLoaded = true;
-    }
-    renderGlobalChat();
-  });
+  $('global-chat-btn').addEventListener('click', toggleGlobalChat);
   $('global-chat-send-btn').addEventListener('click', sendGlobalChatMessage);
   $('global-chat-input').addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') sendGlobalChatMessage();
+    if (event.key === 'Enter' && !event.isComposing) {
+      event.preventDefault();
+      sendGlobalChatMessage();
+    }
   });
   $('board-btn').addEventListener('click', async () => {
     openModal('modal-board');
