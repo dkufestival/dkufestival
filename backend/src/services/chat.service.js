@@ -72,7 +72,7 @@ async function assertSessionAvailable(sessionId, transaction, excludeRoomId = nu
     transaction,
     lock: transaction.LOCK.UPDATE,
   });
-  if (active) throw new AppError(409, 'SESSION_CHAT_BUSY', 'Table session already has a pending or active chat.');
+  if (active) throw new AppError(409, 'SESSION_CHAT_BUSY', '이미 다른 테이블과 채팅 요청 중이거나 채팅 중입니다.');
 }
 
 async function assertRequestNotBlocked(blockerSessionId, blockedSessionId, transaction) {
