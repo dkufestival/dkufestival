@@ -48,6 +48,33 @@ async function listRequests(req, res, next) {
   }
 }
 
+async function getBlock(req, res, next) {
+  try {
+    const result = await chatService.getBlock(req.user, req.params.targetSessionId);
+    res.json({ data: result });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function blockSession(req, res, next) {
+  try {
+    const result = await chatService.blockSession(req.user, req.params.targetSessionId);
+    res.json({ data: result });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function unblockSession(req, res, next) {
+  try {
+    const result = await chatService.unblockSession(req.user, req.params.targetSessionId);
+    res.json({ data: result });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function acceptRequest(req, res, next) {
   try {
     const accepted = await chatService.acceptRequest(req.params.roomId, req.user);
@@ -188,6 +215,9 @@ async function adminEndRoom(req, res, next) {
 module.exports = {
   createRequest,
   listRequests,
+  getBlock,
+  blockSession,
+  unblockSession,
   acceptRequest,
   rejectRequest,
   cancelRequest,

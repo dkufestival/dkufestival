@@ -42,6 +42,7 @@ const state = {
   tableRefreshPromise: null,
   tableRefreshTimer: null,
   tableRefreshPending: false,
+  requestBlock: { targetSessionId: null, blocked: false, loading: false, requestId: 0 },
 };
 
 const gameNames = { OX_QUIZ: 'OX 퀴즈', RPS: '가위바위보', WORD_GUESS: '제시어 게임', IMAGE_GAME: '이미지 게임', TIME_MATCH: '스톱워치', PINBALL: '핀볼', ROULETTE: '룰렛' };
@@ -649,12 +650,75 @@ function openJoinModal(table) {
   sendBtn.disabled = inChat;
   sendBtn.textContent = inChat ? '이미 채팅 중인 테이블입니다' : '요청 보내기';
   openModal('modal-send');
+  loadRequestBlockState(table);
+}
+
+function renderRequestBlockToggle() {
+  const toggle = $('request-block-toggle');
+  const blockState = state.requestBlock;
+  toggle.classList.toggle('on', blockState.blocked);
+  toggle.disabled = blockState.loading || !state.participant?.isHost || !blockState.targetSessionId;
+}
+
+async function loadRequestBlockState(table) {
+  const targetSessionId = table?.activeSession?.id;
+  const requestId = state.requestBlock.requestId + 1;
+  state.requestBlock = { targetSessionId, blocked: false, loading: true, requestId };
+  renderRequestBlockToggle();
+  if (!targetSessionId) return;
+
+  try {
+    const result = await chatApi.getBlock(targetSessionId);
+    const currentTargetId = state.pendingTargetTable?.activeSession?.id;
+    if (state.requestBlock.requestId !== requestId || Number(currentTargetId) !== Number(targetSessionId)) return;
+    state.requestBlock = { targetSessionId, blocked: !!result.blocked, loading: false, requestId };
+    renderRequestBlockToggle();
+  } catch (error) {
+    if (state.requestBlock.requestId !== requestId) return;
+    state.requestBlock = { targetSessionId, blocked: false, loading: false, requestId };
+    renderRequestBlockToggle();
+    showToast(error.message);
+  }
+}
+
+async function toggleRequestBlock() {
+  const blockState = state.requestBlock;
+  const targetSessionId = blockState.targetSessionId;
+  if (!targetSessionId || blockState.loading) return;
+
+  state.requestBlock = { ...blockState, loading: true };
+  renderRequestBlockToggle();
+  try {
+    const result = blockState.blocked
+      ? await chatApi.unblock(targetSessionId)
+      : await chatApi.block(targetSessionId);
+    const currentTargetId = state.pendingTargetTable?.activeSession?.id;
+    if (state.requestBlock.requestId !== blockState.requestId || Number(currentTargetId) !== Number(targetSessionId)) return;
+    state.requestBlock = {
+      targetSessionId,
+      blocked: !!result.blocked,
+      loading: false,
+      requestId: blockState.requestId,
+    };
+    renderRequestBlockToggle();
+  } catch (error) {
+    if (state.requestBlock.requestId !== blockState.requestId) return;
+    state.requestBlock = { ...blockState, loading: false };
+    renderRequestBlockToggle();
+    showToast(error.message);
+  }
 }
 
 async function sendJoinRequest() {
   const target = state.pendingTargetTable;
   if (!target?.activeSession?.id) return showToast('사용 중인 테이블에만 요청할 수 있습니다.');
-  const room = await chatApi.createRequest({ targetSessionId: target.activeSession.id });
+  let room;
+  try {
+    room = await chatApi.createRequest({ targetSessionId: target.activeSession.id });
+  } catch (error) {
+    if (error.code === 'CHAT_REQUEST_REJECTED') closeModal('modal-send');
+    throw error;
+  }
   state.chatRoom = room;
   closeModal('modal-send');
   showToast('채팅 요청을 보냈습니다. 상대방의 응답을 기다려 주세요.');
@@ -1161,6 +1225,7 @@ function bindEvents() {
   });
   $('join-btn').addEventListener('click', () => enter().catch((error) => showToast(error.message)));
   $('send-request-btn').addEventListener('click', () => sendJoinRequest().catch((error) => showToast(error.message)));
+  $('request-block-toggle').addEventListener('click', () => toggleRequestBlock());
   $('chat-send-btn').addEventListener('click', sendChatMessage);
   $('chat-input').addEventListener('keydown', (event) => {
     if (event.key === 'Enter') sendChatMessage();

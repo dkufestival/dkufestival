@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const app = require('../src/app');
-const { ChatRoom, PushSubscription } = require('../src/models');
+const { ChatRoom, PushSubscription, TableRequestBlock } = require('../src/models');
 
 function routeExists(method, routePath) {
   return app.router.stack.some((layer) => {
@@ -16,6 +16,9 @@ function routeExists(method, routePath) {
 test('chat request REST contract is registered', () => {
   assert.equal(routeExists('post', '/requests'), true);
   assert.equal(routeExists('get', '/requests'), true);
+  assert.equal(routeExists('get', '/blocks/:targetSessionId'), true);
+  assert.equal(routeExists('put', '/blocks/:targetSessionId'), true);
+  assert.equal(routeExists('delete', '/blocks/:targetSessionId'), true);
   assert.equal(routeExists('post', '/requests/:roomId/accept'), true);
   assert.equal(routeExists('post', '/requests/:roomId/reject'), true);
   assert.equal(routeExists('delete', '/requests/:roomId'), true);
@@ -46,4 +49,11 @@ test('push subscription model stores browser subscription keys', () => {
   assert.ok(attrs.endpoint);
   assert.ok(attrs.p256dh);
   assert.ok(attrs.auth);
+});
+
+test('table request block model stores directional session pairs', () => {
+  const attrs = TableRequestBlock.rawAttributes;
+  assert.ok(attrs.blockerSessionId);
+  assert.ok(attrs.blockedSessionId);
+  assert.equal(TableRequestBlock.tableName, 'table_request_blocks');
 });

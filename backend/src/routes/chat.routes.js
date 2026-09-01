@@ -13,6 +13,9 @@ router.post('/requests', validateBody({
   message: { type: 'string', maxLength: 500 },
 }), chatController.createRequest);
 router.get('/requests', chatController.listRequests);
+router.get('/blocks/:targetSessionId', chatController.getBlock);
+router.put('/blocks/:targetSessionId', chatController.blockSession);
+router.delete('/blocks/:targetSessionId', chatController.unblockSession);
 router.post('/requests/:roomId/accept', chatController.acceptRequest);
 router.post('/requests/:roomId/reject', chatController.rejectRequest);
 router.delete('/requests/:roomId', chatController.cancelRequest);

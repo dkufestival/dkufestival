@@ -1,6 +1,6 @@
 const { Op } = require('sequelize');
 const sequelize = require('../config/db');
-const { ChatRoom, ChatMessage, TableSession, Participant, Table } = require('../models');
+const { ChatRoom, ChatMessage, TableSession, Participant, Table, TableRequestBlock } = require('../models');
 const AppError = require('../errors/AppError');
 
 const BUSY_STATUSES = ['PENDING', 'ACTIVE'];
@@ -75,6 +75,15 @@ async function assertSessionAvailable(sessionId, transaction, excludeRoomId = nu
   if (active) throw new AppError(409, 'SESSION_CHAT_BUSY', 'Table session already has a pending or active chat.');
 }
 
+async function assertRequestNotBlocked(blockerSessionId, blockedSessionId, transaction) {
+  const block = await TableRequestBlock.findOne({
+    where: { blockerSessionId, blockedSessionId },
+    transaction,
+    lock: transaction.LOCK.UPDATE,
+  });
+  if (block) throw new AppError(409, 'CHAT_REQUEST_REJECTED', '요청이 거절되었습니다.');
+}
+
 async function createRequest(user, data) {
   const requesterSessionId = Number(user.sessionId);
   const targetSessionId = Number(data.targetSessionId);
@@ -92,6 +101,7 @@ async function createRequest(user, data) {
     if (!targetSession.acceptingRequests) {
       throw new AppError(409, 'REQUESTS_DISABLED', '합석 요청이 꺼져있어 합석이 불가능합니다.');
     }
+    await assertRequestNotBlocked(targetSessionId, requesterSessionId, transaction);
     await assertSessionAvailable(requesterSessionId, transaction);
     await assertSessionAvailable(targetSessionId, transaction);
 
@@ -110,6 +120,55 @@ async function createRequest(user, data) {
     room.setDataValue('requesterSession', requesterSession);
     room.setDataValue('targetSession', targetSession);
     return room;
+  });
+}
+
+async function getBlock(user, targetSessionId) {
+  const block = await TableRequestBlock.findOne({
+    where: {
+      blockerSessionId: Number(user.sessionId),
+      blockedSessionId: Number(targetSessionId),
+    },
+  });
+  return { blocked: !!block };
+}
+
+async function blockSession(user, targetSessionId) {
+  const blockerSessionId = Number(user.sessionId);
+  const blockedSessionId = Number(targetSessionId);
+  if (blockerSessionId === blockedSessionId) {
+    throw new AppError(400, 'INVALID_BLOCK_TARGET', 'Cannot block the same table session.');
+  }
+
+  return sequelize.transaction(async (transaction) => {
+    await requireActiveSession(blockerSessionId, 'SESSION_NOT_FOUND', { transaction, lock: transaction.LOCK.UPDATE });
+    await requireActiveSession(blockedSessionId, 'TARGET_SESSION_NOT_FOUND', { transaction, lock: transaction.LOCK.UPDATE });
+    await requireHost(user.participantId, blockerSessionId, transaction);
+    await TableRequestBlock.findOrCreate({
+      where: { blockerSessionId, blockedSessionId },
+      defaults: { blockerSessionId, blockedSessionId },
+      transaction,
+    });
+    return { blocked: true };
+  });
+}
+
+async function unblockSession(user, targetSessionId) {
+  const blockerSessionId = Number(user.sessionId);
+  const blockedSessionId = Number(targetSessionId);
+  if (blockerSessionId === blockedSessionId) {
+    throw new AppError(400, 'INVALID_BLOCK_TARGET', 'Cannot unblock the same table session.');
+  }
+
+  return sequelize.transaction(async (transaction) => {
+    await requireActiveSession(blockerSessionId, 'SESSION_NOT_FOUND', { transaction, lock: transaction.LOCK.UPDATE });
+    await requireActiveSession(blockedSessionId, 'TARGET_SESSION_NOT_FOUND', { transaction });
+    await requireHost(user.participantId, blockerSessionId, transaction);
+    await TableRequestBlock.destroy({
+      where: { blockerSessionId, blockedSessionId },
+      transaction,
+    });
+    return { blocked: false };
   });
 }
 
@@ -334,6 +393,9 @@ async function adminEndRoom(roomId) {
 
 module.exports = {
   createRequest,
+  getBlock,
+  blockSession,
+  unblockSession,
   listRequests,
   acceptRequest,
   rejectRequest,

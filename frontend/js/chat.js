@@ -2,6 +2,9 @@ import { api } from './api.js';
 
 export const chatApi = {
   createRequest: (body) => api.post('/api/chat/requests', body, { auth: true }),
+  getBlock: (targetSessionId) => api.get(`/api/chat/blocks/${targetSessionId}`, { auth: true }),
+  block: (targetSessionId) => api.put(`/api/chat/blocks/${targetSessionId}`, {}, { auth: true }),
+  unblock: (targetSessionId) => api.delete(`/api/chat/blocks/${targetSessionId}`, { auth: true }),
   listRequests: (params) => {
     const query = params ? `?${new URLSearchParams(params)}` : '';
     return api.get(`/api/chat/requests${query}`, { auth: true });

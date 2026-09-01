@@ -1230,6 +1230,37 @@ body {
   background: var(--lime-deep);
 }
 
+.request-block-row {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #fff;
+  font-size: 13px;
+}
+.request-block-row .accept-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 40px;
+  height: 22px;
+  border-radius: 999px;
+  border: none;
+  padding: 3px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.18);
+  cursor: pointer;
+}
+.request-block-row .accept-toggle-btn.on {
+  justify-content: flex-end;
+  background: var(--lime);
+}
+.request-block-row .accept-toggle-btn:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
 .chat-state,
 .chat-me-label {
   font-size: 12px;
