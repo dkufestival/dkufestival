@@ -21,7 +21,6 @@ const state = {
   chatRoom: null,
   messages: new Map(),
   notices: [],
-  songRequests: [],
   activeRoomId: null,
   activeGame: null,
   entryContext: null,
@@ -214,10 +213,6 @@ async function refreshChatRoom() {
   }
 }
 
-async function refreshSongs() {
-  state.songRequests = await songsApi.mine();
-}
-
 async function refreshNotices() {
   try {
     state.notices = await noticesApi.list();
@@ -233,7 +228,6 @@ async function syncParticipantState(options = {}) {
       refreshParticipants(),
       refreshTables(),
       refreshChatRoom(),
-      refreshSongs(),
       refreshNotices(),
     ]);
     if (options.render !== false) renderAll();
@@ -366,18 +360,6 @@ function bindSocket() {
     renderNotices();
     showToast(`새 공지: ${notice.title}`);
   });
-  socket.on('song:requested', (song) => {
-    if (song.participantId === state.participant?.id) state.songRequests.unshift(song);
-    renderSongs();
-  });
-  socket.on('song:cancelled', (song) => {
-    state.songRequests = state.songRequests.map((item) => item.id === song.id ? song : item);
-    renderSongs();
-  });
-  socket.on('song:completed', (song) => {
-    state.songRequests = state.songRequests.map((item) => item.id === song.id ? song : item);
-    renderSongs();
-  });
   socket.on('game:global:started', (game) => {
     state.activeGame = game;
     requestGameParticipation(game);
@@ -482,7 +464,6 @@ function renderAll() {
   renderParticipants();
   renderTables();
   renderChatRequest();
-  renderSongs();
   renderNotices();
   renderGame();
 }
@@ -729,32 +710,6 @@ function sendChatMessage() {
   getSocket()?.emit('chat:send', { roomId: state.activeRoomId, content }, (response) => {
     if (!response?.ok) return showToast(response?.message || response?.error || '메시지 전송 실패');
     input.value = '';
-  });
-}
-
-function renderSongs() {
-  const list = $('song-list');
-  clear(list);
-  if (!state.songRequests.length) {
-    list.appendChild(text('div', 'history-empty', '신청곡이 없습니다.'));
-    return;
-  }
-  state.songRequests.forEach((song) => {
-    const item = document.createElement('div');
-    item.className = 'history-item';
-    const info = document.createElement('div');
-    info.className = 'history-info';
-    info.appendChild(text('div', 'history-seat-name', `${song.songTitle}${song.artist ? ` - ${song.artist}` : ''}`));
-    info.appendChild(text('div', 'history-preview', song.status));
-    item.appendChild(info);
-    if (song.status === 'REQUESTED') {
-      item.appendChild(button('song-done-btn', '취소', async () => {
-        const updated = await songsApi.cancel(song.id);
-        state.songRequests = state.songRequests.map((entry) => entry.id === updated.id ? updated : entry);
-        renderSongs();
-      }));
-    }
-    list.appendChild(item);
   });
 }
 
@@ -1204,11 +1159,10 @@ function bindEvents() {
     const raw = $('song-input').value.trim();
     if (!raw) return showToast('신청곡을 입력해 주세요.');
     const [songTitle, ...artistParts] = raw.split('-').map((part) => part.trim());
-    const song = await songsApi.create({ songTitle, artist: artistParts.join(' - ') || undefined });
-    state.songRequests.unshift(song);
+    await songsApi.create({ songTitle, artist: artistParts.join(' - ') || undefined });
     $('song-input').value = '';
     closeModal('modal-song');
-    renderSongs();
+    showToast('신청곡이 접수되었습니다.');
   });
   $('notice-btn').addEventListener('click', () => {
     renderNotices();
