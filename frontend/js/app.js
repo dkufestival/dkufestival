@@ -730,18 +730,24 @@ function renderNotices() {
       const info = document.createElement('div');
       info.className = 'history-info';
       info.appendChild(text('div', 'history-seat-name', notice.title));
-      const content = text('div', 'history-preview', notice.content);
-      content.hidden = true;
-      info.appendChild(content);
       item.appendChild(info);
-      item.addEventListener('click', () => {
-        content.hidden = !content.hidden;
-        content.classList.toggle('expanded', !content.hidden);
-      });
+      item.addEventListener('click', () => showNoticeDetail(notice));
       list.appendChild(item);
     });
   }
   updateNoticeBadge();
+}
+
+function showNoticeList() {
+  $('notice-detail-view').hidden = true;
+  $('notice-list-view').hidden = false;
+}
+
+function showNoticeDetail(notice) {
+  $('notice-detail-title').textContent = notice.title;
+  $('notice-detail-content').textContent = notice.content;
+  $('notice-list-view').hidden = true;
+  $('notice-detail-view').hidden = false;
 }
 
 function showNoticePopup(notice) {
@@ -1193,8 +1199,10 @@ function bindEvents() {
   $('notice-btn').addEventListener('click', () => {
     localStorage.setItem(STORAGE_KEYS.seenNoticeCount, String(state.notices.length));
     renderNotices();
+    showNoticeList();
     openModal('modal-notices');
   });
+  $('notice-detail-back').addEventListener('click', showNoticeList);
   $('game-btn').addEventListener('click', () => {
     renderGame();
     openModal('modal-game');

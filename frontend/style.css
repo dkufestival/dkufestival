@@ -873,6 +873,22 @@ body {
 .modal-textarea::placeholder, .modal-input::placeholder { color: var(--text-muted); }
 .modal-textarea { height: 70px; }
 
+.notice-detail-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 14px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.notice-detail-back:hover { color: var(--text-light); }
+
 .modal-row {
   display: flex;
   gap: 10px;
