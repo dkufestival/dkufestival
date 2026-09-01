@@ -11,7 +11,6 @@ const state = {
   frame: null,
   attempts: [],
   maxAttempts: 1,
-  resultRedirectTimer: null,
 };
 
 function formatTime(totalMs) {
@@ -107,11 +106,6 @@ function updateActionAvailability() {
     btn.classList.remove('is-stop');
     btn.textContent = '기회 소진';
     setResult(`모든 기회(${state.maxAttempts}회)를 사용했습니다.`);
-    setStatus('3초 후 메인 화면으로 이동합니다.');
-    if (state.resultRedirectTimer) clearTimeout(state.resultRedirectTimer);
-    state.resultRedirectTimer = setTimeout(() => {
-      location.href = '/';
-    }, 3000);
   } else {
     state.phase = 'ready';
     btn.disabled = false;
