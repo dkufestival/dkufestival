@@ -743,6 +743,7 @@ body {
   border-top: 1px solid var(--border-soft);
 }
 .pill-btn {
+  position: relative;
   flex: 1;
   min-height: 44px;
   padding: 12px 10px;
@@ -762,6 +763,27 @@ body {
   gap: 6px;
 }
 .pill-btn:active { transform: scale(0.97); }
+.notice-badge {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #ff3b30;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: 1;
+  box-shadow: 0 0 0 2px #000;
+}
+.notice-badge[hidden] { display: none; }
 .btn-arrow { color: var(--lime); font-size: 13px; }
 
 /* 모달 공통 */

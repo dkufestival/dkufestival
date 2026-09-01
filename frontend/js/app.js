@@ -8,6 +8,7 @@ import { participantsApi } from './participants.js';
 import { chatApi } from './chat.js';
 import { songsApi } from './songs.js';
 import { noticesApi } from './notices.js';
+import { STORAGE_KEYS } from './config.js';
 import { initMapZoom } from './mapzoom.js?v=2';
 
 const state = {
@@ -718,18 +719,27 @@ function renderNotices() {
   clear(list);
   if (!state.notices.length) {
     list.appendChild(text('div', 'history-empty', '공지 없음'));
-    return;
+  } else {
+    state.notices.slice(0, 5).forEach((notice) => {
+      const item = document.createElement('div');
+      item.className = 'history-item';
+      const info = document.createElement('div');
+      info.className = 'history-info';
+      info.appendChild(text('div', 'history-seat-name', notice.title));
+      info.appendChild(text('div', 'history-preview', notice.content));
+      item.appendChild(info);
+      list.appendChild(item);
+    });
   }
-  state.notices.slice(0, 5).forEach((notice) => {
-    const item = document.createElement('div');
-    item.className = 'history-item';
-    const info = document.createElement('div');
-    info.className = 'history-info';
-    info.appendChild(text('div', 'history-seat-name', notice.title));
-    info.appendChild(text('div', 'history-preview', notice.content));
-    item.appendChild(info);
-    list.appendChild(item);
-  });
+  updateNoticeBadge();
+}
+
+function updateNoticeBadge() {
+  const seen = Number(localStorage.getItem(STORAGE_KEYS.seenNoticeCount) || 0);
+  const unread = Math.max(0, state.notices.length - seen);
+  const badge = $('notice-badge');
+  badge.textContent = unread > 99 ? '99+' : unread;
+  badge.hidden = unread === 0;
 }
 
 function renderGame() {
@@ -1165,6 +1175,7 @@ function bindEvents() {
     showToast('신청곡이 접수되었습니다.');
   });
   $('notice-btn').addEventListener('click', () => {
+    localStorage.setItem(STORAGE_KEYS.seenNoticeCount, String(state.notices.length));
     renderNotices();
     openModal('modal-notices');
   });

@@ -6,7 +6,7 @@
 <title>PIU:M</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="style.css?v=39">
+<link rel="stylesheet" href="style.css?v=40">
 </head>
 <body>
 <div class="phone">
@@ -88,7 +88,7 @@
       <div class="map-hint">두 손가락으로 확대 · 드래그로 이동</div>
     </div>
     <footer class="bottombar">
-      <button id="notice-btn" class="pill-btn">공지</button>
+      <button id="notice-btn" class="pill-btn">공지<span id="notice-badge" class="notice-badge" hidden>0</span></button>
       <button id="song-btn" class="pill-btn">신청곡</button>
       <button id="game-btn" class="pill-btn">게임</button>
     </footer>
@@ -258,6 +258,6 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-<script type="module" src="js/app.js?v=34"></script>
+<script type="module" src="js/app.js?v=35"></script>
 </body>
 </html>
