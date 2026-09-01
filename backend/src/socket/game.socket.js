@@ -147,7 +147,7 @@ function registerGameSocket(io, socket) {
       if (socket.data.user.role !== 'ADMIN') throw new Error('ADMIN_REQUIRED');
       const game = await gameService.startGlobalGame(payload);
       io.to('participants').emit('game:global:started', participantGame(game));
-      if (!['TIME_MATCH', 'PINBALL'].includes(game.type)) {
+      if (!['TIME_MATCH', 'PINBALL', 'BASKETBALL'].includes(game.type)) {
         io.to('participants').emit('game:global:round', participantRound(game));
       }
       reply(callback, { ok: true, data: game });

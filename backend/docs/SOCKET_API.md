@@ -16,6 +16,7 @@ io(SERVER_URL, { auth: { token } });
 | `chat:send` | 참가자 | `{ "roomId": 1, "content": "안녕하세요" }` | `{ "ok": true, "data": ChatMessage }` | `ACTIVE` 방 멤버만 전송 |
 | `game:global:start` | 관리자 | `{ "type": "TIME_MATCH", "state": { "targetMs": 5250 } }` | `{ "ok": true, "data": GameSession }` | 중앙 목표 시간으로 시간 맞추기 시작 |
 | `game:global:start` | 관리자 | `{ "type": "PINBALL", "state": { "names": ["민수*3", "지영"] } }` | `{ "ok": true, "data": GameSession }` | `이름*개수`를 지원하며 마지막 도착 구슬을 승자로 하는 전체 핀볼 관전 시작 |
+| `game:global:start` | 관리자 | `{ "type": "BASKETBALL", "state": {} }` | `{ "ok": true, "data": GameSession }` | 농구 개인 최고기록 경쟁 시작 |
 | `game:action` | 참가자 | `{ "gameId": 1, "action": "STOP", "state": { "elapsedMs": 5251 } }` | `{ "ok": true, "data": GameSession }` | 서버가 목표 대비 오차와 성공 여부 계산 |
 | `game:global:end` | 관리자 | `{ "gameId": 1 }` | `{ "ok": true, "data": GameSession }` | 진행 중인 전체 게임 종료 |
 
@@ -37,6 +38,7 @@ io(SERVER_URL, { auth: { token } });
 | `game:global:started` | 전체 참가자 | `GameSession` | 관리자 설정 목표 시간을 포함한 게임 시작 |
 | `game:global:state` | 관리자 | `GameSession` | 참가자의 시간 기록과 서버 계산 결과 수신 |
 | `game:global:ended` | 관리자·참가자 | `GameSession` | 게임 종료 및 참가자 화면 복귀 |
+| `basketball:leaderboard` | 관리자·전체 참가자 | `{ "leaderboard": [BasketballRank] }` | 개인 최고점 TOP 3가 바뀔 때 실시간 갱신 |
 
 기존 `join:*` 및 `chat:room-created` 이벤트는 제거되었습니다.
 

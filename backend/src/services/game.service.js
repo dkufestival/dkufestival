@@ -322,7 +322,7 @@ function normalizePinballEntries(values) {
 
 async function startGlobalGame(data) {
   if (!data.type) throw createServiceError('게임 종류가 필요합니다.', 'INVALID_PAYLOAD');
-  const globalTypes = ['TIME_MATCH', 'PINBALL', 'OX_QUIZ', 'RPS', 'WORD_GUESS', 'ROULETTE', 'IMAGE_GAME'];
+  const globalTypes = ['TIME_MATCH', 'PINBALL', 'BASKETBALL', 'OX_QUIZ', 'RPS', 'WORD_GUESS', 'ROULETTE', 'IMAGE_GAME'];
   if (!globalTypes.includes(data.type)) throw createServiceError('지원하지 않는 전체 게임입니다.', 'INVALID_GAME_TYPE');
   if (data.type === 'TIME_MATCH') {
     const targetMs = Number(data.state?.targetMs);
@@ -345,7 +345,7 @@ async function startGlobalGame(data) {
       seed: Math.floor(Math.random() * 0xffffffff) || 1,
       startAt: Date.now() + 2000,
     };
-  } else if (data.type !== 'TIME_MATCH') {
+  } else if (!['TIME_MATCH', 'BASKETBALL'].includes(data.type)) {
     const rounds = data.state?.rounds;
     if (!Array.isArray(rounds) || !rounds.length) throw createServiceError('라운드를 1개 이상 추가해야 합니다.', 'INVALID_GAME_CONFIG');
     const invalid = rounds.some((round) => {

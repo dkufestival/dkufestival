@@ -9,6 +9,7 @@ const Participant = require('./Participant');
 const SongRequest = require('./SongRequest');
 const PushSubscription = require('./PushSubscription');
 const TableRequestBlock = require('./TableRequestBlock');
+const BasketballScore = require('./BasketballScore');
 
 Table.hasMany(TableSession, { foreignKey: 'tableId', as: 'sessions', constraints: false });
 TableSession.belongsTo(Table, { foreignKey: 'tableId', as: 'table', constraints: false });
@@ -54,6 +55,11 @@ TableSession.hasMany(GameSession, { foreignKey: 'targetSessionId', as: 'received
 GameSession.belongsTo(TableSession, { foreignKey: 'initiatorSessionId', as: 'initiator', constraints: false });
 GameSession.belongsTo(TableSession, { foreignKey: 'targetSessionId', as: 'target', constraints: false });
 
+Participant.hasOne(BasketballScore, { foreignKey: 'participantId', as: 'basketballScore', constraints: false });
+BasketballScore.belongsTo(Participant, { foreignKey: 'participantId', as: 'participant', constraints: false });
+TableSession.hasMany(BasketballScore, { foreignKey: 'tableSessionId', as: 'basketballScores', constraints: false });
+BasketballScore.belongsTo(TableSession, { foreignKey: 'tableSessionId', as: 'tableSession', constraints: false });
+
 TableSession.hasMany(SongRequest, { foreignKey: 'tableSessionId', as: 'songRequests', constraints: false });
 SongRequest.belongsTo(TableSession, { foreignKey: 'tableSessionId', as: 'session', constraints: false });
 Participant.hasMany(SongRequest, { foreignKey: 'participantId', as: 'songRequests', constraints: false });
@@ -70,4 +76,5 @@ module.exports = {
   SongRequest,
   PushSubscription,
   TableRequestBlock,
+  BasketballScore,
 };

@@ -1,3 +1,6 @@
+import { API_BASE_URL, SOCKET_URL } from '../js/config.js';
+import { getParticipantAuth } from '../js/auth.js';
+
 const W = 390;
 const H = 680;
 const START = { x: 195, y: 590 };
@@ -12,6 +15,11 @@ const scoreNode = document.getElementById('score');
 const bestNode = document.getElementById('best-score');
 const messageNode = document.getElementById('game-message');
 const swipeGuide = document.getElementById('swipe-guide');
+const courtNode = document.querySelector('.court');
+const competitionStatusNode = document.getElementById('competition-status');
+const leaderboardNode = document.getElementById('leaderboard-list');
+const footerNode = document.getElementById('game-footer');
+const participantAuth = getParticipantAuth();
 
 let ball = freshBall();
 let gestureSamples = [];
@@ -27,8 +35,129 @@ let netKick = 0;
 let netEnergy = 0;
 let netMotion = 0;
 let lastTime = performance.now();
+let activeGameId = null;
+let competitionActive = false;
+let confirmedBest = 0;
+let pendingBest = 0;
+let submittingBest = false;
 
 bestNode.textContent = String(best);
+
+function renderLeaderboard(entries = []) {
+  leaderboardNode.replaceChildren();
+  if (!entries.length) {
+    const empty = document.createElement('li');
+    empty.className = 'empty';
+    empty.textContent = '기록 대기 중';
+    leaderboardNode.appendChild(empty);
+    return;
+  }
+  entries.slice(0, 3).forEach((entry, index) => {
+    const row = document.createElement('li');
+    const rank = document.createElement('b');
+    const player = document.createElement('span');
+    const points = document.createElement('em');
+    rank.textContent = String(index + 1);
+    player.textContent = `${entry.nickname || '참가자'} · T${entry.tableNumber ?? '-'}`;
+    points.textContent = String(Number(entry.score || 0));
+    row.append(rank, player, points);
+    leaderboardNode.appendChild(row);
+  });
+}
+
+function setCompetition(game) {
+  const nextActive = game?.type === 'BASKETBALL' && game?.status === 'ACTIVE';
+  const previousGameId = activeGameId;
+  competitionActive = nextActive;
+  activeGameId = nextActive ? Number(game.id) : null;
+  if (!nextActive || activeGameId !== previousGameId) pendingBest = confirmedBest;
+  competitionStatusNode.textContent = nextActive ? '기록 경쟁 진행 중' : '관리자 시작 대기';
+  competitionStatusNode.classList.toggle('active', nextActive);
+  competitionStatusNode.classList.toggle('waiting', !nextActive);
+  courtNode.classList.toggle('locked', !nextActive);
+  footerNode.textContent = nextActive
+    ? '공을 위로 밀어서 슛하세요 · 놓치면 점수가 초기화돼요'
+    : '관리자가 시작하면 기록 경쟁에 참가할 수 있어요';
+  if (!nextActive) {
+    resetBall(false);
+    setMessage(participantAuth?.token ? '관리자가 농구게임을 시작하면 도전할 수 있어요' : '앱에서 참가자로 입장해 주세요');
+  } else {
+    setMessage('공을 위로 빠르게 밀어보세요');
+  }
+}
+
+async function fetchJson(path, options = {}) {
+  const headers = { ...(options.headers || {}) };
+  if (participantAuth?.token) headers.Authorization = `Bearer ${participantAuth.token}`;
+  if (options.body !== undefined) headers['Content-Type'] = 'application/json';
+  const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error?.message || '서버 요청에 실패했습니다.');
+  return Object.prototype.hasOwnProperty.call(payload, 'data') ? payload.data : payload;
+}
+
+async function refreshLeaderboard() {
+  const leaderboard = await fetchJson('/api/basketball/leaderboard');
+  renderLeaderboard(Array.isArray(leaderboard) ? leaderboard : []);
+}
+
+async function refreshCompetitionState() {
+  if (!participantAuth?.token) {
+    setCompetition(null);
+    return;
+  }
+  const data = await fetchJson('/api/basketball/state');
+  confirmedBest = Number(data.personalBest || 0);
+  best = Math.max(best, confirmedBest);
+  bestNode.textContent = String(best);
+  localStorage.setItem('festival-basketball-best', String(best));
+  setCompetition(data.activeGame ? { ...data.activeGame, type: 'BASKETBALL' } : null);
+}
+
+async function drainScoreSubmission() {
+  if (submittingBest || !competitionActive || !activeGameId || !participantAuth?.token) return;
+  submittingBest = true;
+  try {
+    while (competitionActive && pendingBest > confirmedBest) {
+      const target = pendingBest;
+      const data = await fetchJson('/api/basketball/scores', {
+        method: 'POST',
+        body: JSON.stringify({ gameId: activeGameId, score: target }),
+      });
+      confirmedBest = Math.max(confirmedBest, Number(data.personalBest || target));
+      best = Math.max(best, confirmedBest);
+      bestNode.textContent = String(best);
+      localStorage.setItem('festival-basketball-best', String(best));
+      renderLeaderboard(data.leaderboard || []);
+    }
+  } catch (error) {
+    footerNode.textContent = `기록 저장 대기 · ${error.message}`;
+  } finally {
+    submittingBest = false;
+  }
+}
+
+function queueScoreSubmission(nextScore) {
+  if (!competitionActive || nextScore <= 0) return;
+  pendingBest = Math.max(pendingBest, nextScore);
+  drainScoreSubmission();
+}
+
+function connectCompetitionSocket() {
+  if (!participantAuth?.token || !window.io) return;
+  const socket = window.io(SOCKET_URL, {
+    auth: { token: participantAuth.token },
+    transports: ['websocket', 'polling'],
+  });
+  socket.on('game:global:current', (game) => setCompetition(game));
+  socket.on('game:global:started', (game) => {
+    if (game?.type === 'BASKETBALL') setCompetition(game);
+  });
+  socket.on('game:global:ended', (game) => {
+    if (game?.type === 'BASKETBALL') setCompetition(null);
+  });
+  socket.on('basketball:leaderboard', (payload = {}) => renderLeaderboard(payload.leaderboard || []));
+}
 
 function freshBall() {
   return { ...START, vx: 0, vy: 0, r: BALL_RADIUS, angle: 0, depth: 0 };
@@ -48,6 +177,7 @@ function updateScore(nextScore) {
     bestNode.textContent = String(best);
     localStorage.setItem('festival-basketball-best', String(best));
   }
+  queueScoreSubmission(score);
 }
 
 function resetBall(missed = false) {
@@ -337,6 +467,10 @@ function pointFromEvent(event) {
 }
 
 canvas.addEventListener('pointerdown', (event) => {
+  if (!competitionActive) {
+    setMessage(participantAuth?.token ? '관리자가 농구게임을 시작하면 도전할 수 있어요' : '앱에서 참가자로 입장해 주세요');
+    return;
+  }
   if (launched) return;
   const point = pointFromEvent(event);
   if (Math.hypot(point.x - START.x, point.y - START.y) > BALL_RADIUS + 25) return;
@@ -385,6 +519,10 @@ function releaseBall(event) {
 canvas.addEventListener('pointerup', releaseBall);
 canvas.addEventListener('pointercancel', releaseBall);
 document.getElementById('reset-button').addEventListener('click', () => {
+  if (!competitionActive) {
+    setMessage(participantAuth?.token ? '관리자 시작 대기 중입니다' : '앱에서 참가자로 입장해 주세요');
+    return;
+  }
   updateScore(0);
   resetBall(false);
 });
@@ -393,4 +531,8 @@ document.getElementById('back-button').addEventListener('click', () => {
   else location.href = '/';
 });
 
+setCompetition(null);
+refreshLeaderboard().catch(() => {});
+refreshCompetitionState().catch(() => setCompetition(null));
+connectCompetitionSocket();
 requestAnimationFrame(render);

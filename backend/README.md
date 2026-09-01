@@ -96,6 +96,7 @@ npm run migrate:down
 6. `202608260001-table-session-accepting-requests.js`: 테이블 세션별 요청 수락 여부 추가
 7. `202608260002-drop-chat-room-unique-index.js`: 채팅방 unique index 정리
 8. `202608270001-recreation-games.js`: 레크리에이션 게임 테이블 추가
+9. `202609010002-basketball-leaderboard.js`: 농구게임 타입과 참가자 개인 최고기록 TOP 3 저장 테이블 추가
 
 운영 DB에 적용하기 전에는 백업을 먼저 만드세요.
 

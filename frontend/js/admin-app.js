@@ -6,6 +6,7 @@ import { adminApi } from './admin-api.js';
 import { songsApi } from './songs.js';
 import { noticesApi } from './notices.js?v=2';
 import { GAME_TYPES } from './games.js';
+import { basketballApi } from './basketball-api.js';
 
 const state = {
   tables: [],
@@ -33,6 +34,7 @@ const state = {
   attemptsSelectedParticipantIds: new Set(),
   attemptsGrantHistory: [],
   gameUpdateInFlight: false,
+  basketballLeaderboard: [],
 };
 
 const RANKED_GAME_TYPES = ['TIME_MATCH', 'RPS', 'OX_QUIZ', 'WORD_GUESS', 'IMAGE_GAME'];
@@ -133,6 +135,10 @@ function bindSocket() {
     renderGameList();
     renderTeamScoreboard();
   });
+  socket.on('basketball:leaderboard', (payload = {}) => {
+    state.basketballLeaderboard = Array.isArray(payload.leaderboard) ? payload.leaderboard.slice(0, 3) : [];
+    renderBasketballLeaderboard();
+  });
 }
 
 function updateSong(song) {
@@ -161,10 +167,14 @@ async function loadNotices() {
   state.notices = await noticesApi.list('ADMIN');
 }
 
+async function loadBasketballLeaderboard() {
+  state.basketballLeaderboard = (await basketballApi.leaderboard()).slice(0, 3);
+}
+
 async function syncAdminState(options = {}) {
   if (state.syncPromise) return state.syncPromise;
   state.syncPromise = (async () => {
-    await Promise.allSettled([loadTables(), loadChatRooms(), loadSongs(), loadNotices()]);
+    await Promise.allSettled([loadTables(), loadChatRooms(), loadSongs(), loadNotices(), loadBasketballLeaderboard()]);
     if (options.render !== false) renderAll();
     if (state.activeDetailTable) openDetail(state.activeDetailTable);
   })().finally(() => {
@@ -207,6 +217,31 @@ function renderAll() {
   renderSongs();
   renderNoticeHistory();
   renderTeamScoreboard();
+  renderBasketballLeaderboard();
+}
+
+function renderBasketballLeaderboard() {
+  const panel = $('basketball-admin-ranking');
+  const list = $('basketball-admin-ranking-list');
+  if (!panel || !list) return;
+  panel.hidden = state.selectedGame !== 'BASKETBALL' && state.activeGame?.type !== 'BASKETBALL';
+  clear(list);
+  if (!state.basketballLeaderboard.length) {
+    list.appendChild(text('div', 'rank-empty', '아직 등록된 농구 기록이 없습니다.'));
+    return;
+  }
+  state.basketballLeaderboard.slice(0, 3).forEach((entry, index) => {
+    const row = document.createElement('div');
+    row.className = 'basketball-ranking-row';
+    row.appendChild(text('span', 'basketball-ranking-position', `${index + 1}위`));
+    const player = document.createElement('span');
+    player.className = 'basketball-ranking-player';
+    player.append(document.createTextNode(entry.nickname || '참가자'));
+    player.appendChild(text('small', '', `TABLE ${entry.tableNumber ?? '-'}`));
+    row.appendChild(player);
+    row.appendChild(text('strong', 'basketball-ranking-score', `${Number(entry.score || 0)}점`));
+    list.appendChild(row);
+  });
 }
 
 function renderTeamScoreboard() {
@@ -541,7 +576,7 @@ function settingField(label, id, value = '', type = 'input') {
 function renderCustomGameSetting() {
   const box = $('game-custom-setting');
   clear(box);
-  box.hidden = ['TIME_MATCH', 'PINBALL'].includes(state.selectedGame);
+  box.hidden = ['TIME_MATCH', 'PINBALL', 'BASKETBALL'].includes(state.selectedGame);
   if (box.hidden) return;
   const rounds = state.gameRounds[state.selectedGame] || [defaultRound(state.selectedGame)];
   state.gameRounds[state.selectedGame] = rounds;
@@ -615,7 +650,7 @@ function renderRoundCard(round, index) {
 
 function selectedGameState() {
   if (state.selectedGame === 'TIME_MATCH') return { targetMs: targetTimeMs(), maxAttempts: targetAttempts() };
-  if (state.selectedGame === 'PINBALL') return {};
+  if (['PINBALL', 'BASKETBALL'].includes(state.selectedGame)) return {};
   return { rounds: state.gameRounds[state.selectedGame] || [], currentRound: 0, answerRevealed: false };
 }
 
@@ -639,12 +674,14 @@ function renderGameList() {
       renderTimeMatchSetting();
       renderPinballSetting();
       renderCustomGameSetting();
+      renderBasketballLeaderboard();
     });
     list.appendChild(item);
   });
   renderTimeMatchSetting();
   renderPinballSetting();
   renderCustomGameSetting();
+  renderBasketballLeaderboard();
 }
 
 function addGameLog(message) {
@@ -887,7 +924,7 @@ function bindEvents() {
       if (!pinball.valid) return showToast('이름 또는 이름*개수 형식으로 총 2~80개 구슬을 입력해주세요.');
     }
     const gameState = selectedGameState();
-    if (!gameState.rounds?.length && !['TIME_MATCH', 'PINBALL'].includes(state.selectedGame)) return showToast('라운드를 추가해주세요.');
+    if (!gameState.rounds?.length && !['TIME_MATCH', 'PINBALL', 'BASKETBALL'].includes(state.selectedGame)) return showToast('라운드를 추가해주세요.');
     getSocket()?.emit('game:global:start', {
       type: state.selectedGame,
       state: {

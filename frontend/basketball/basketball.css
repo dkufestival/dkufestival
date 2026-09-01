@@ -15,6 +15,17 @@ body { color: #555; background: #eceff3; font-family: -apple-system, BlinkMacSys
 .court { position: relative; flex: 1; min-height: 0; overflow: hidden; background: #fff; }
 canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; }
 canvas:active { cursor: grabbing; }
+.court.locked canvas { cursor: not-allowed; }
+.competition-status { position: absolute; z-index: 4; top: 12px; left: 13px; padding: 5px 8px; border: 1px solid #d8dde3; border-radius: 999px; color: #7d8792; background: rgba(255,255,255,.9); font-size: 9px; font-weight: 800; letter-spacing: .04em; pointer-events: none; }
+.competition-status.active { border-color: rgba(21,150,210,.35); color: #087fb6; background: rgba(232,248,255,.94); }
+.live-ranking { position: absolute; z-index: 3; top: 43px; left: 13px; width: 132px; padding: 8px 9px; border: 1px solid rgba(215,220,226,.82); border-radius: 9px; background: rgba(255,255,255,.82); box-shadow: 0 5px 18px rgba(39,50,63,.06); backdrop-filter: blur(6px); pointer-events: none; }
+.live-ranking > strong { display: block; margin-bottom: 4px; color: #1596d2; font-size: 8px; font-weight: 900; letter-spacing: .15em; }
+.live-ranking ol { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.live-ranking li { display: grid; grid-template-columns: 13px minmax(0,1fr) auto; align-items: center; gap: 3px; min-height: 16px; color: #6e747a; font-size: 8px; }
+.live-ranking li b { color: #1596d2; }
+.live-ranking li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.live-ranking li em { color: #41464b; font-style: normal; font-weight: 800; font-variant-numeric: tabular-nums; }
+.live-ranking li.empty { display: block; color: #9ba2a9; }
 .best-score { position: absolute; z-index: 3; top: 13px; right: 16px; display: flex; flex-direction: column; align-items: flex-end; color: #5c5c5c; pointer-events: none; }
 .best-score span { font-size: 11px; font-weight: 500; line-height: 1.1; }
 .best-score strong { margin-top: 1px; font-size: 21px; font-weight: 400; line-height: 1; font-variant-numeric: tabular-nums; }

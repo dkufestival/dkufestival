@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
-<link rel="stylesheet" href="admin.css?v=13">
+<link rel="stylesheet" href="admin.css?v=14">
 </head>
 <body>
 <section id="screen-login" class="screen active">
@@ -63,6 +63,18 @@
       <div class="game-panel">
         <h3 class="panel-title">전체 참여 게임</h3>
         <div id="game-list" class="game-list"></div>
+        <section id="basketball-admin-ranking" class="basketball-ranking-panel" hidden>
+          <div class="basketball-ranking-head">
+            <div>
+              <span class="basketball-ranking-kicker">LIVE LEADERBOARD</span>
+              <h3>농구 사용자 최고기록 TOP 3</h3>
+            </div>
+            <span class="basketball-ranking-rule">개인 최고점만 반영</span>
+          </div>
+          <div id="basketball-admin-ranking-list" class="basketball-ranking-list" aria-live="polite">
+            <div class="rank-empty">아직 등록된 농구 기록이 없습니다.</div>
+          </div>
+        </section>
         <div id="time-match-setting" class="time-match-setting">
           <div class="time-setting-head">
             <span>중앙 목표 시간</span>
@@ -178,6 +190,6 @@
 <div id="admin-toast" class="toast"></div>
 
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-<script type="module" src="js/admin-app.js?v=22"></script>
+<script type="module" src="js/admin-app.js?v=23"></script>
 </body>
 </html>

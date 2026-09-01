@@ -47,6 +47,16 @@
 
 VAPID 미설정 시 Push API는 `PUSH_NOT_CONFIGURED`를 반환합니다. 일반 메시지는 Push 대상이 아니며, 공지/채팅 요청/수락/거절/취소/만료/종료만 시스템 알림 대상입니다.
 
+## 농구게임 기록 API
+
+| Method | URL | Body | 설명 |
+| --- | --- | --- | --- |
+| `GET` | `/api/basketball/leaderboard` | 없음 | 모든 화면에 공개되는 개인 최고점 TOP 3 |
+| `GET` | `/api/basketball/state` | 없음 | 참가자의 개인 최고점과 현재 농구게임 활성 상태 |
+| `POST` | `/api/basketball/scores` | `{ "gameId": 1, "score": 12 }` | 진행 중인 농구게임의 개인 최고점 갱신 |
+
+점수 등록은 참가자 인증과 관리자가 시작한 활성 농구게임이 필요합니다. 기존 최고점보다 높은 점수만 저장되며, 순위가 바뀌면 Socket.IO `basketball:leaderboard` 이벤트로 관리자와 참가자에게 TOP 3가 즉시 전송됩니다.
+
 ## 주요 오류 코드
 
 `HOST_REQUIRED`, `INVALID_CHAT_TARGET`, `TARGET_SESSION_NOT_FOUND`, `SESSION_CHAT_BUSY`, `CHAT_REQUEST_NOT_FOUND`, `CHAT_REQUEST_FORBIDDEN`, `CHAT_REQUEST_CLOSED`, `CHAT_REQUEST_EXPIRED`, `CHAT_ROOM_NOT_FOUND`, `CHAT_NOT_ACTIVE`, `CHAT_FORBIDDEN`, `PARTICIPANT_FORBIDDEN`, `PUSH_NOT_CONFIGURED`

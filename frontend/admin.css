@@ -466,6 +466,25 @@ body {
 .rank-row .rank-score { color: var(--text-muted); font-size: 11px; }
 .rank-empty { color: var(--text-muted); font-size: 12px; }
 
+.basketball-ranking-panel {
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid rgba(196, 255, 60, .34);
+  border-radius: 10px;
+  background: linear-gradient(145deg, rgba(196, 255, 60, .08), rgba(16, 17, 15, .96) 55%);
+}
+.basketball-ranking-panel[hidden] { display: none; }
+.basketball-ranking-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 12px; }
+.basketball-ranking-head h3 { margin: 3px 0 0; color: var(--text-light); font-size: 15px; }
+.basketball-ranking-kicker { color: var(--lime); font-size: 9px; font-weight: 900; letter-spacing: .16em; }
+.basketball-ranking-rule { color: var(--text-muted); font-size: 10px; white-space: nowrap; }
+.basketball-ranking-list { display: flex; flex-direction: column; gap: 7px; }
+.basketball-ranking-row { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; background: rgba(0, 0, 0, .42); }
+.basketball-ranking-position { color: var(--lime); font-size: 13px; font-weight: 900; }
+.basketball-ranking-player { min-width: 0; color: var(--text-light); font-size: 12px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.basketball-ranking-player small { margin-left: 6px; color: var(--text-muted); font-size: 10px; font-weight: 500; }
+.basketball-ranking-score { color: var(--text-light); font-size: 15px; font-weight: 900; font-variant-numeric: tabular-nums; }
+
 /* 신청곡 */
 .song-list { display: flex; flex-direction: column; gap: 8px; }
 .song-empty { color: var(--text-muted); font-size: 12px; padding: 6px 0; }

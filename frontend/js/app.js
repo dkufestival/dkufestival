@@ -10,6 +10,7 @@ import { songsApi } from './songs.js';
 import { noticesApi } from './notices.js?v=2';
 import { STORAGE_KEYS } from './config.js';
 import { initMapZoom } from './mapzoom.js?v=2';
+import { basketballApi } from './basketball-api.js';
 
 const state = {
   qrToken: new URLSearchParams(location.search).get('qr'),
@@ -43,9 +44,10 @@ const state = {
   tableRefreshTimer: null,
   tableRefreshPending: false,
   requestBlock: { targetSessionId: null, blocked: false, loading: false, requestId: 0 },
+  basketballLeaderboard: [],
 };
 
-const gameNames = { OX_QUIZ: 'OX 퀴즈', RPS: '가위바위보', WORD_GUESS: '제시어 게임', IMAGE_GAME: '이미지 게임', TIME_MATCH: '스톱워치', PINBALL: '핀볼', ROULETTE: '룰렛' };
+const gameNames = { OX_QUIZ: 'OX 퀴즈', RPS: '가위바위보', WORD_GUESS: '제시어 게임', IMAGE_GAME: '이미지 게임', TIME_MATCH: '스톱워치', PINBALL: '핀볼', BASKETBALL: '농구', ROULETTE: '룰렛' };
 
 function isParticipating(gameId) {
   return state.participationDecisions.get(Number(gameId)) === true;
@@ -61,6 +63,11 @@ function requestGameParticipation(game) {
   }
   if (game.type === 'TIME_MATCH') {
     showToast('스톱워치 게임이 시작되었습니다. 게임 메뉴에서 입장할 수 있습니다.');
+    return;
+  }
+  if (game.type === 'BASKETBALL') {
+    state.participationDecisions.set(Number(game.id), true);
+    showToast('농구게임이 시작되었습니다. 게임 메뉴에서 입장할 수 있습니다.');
     return;
   }
   state.pendingParticipationGame = game;
@@ -80,6 +87,7 @@ function decideGameParticipation(joined) {
     return;
   }
   if (game.type === 'PINBALL') showPinballScreen(game);
+  else if (game.type === 'BASKETBALL') window.location.href = '/basketball/';
   else if (game.type !== 'TIME_MATCH') showGlobalGameScreen();
   else showToast('게임 화면의 스톱워치 입장 버튼을 눌러주세요.');
 }
@@ -223,6 +231,10 @@ async function refreshNotices() {
   }
 }
 
+async function refreshBasketballLeaderboard() {
+  state.basketballLeaderboard = (await basketballApi.leaderboard()).slice(0, 3);
+}
+
 async function syncParticipantState(options = {}) {
   if (state.syncPromise) return state.syncPromise;
   state.syncPromise = (async () => {
@@ -231,6 +243,7 @@ async function syncParticipantState(options = {}) {
       refreshTables(),
       refreshChatRoom(),
       refreshNotices(),
+      refreshBasketballLeaderboard(),
     ]);
     if (options.render !== false) renderAll();
     if (state.chatRoom?.status === 'ACTIVE') openChat(state.chatRoom.roomId);
@@ -400,6 +413,10 @@ function bindSocket() {
         showRoundResult();
       }
     }
+  });
+  socket.on('basketball:leaderboard', (payload = {}) => {
+    state.basketballLeaderboard = Array.isArray(payload.leaderboard) ? payload.leaderboard.slice(0, 3) : [];
+    renderGame();
   });
   socket.on('game:global:round', (payload) => {
     if (!state.activeGame || Number(payload.gameId) !== Number(state.activeGame.id)) return;
@@ -838,10 +855,16 @@ function renderGame() {
   basketballCard.className = 'basketball-entry';
   basketballCard.appendChild(text('div', 'basketball-entry-icon', '🏀'));
   basketballCard.appendChild(text('div', 'basketball-entry-title', '농구게임'));
-  basketballCard.appendChild(text('div', 'basketball-entry-copy', '제한 시간 안에 최대한 많은 골을 넣어보세요.'));
-  basketballCard.appendChild(button('btn-dark full', '농구게임 입장', () => {
+  const basketballActive = state.activeGame?.type === 'BASKETBALL' && state.activeGame?.status === 'ACTIVE';
+  basketballCard.appendChild(text('div', 'basketball-entry-copy', basketballActive
+    ? '현재 기록 경쟁이 진행 중입니다. 연속으로 골을 넣어 최고점에 도전하세요.'
+    : '관리자가 농구게임을 시작하면 기록에 도전할 수 있습니다.'));
+  appendBasketballLeaderboard(basketballCard);
+  const basketballButton = button('btn-dark full', basketballActive ? '농구게임 입장' : '관리자 시작 대기', () => {
     window.location.href = '/basketball/';
-  }));
+  });
+  basketballButton.disabled = !basketballActive;
+  basketballCard.appendChild(basketballButton);
   box.appendChild(basketballCard);
 
   const pinballActive = state.activeGame?.type === 'PINBALL' && state.activeGame?.status === 'ACTIVE';
@@ -878,7 +901,7 @@ function renderGame() {
     box.appendChild(text('div', 'history-empty', '진행 중인 게임이 없습니다.'));
     return;
   }
-  if (state.activeGame.type === 'TIME_MATCH') {
+  if (['TIME_MATCH', 'PINBALL', 'BASKETBALL'].includes(state.activeGame.type)) {
     return;
   }
   box.appendChild(text('div', 'history-seat-name', `${state.activeGame.type} / ${state.activeGame.status}`));
@@ -899,6 +922,25 @@ function renderGame() {
       });
     }));
   }
+}
+
+function appendBasketballLeaderboard(container) {
+  const ranking = document.createElement('div');
+  ranking.className = 'basketball-top-three';
+  ranking.appendChild(text('div', 'basketball-top-three-title', 'USER BEST · TOP 3'));
+  if (!state.basketballLeaderboard.length) {
+    ranking.appendChild(text('div', 'basketball-top-three-empty', '아직 등록된 기록이 없습니다.'));
+  } else {
+    state.basketballLeaderboard.slice(0, 3).forEach((entry, index) => {
+      const row = document.createElement('div');
+      row.className = 'basketball-top-three-row';
+      row.appendChild(text('b', '', `${index + 1}`));
+      row.appendChild(text('span', '', `${entry.nickname || '참가자'} · T${entry.tableNumber ?? '-'}`));
+      row.appendChild(text('strong', '', `${Number(entry.score || 0)}점`));
+      ranking.appendChild(row);
+    });
+  }
+  container.appendChild(ranking);
 }
 
 function pinballViewerUrl(game) {

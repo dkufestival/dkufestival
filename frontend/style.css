@@ -1043,6 +1043,13 @@ body {
   font-size: 11px;
   line-height: 1.5;
 }
+.basketball-top-three { margin: 0 0 14px; padding: 10px; border: 1px solid var(--border-soft); border-radius: 9px; background: #10110f; text-align: left; }
+.basketball-top-three-title { margin-bottom: 7px; color: var(--lime); font-size: 9px; font-weight: 900; letter-spacing: .12em; }
+.basketball-top-three-row { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; gap: 7px; min-height: 25px; color: var(--text-light); font-size: 11px; }
+.basketball-top-three-row b { color: var(--lime); }
+.basketball-top-three-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.basketball-top-three-row strong { font-variant-numeric: tabular-nums; }
+.basketball-top-three-empty { padding: 4px 0; color: var(--text-muted); font-size: 10px; }
 
 #screen-chat { background: var(--bg-black); }
 .chat-log {
