@@ -822,8 +822,11 @@ function sendChatMessage() {
   });
 }
 
-function renderGlobalChat() {
+function renderGlobalChat({ forceBottom = false } = {}) {
   const log = $('global-chat-log');
+  const previousScrollTop = log.scrollTop;
+  const distanceFromBottom = log.scrollHeight - log.scrollTop - log.clientHeight;
+  const shouldStickToBottom = forceBottom || distanceFromBottom < 48;
   clear(log);
   state.globalChatMessages.forEach((message) => {
     const isAdmin = message.senderRole === 'ADMIN';
@@ -851,7 +854,7 @@ function renderGlobalChat() {
     log.appendChild(row);
   });
   $('global-chat-empty').hidden = state.globalChatMessages.length > 0;
-  log.scrollTop = log.scrollHeight;
+  log.scrollTop = shouldStickToBottom ? log.scrollHeight : previousScrollTop;
 }
 
 function mergeGlobalChatMessages(messages) {
@@ -870,7 +873,7 @@ function renderSeatView() {
   $('map-viewport').classList.toggle('global-chat-mode', globalChatOpen);
   mapZoom?.setEnabled(!globalChatOpen);
   $('global-chat-btn').textContent = globalChatOpen ? '맵' : '전체채팅';
-  if (globalChatOpen) renderGlobalChat();
+  if (globalChatOpen) renderGlobalChat({ forceBottom: true });
 }
 
 async function toggleGlobalChat() {
@@ -881,7 +884,7 @@ async function toggleGlobalChat() {
     const messages = await globalChatApi.list();
     mergeGlobalChatMessages(messages);
     state.globalChatLoaded = true;
-    if (state.seatViewMode === 'globalChat') renderGlobalChat();
+    if (state.seatViewMode === 'globalChat') renderGlobalChat({ forceBottom: true });
   } catch (error) {
     showToast(error.message || '전체채팅을 불러오지 못했습니다.');
   }

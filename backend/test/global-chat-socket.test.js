@@ -2,6 +2,27 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const globalChatService = require('../src/services/globalChat.service');
 const registerGlobalChatSocket = require('../src/socket/globalChat.socket');
+const globalChatMigration = require('../src/migrations/202609010003-global-chat-messages');
+
+test('global chat migration creates its missing table and history index', async () => {
+  const calls = [];
+  const queryInterface = {
+    async showAllTables() { return []; },
+    async createTable(name, columns) { calls.push({ type: 'table', name, columns }); },
+    async showIndex() { return []; },
+    async addIndex(table, fields, options) { calls.push({ type: 'index', table, fields, options }); },
+  };
+
+  await globalChatMigration.up({ queryInterface, transaction: {} });
+
+  const tableCall = calls.find((call) => call.type === 'table');
+  assert.equal(tableCall.name, 'global_chat_messages');
+  assert.ok(tableCall.columns.senderParticipantId);
+  assert.ok(tableCall.columns.senderRole);
+  assert.ok(tableCall.columns.content);
+  assert.ok(tableCall.columns.createdAt);
+  assert.equal(calls.find((call) => call.type === 'index').options.name, 'global_chat_messages_created_at');
+});
 
 test('global chat trusts authenticated socket identity and broadcasts only to event rooms', async () => {
   const originalSend = globalChatService.sendAsParticipant;
