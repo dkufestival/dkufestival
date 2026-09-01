@@ -16,7 +16,7 @@
         <button id="reset-button" class="reset-button" type="button" aria-label="게임 다시 시작">다시</button>
       </header>
       <div class="court">
-        <div id="competition-status" class="competition-status waiting">관리자 시작 대기</div>
+        <div id="competition-status" class="competition-status active">자유 플레이</div>
         <section class="live-ranking" aria-label="농구 최고기록 TOP 3">
           <strong>TOP 3</strong>
           <ol id="leaderboard-list">
@@ -29,10 +29,10 @@
         <p id="game-message" class="game-message">공을 위로 빠르게 밀어보세요</p>
         <div id="swipe-guide" class="swipe-guide visible" aria-hidden="true"><i></i><span>SWIPE UP</span></div>
       </div>
-      <footer id="game-footer">관리자가 시작하면 기록 경쟁에 참가할 수 있어요</footer>
+      <footer id="game-footer">공을 위로 밀어서 슛하세요 · 놓치면 점수가 초기화돼요</footer>
     </section>
   </main>
   <script src="/socket.io/socket.io.js"></script>
-  <script type="module" src="./basketball.js?v=2"></script>
+  <script type="module" src="./basketball.js?v=3"></script>
 </body>
 </html>

@@ -43,9 +43,10 @@ QR_OUTPUT_DIR=./qr-codes
 
 ```bash
 npm run setup
-npm run migrate
 npm run start
 ```
+
+`npm run start`는 최신 DB 마이그레이션을 먼저 적용한 뒤 단일 서버를 실행합니다.
 
 처음 테이블과 QR을 생성해야 할 때만 아래 명령을 실행합니다.
 

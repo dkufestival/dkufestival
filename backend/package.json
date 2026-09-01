@@ -4,7 +4,7 @@
   "description": "대학교 축제 주점 테이블 매칭 백엔드",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
+    "start": "npm run migrate && node src/server.js",
     "dev": "nodemon src/server.js",
     "migrate": "node scripts/migrate.js",
     "migrate:down": "node scripts/migrate.js --down",

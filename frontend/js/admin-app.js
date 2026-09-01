@@ -461,13 +461,18 @@ function renderChatRooms() {
 }
 
 function renderGameControls() {
+  const isFreePlayBasketball = state.selectedGame === 'BASKETBALL';
   const activeTarget = state.activeGame?.type === 'TIME_MATCH'
     ? ` · 목표 ${formatTargetTime(state.activeGame.state?.targetMs)}`
     : state.activeGame?.type === 'PINBALL'
       ? ` · 구슬 ${state.activeGame.state?.marbleCount || state.activeGame.state?.names?.length || 0}개`
       : '';
-  $('game-status').textContent = state.activeGame ? `참가자 화면에서 게임이 진행 중입니다${activeTarget}.` : '게임을 시작할 수 있습니다.';
-  $('broadcast-btn').hidden = Boolean(state.activeGame);
+  $('game-status').textContent = state.activeGame
+    ? `참가자 화면에서 게임이 진행 중입니다${activeTarget}.`
+    : isFreePlayBasketball
+      ? '농구게임은 관리자 시작 없이 항상 자유롭게 이용할 수 있습니다.'
+      : '게임을 시작할 수 있습니다.';
+  $('broadcast-btn').hidden = Boolean(state.activeGame) || isFreePlayBasketball;
   $('end-game-btn').hidden = !state.activeGame;
   const hasRounds = Boolean(state.activeGame?.state?.rounds?.length);
   $('round-control').hidden = !hasRounds;
@@ -660,9 +665,12 @@ function renderGameList() {
   GAME_TYPES.forEach((game) => {
     const item = document.createElement('div');
     const isTimeMatch = game.id === 'TIME_MATCH';
+    const isBasketball = game.id === 'BASKETBALL';
     item.className = `game-option ${game.id === state.selectedGame ? 'selected' : ''}`;
     item.appendChild(text('span', 'game-option-name', game.name));
-    if (isTimeMatch) {
+    if (isBasketball) {
+      item.appendChild(text('span', 'game-toggle on', '자유 플레이'));
+    } else if (isTimeMatch) {
       const running = state.activeGame?.type === 'TIME_MATCH';
       item.appendChild(text('span', `game-toggle ${running ? 'on' : ''}`, running ? '켜짐' : '꺼짐'));
     } else {
@@ -675,6 +683,7 @@ function renderGameList() {
       renderPinballSetting();
       renderCustomGameSetting();
       renderBasketballLeaderboard();
+      renderGameControls();
     });
     list.appendChild(item);
   });
@@ -917,6 +926,7 @@ function bindEvents() {
   $('detail-close').addEventListener('click', closeDetail);
   $('detail-overlay').addEventListener('click', closeDetail);
   $('broadcast-btn').addEventListener('click', () => {
+    if (state.selectedGame === 'BASKETBALL') return showToast('농구게임은 관리자 시작 없이 항상 이용할 수 있습니다.');
     const targetMs = targetTimeMs();
     if (state.selectedGame === 'TIME_MATCH' && targetMs < 10) return showToast('목표 시간을 0.01초 이상 입력해주세요.');
     const pinball = parsePinballEntries();
@@ -924,7 +934,7 @@ function bindEvents() {
       if (!pinball.valid) return showToast('이름 또는 이름*개수 형식으로 총 2~80개 구슬을 입력해주세요.');
     }
     const gameState = selectedGameState();
-    if (!gameState.rounds?.length && !['TIME_MATCH', 'PINBALL', 'BASKETBALL'].includes(state.selectedGame)) return showToast('라운드를 추가해주세요.');
+    if (!gameState.rounds?.length && !['TIME_MATCH', 'PINBALL'].includes(state.selectedGame)) return showToast('라운드를 추가해주세요.');
     getSocket()?.emit('game:global:start', {
       type: state.selectedGame,
       state: {

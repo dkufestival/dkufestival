@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const { BasketballScore, GameSession } = require('../models');
+const { BasketballScore } = require('../models');
 const AppError = require('../errors/AppError');
 
 function createServiceError(message, code, status = 400) {
@@ -14,24 +14,8 @@ function normalizeScore(value) {
   return score;
 }
 
-async function requireActiveBasketballGame(gameId) {
-  const game = await GameSession.findOne({
-    where: {
-      id: Number(gameId),
-      mode: 'GLOBAL',
-      type: 'BASKETBALL',
-      status: 'ACTIVE',
-    },
-  });
-  if (!game) {
-    throw createServiceError('현재 진행 중인 농구게임이 아닙니다.', 'BASKETBALL_GAME_NOT_ACTIVE', 409);
-  }
-  return game;
-}
-
-async function submitBestScore({ participantId, tableSessionId, gameId, score: rawScore }) {
+async function submitBestScore({ participantId, tableSessionId, score: rawScore }) {
   const score = normalizeScore(rawScore);
-  await requireActiveBasketballGame(gameId);
 
   const achievedAt = new Date();
   const [record, created] = await BasketballScore.findOrCreate({
@@ -95,15 +79,10 @@ async function getLeaderboard() {
 }
 
 async function getState(participantId) {
-  const [activeGame, personalBest] = await Promise.all([
-    GameSession.findOne({
-      where: { mode: 'GLOBAL', type: 'BASKETBALL', status: 'ACTIVE' },
-      order: [['startedAt', 'DESC'], ['id', 'DESC']],
-      attributes: ['id', 'status', 'startedAt'],
-    }),
-    getPersonalBest(participantId),
-  ]);
-  return { activeGame, personalBest };
+  return {
+    freePlay: true,
+    personalBest: await getPersonalBest(participantId),
+  };
 }
 
 module.exports = {
@@ -111,6 +90,5 @@ module.exports = {
   getPersonalBest,
   getState,
   normalizeScore,
-  requireActiveBasketballGame,
   submitBestScore,
 };

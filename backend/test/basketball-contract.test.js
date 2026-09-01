@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { normalizeScore } = require('../src/services/basketball-score.service');
 
-test('basketball is a centrally managed single-server game with a persistent top-three leaderboard', () => {
+test('basketball is an always-available single-server game with a persistent top-three leaderboard', () => {
   const model = fs.readFileSync(path.join(__dirname, '../src/models/GameSession.js'), 'utf8');
   const gameService = fs.readFileSync(path.join(__dirname, '../src/services/game.service.js'), 'utf8');
   const scoreService = fs.readFileSync(path.join(__dirname, '../src/services/basketball-score.service.js'), 'utf8');
@@ -12,17 +12,26 @@ test('basketball is a centrally managed single-server game with a persistent top
   const admin = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-app.js'), 'utf8');
   const participant = fs.readFileSync(path.join(__dirname, '../../frontend/js/app.js'), 'utf8');
   const game = fs.readFileSync(path.join(__dirname, '../../frontend/basketball/basketball.js'), 'utf8');
+  const routes = fs.readFileSync(path.join(__dirname, '../src/routes/basketball.routes.js'), 'utf8');
+  const backendPackage = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf8'));
 
   assert.match(model, /'BASKETBALL'/);
   assert.match(gameService, /'BASKETBALL'/);
   assert.match(scoreService, /limit: 3/);
   assert.match(scoreService, /bestScore.*DESC/);
+  assert.match(scoreService, /freePlay: true/);
+  assert.doesNotMatch(scoreService, /requireActiveBasketballGame/);
   assert.match(app, /app\.use\('\/api\/basketball'/);
   assert.match(app, /express\.static/);
   assert.match(admin, /renderBasketballLeaderboard/);
+  assert.match(admin, /isFreePlayBasketball/);
   assert.match(participant, /appendBasketballLeaderboard/);
+  assert.match(participant, /언제든 자유롭게 플레이/);
   assert.match(game, /basketball:leaderboard/);
   assert.match(game, /\/api\/basketball\/scores/);
+  assert.match(game, /JSON\.stringify\(\{ score: target \}\)/);
+  assert.doesNotMatch(routes, /gameId/);
+  assert.match(backendPackage.scripts.start, /npm run migrate/);
 });
 
 test('basketball scores only accept realistic positive integer streaks', () => {

@@ -21,7 +21,6 @@ async function submitScore(req, res, next) {
     const result = await basketballScoreService.submitBestScore({
       participantId: req.user.participantId,
       tableSessionId: req.user.sessionId,
-      gameId: req.body.gameId,
       score: req.body.score,
     });
     const leaderboard = await basketballScoreService.getLeaderboard();

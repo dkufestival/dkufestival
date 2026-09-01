@@ -9,7 +9,6 @@ const router = express.Router();
 router.get('/leaderboard', basketballController.leaderboard);
 router.get('/state', auth, requireRole('PARTICIPANT'), basketballController.state);
 router.post('/scores', auth, requireRole('PARTICIPANT'), validateBody({
-  gameId: { required: true, type: 'number', min: 1 },
   score: { required: true, type: 'number', min: 1 },
 }), basketballController.submitScore);
 

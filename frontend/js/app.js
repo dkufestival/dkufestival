@@ -855,15 +855,11 @@ function renderGame() {
   basketballCard.className = 'basketball-entry';
   basketballCard.appendChild(text('div', 'basketball-entry-icon', '🏀'));
   basketballCard.appendChild(text('div', 'basketball-entry-title', '농구게임'));
-  const basketballActive = state.activeGame?.type === 'BASKETBALL' && state.activeGame?.status === 'ACTIVE';
-  basketballCard.appendChild(text('div', 'basketball-entry-copy', basketballActive
-    ? '현재 기록 경쟁이 진행 중입니다. 연속으로 골을 넣어 최고점에 도전하세요.'
-    : '관리자가 농구게임을 시작하면 기록에 도전할 수 있습니다.'));
+  basketballCard.appendChild(text('div', 'basketball-entry-copy', '언제든 자유롭게 플레이하고 연속 골 개인 최고기록에 도전하세요.'));
   appendBasketballLeaderboard(basketballCard);
-  const basketballButton = button('btn-dark full', basketballActive ? '농구게임 입장' : '관리자 시작 대기', () => {
+  const basketballButton = button('btn-dark full', '농구게임 입장', () => {
     window.location.href = '/basketball/';
   });
-  basketballButton.disabled = !basketballActive;
   basketballCard.appendChild(basketballButton);
   box.appendChild(basketballCard);
 
@@ -898,7 +894,7 @@ function renderGame() {
   box.appendChild(stopwatchCard);
 
   if (!state.activeGame) {
-    box.appendChild(text('div', 'history-empty', '진행 중인 게임이 없습니다.'));
+    box.appendChild(text('div', 'history-empty', '관리자가 진행 중인 단체 게임이 없습니다.'));
     return;
   }
   if (['TIME_MATCH', 'PINBALL', 'BASKETBALL'].includes(state.activeGame.type)) {
