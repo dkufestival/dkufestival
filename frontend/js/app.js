@@ -44,7 +44,7 @@ const state = {
   tableRefreshPending: false,
 };
 
-const gameNames = { OX_QUIZ: 'OX 퀴즈', RPS: '가위바위보', WORD_GUESS: '제시어 게임', IMAGE_GAME: '이미지 게임', TIME_MATCH: '시간 맞추기', PINBALL: '핀볼', ROULETTE: '룰렛' };
+const gameNames = { OX_QUIZ: 'OX 퀴즈', RPS: '가위바위보', WORD_GUESS: '제시어 게임', IMAGE_GAME: '이미지 게임', TIME_MATCH: '스톱워치', PINBALL: '핀볼', ROULETTE: '룰렛' };
 
 function isParticipating(gameId) {
   return state.participationDecisions.get(Number(gameId)) === true;
@@ -379,7 +379,7 @@ function bindSocket() {
     renderGame();
     closeModal('modal-game');
     showScreen(state.activeRoomId ? 'screen-chat' : 'screen-seats');
-    showToast(`${game.type} 게임이 종료되었습니다.`);
+    showToast(`${gameNames[game.type] || game.type} 게임이 종료되었습니다.`);
   });
   socket.on('game:global:updated', (game) => {
     const previousRound = Number(state.activeGame?.state?.currentRound || 0);
