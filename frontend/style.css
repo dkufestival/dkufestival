@@ -953,6 +953,12 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.history-preview.expanded {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  margin-top: 4px;
+}
 .history-time {
   font-size: 11px;
   color: var(--text-muted);

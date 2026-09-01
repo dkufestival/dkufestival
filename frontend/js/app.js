@@ -7,7 +7,7 @@ import { tablesApi } from './tables.js?v=2';
 import { participantsApi } from './participants.js';
 import { chatApi } from './chat.js';
 import { songsApi } from './songs.js';
-import { noticesApi } from './notices.js';
+import { noticesApi } from './notices.js?v=2';
 import { STORAGE_KEYS } from './config.js';
 import { initMapZoom } from './mapzoom.js?v=2';
 
@@ -359,7 +359,11 @@ function bindSocket() {
   socket.on('notice:created', (notice) => {
     state.notices.unshift(notice);
     renderNotices();
-    showToast(`새 공지: ${notice.title}`);
+    showNoticePopup(notice);
+  });
+  socket.on('notice:deleted', ({ id }) => {
+    state.notices = state.notices.filter((notice) => notice.id !== id);
+    renderNotices();
   });
   socket.on('game:global:started', (game) => {
     state.activeGame = game;
@@ -726,12 +730,24 @@ function renderNotices() {
       const info = document.createElement('div');
       info.className = 'history-info';
       info.appendChild(text('div', 'history-seat-name', notice.title));
-      info.appendChild(text('div', 'history-preview', notice.content));
+      const content = text('div', 'history-preview', notice.content);
+      content.hidden = true;
+      info.appendChild(content);
       item.appendChild(info);
+      item.addEventListener('click', () => {
+        content.hidden = !content.hidden;
+        content.classList.toggle('expanded', !content.hidden);
+      });
       list.appendChild(item);
     });
   }
   updateNoticeBadge();
+}
+
+function showNoticePopup(notice) {
+  $('notice-popup-title').textContent = notice.title;
+  $('notice-popup-content').textContent = notice.content;
+  openModal('modal-notice-popup');
 }
 
 function updateNoticeBadge() {

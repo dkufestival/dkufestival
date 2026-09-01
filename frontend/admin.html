@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
-<link rel="stylesheet" href="admin.css?v=12">
+<link rel="stylesheet" href="admin.css?v=13">
 </head>
 <body>
 <section id="screen-login" class="screen active">
@@ -134,6 +134,10 @@
         </select>
         <button id="notice-send-btn" class="btn-dark full" style="margin-top:10px;">공지 전송</button>
       </div>
+      <div class="game-panel" style="max-width:620px;margin-top:16px;">
+        <h3 class="panel-title">보낸 공지 내역</h3>
+        <div id="notice-history-list" class="admin-list"></div>
+      </div>
     </div>
 
     <div id="tab-attempts" class="tab-panel">
@@ -174,6 +178,6 @@
 <div id="admin-toast" class="toast"></div>
 
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-<script type="module" src="js/admin-app.js?v=18"></script>
+<script type="module" src="js/admin-app.js?v=20"></script>
 </body>
 </html>

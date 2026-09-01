@@ -518,6 +518,21 @@ body {
   cursor: pointer;
 }
 .song-done-btn:hover { border-color: var(--lime); color: var(--lime); }
+.notice-item-title { font-size: 13px; font-weight: 700; color: var(--text-light); }
+.notice-item-meta { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+.notice-delete-btn {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-soft);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.notice-delete-btn:hover { border-color: #ff5c4d; color: #ff5c4d; }
 
 .toast {
   position: fixed;

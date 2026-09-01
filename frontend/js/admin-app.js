@@ -4,13 +4,14 @@ import { connectSocket, getSocket } from './socket.js';
 import { $, button, clear, formatDateTime, formatRemaining, text } from './dom.js';
 import { adminApi } from './admin-api.js';
 import { songsApi } from './songs.js';
-import { noticesApi } from './notices.js';
+import { noticesApi } from './notices.js?v=2';
 import { GAME_TYPES } from './games.js';
 
 const state = {
   tables: [],
   chatRooms: [],
   songs: [],
+  notices: [],
   selectedGame: 'PINBALL',
   activeGame: null,
   activeDetailTable: null,
@@ -151,10 +152,14 @@ async function loadSongs() {
   state.songs = await songsApi.adminList();
 }
 
+async function loadNotices() {
+  state.notices = await noticesApi.list('ADMIN');
+}
+
 async function syncAdminState(options = {}) {
   if (state.syncPromise) return state.syncPromise;
   state.syncPromise = (async () => {
-    await Promise.allSettled([loadTables(), loadChatRooms(), loadSongs()]);
+    await Promise.allSettled([loadTables(), loadChatRooms(), loadSongs(), loadNotices()]);
     if (options.render !== false) renderAll();
     if (state.activeDetailTable) openDetail(state.activeDetailTable);
   })().finally(() => {
@@ -195,6 +200,7 @@ function renderAll() {
   renderGameList();
   renderGameRankList();
   renderSongs();
+  renderNoticeHistory();
   renderTeamScoreboard();
 }
 
@@ -811,12 +817,38 @@ function renderSongs() {
   });
 }
 
+function renderNoticeHistory() {
+  const list = $('notice-history-list');
+  clear(list);
+  if (!state.notices.length) {
+    list.appendChild(text('div', 'song-empty', '보낸 공지가 없습니다.'));
+    return;
+  }
+  state.notices.forEach((notice) => {
+    const item = document.createElement('div');
+    item.className = 'admin-list-item';
+    const info = document.createElement('div');
+    info.className = 'admin-list-info';
+    info.appendChild(text('div', 'notice-item-title', notice.title));
+    info.appendChild(text('div', 'notice-item-meta', `${notice.category} · ${formatDateTime(notice.createdAt)}`));
+    item.appendChild(info);
+    item.appendChild(button('notice-delete-btn', '삭제', async () => {
+      await noticesApi.remove(notice.id);
+      state.notices = state.notices.filter((entry) => entry.id !== notice.id);
+      renderNoticeHistory();
+    }));
+    list.appendChild(item);
+  });
+}
+
 async function createNotice() {
   const title = $('notice-title').value.trim();
   const content = $('notice-content').value.trim();
   const category = $('notice-category').value;
   if (!title || !content) return showToast('공지 제목과 내용을 입력해주세요.');
-  await noticesApi.create({ title, content, category });
+  const notice = await noticesApi.create({ title, content, category });
+  state.notices.unshift(notice);
+  renderNoticeHistory();
   $('notice-title').value = '';
   $('notice-content').value = '';
   showToast('공지 전송 완료');

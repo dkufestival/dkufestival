@@ -18,4 +18,14 @@ async function getNotices(req, res, next) {
   }
 }
 
-module.exports = { createNotice, getNotices };
+async function deleteNotice(req, res, next) {
+  try {
+    const notice = await noticeService.deleteNotice(req.params.id);
+    req.app.get('io')?.to('participants').emit('notice:deleted', { id: notice.id });
+    res.json({ data: { id: notice.id } });
+  } catch (error) {
+    next(error);
+  }
+}
+
+module.exports = { createNotice, getNotices, deleteNotice };

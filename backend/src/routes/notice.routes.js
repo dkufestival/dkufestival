@@ -12,5 +12,6 @@ router.post('/', auth, requireRole('ADMIN'), validateBody({
   content: { required: true, type: 'string', maxLength: 5000 },
   category: { enum: ['GENERAL', 'GAME', 'EVENT', 'OPERATION'] },
 }), noticeController.createNotice);
+router.delete('/:id', auth, requireRole('ADMIN'), noticeController.deleteNotice);
 
 module.exports = router;

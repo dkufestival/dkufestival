@@ -6,7 +6,7 @@
 <title>PIU:M</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="style.css?v=40">
+<link rel="stylesheet" href="style.css?v=41">
 </head>
 <body>
 <div class="phone">
@@ -235,6 +235,14 @@
   </div>
 </div>
 
+<div id="modal-notice-popup" class="modal-backdrop">
+  <div class="modal-card">
+    <button type="button" class="modal-close" data-modal="modal-notice-popup">×</button>
+    <div id="notice-popup-title" class="modal-title"></div>
+    <div id="notice-popup-content" class="modal-detail"></div>
+  </div>
+</div>
+
 <div id="modal-game" class="modal-backdrop">
   <div class="modal-card">
     <button type="button" class="modal-close" data-modal="modal-game">×</button>
@@ -258,6 +266,6 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-<script type="module" src="js/app.js?v=35"></script>
+<script type="module" src="js/app.js?v=37"></script>
 </body>
 </html>
