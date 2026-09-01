@@ -2,7 +2,7 @@ import { setToastHandler } from './api.js';
 import { clearAdminToken, getAdminToken, saveAdminToken } from './auth.js';
 import { connectSocket, getSocket } from './socket.js';
 import { $, button, clear, formatDateTime, formatRemaining, text } from './dom.js';
-import { adminApi } from './admin-api.js';
+import { adminApi } from './admin-api.js?v=2';
 import { globalChatApi } from './globalChat.js';
 import { boardApi } from './board.js';
 import { noticesApi } from './notices.js?v=2';
@@ -16,6 +16,7 @@ const state = {
   globalChatMessages: [],
   globalChatLoaded: false,
   boardPosts: [],
+  staffCalls: [],
   selectedGame: 'PINBALL',
   activeGame: null,
   activeDetailTable: null,
@@ -102,6 +103,15 @@ function bindSocket() {
     state.boardPosts = state.boardPosts.filter((post) => post.id !== id);
     renderBoard();
   });
+  socket.on('staffCall:created', (call) => {
+    if (!state.staffCalls.some((entry) => entry.id === call.id)) state.staffCalls.push(call);
+    renderStaffCalls();
+    showToast(`TABLE ${call.tableNumber}에서 직원을 호출했습니다.`);
+  });
+  socket.on('staffCall:resolved', ({ id }) => {
+    state.staffCalls = state.staffCalls.filter((call) => call.id !== id);
+    renderStaffCalls();
+  });
   socket.on('game:global:state', (game) => {
     const responses = Object.values(game.state?.responses || {});
     const latest = responses.sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))[0];
@@ -175,10 +185,14 @@ async function loadBoard() {
   state.boardPosts = await boardApi.list('ADMIN');
 }
 
+async function loadStaffCalls() {
+  state.staffCalls = await adminApi.staffCalls();
+}
+
 async function syncAdminState(options = {}) {
   if (state.syncPromise) return state.syncPromise;
   state.syncPromise = (async () => {
-    await Promise.allSettled([loadTables(), loadChatRooms(), loadNotices(), loadGlobalChat(), loadBoard(), loadBasketballLeaderboard()]);
+    await Promise.allSettled([loadTables(), loadChatRooms(), loadNotices(), loadGlobalChat(), loadBoard(), loadBasketballLeaderboard(), loadStaffCalls()]);
     if (options.render !== false) renderAll();
     if (state.activeDetailTable) openDetail(state.activeDetailTable);
   })().finally(() => {
@@ -220,6 +234,7 @@ function renderAll() {
   renderGameRankList();
   renderGlobalChat();
   renderBoard();
+  renderStaffCalls();
   renderNoticeHistory();
   renderTeamScoreboard();
   renderBasketballLeaderboard();
@@ -891,6 +906,34 @@ function renderBoard() {
       await boardApi.remove(post.id, 'ADMIN');
       state.boardPosts = state.boardPosts.filter((entry) => entry.id !== post.id);
       renderBoard();
+    }));
+    list.appendChild(item);
+  });
+}
+
+function renderStaffCalls() {
+  const badge = $('staffcall-nav-badge');
+  badge.textContent = state.staffCalls.length > 99 ? '99+' : String(state.staffCalls.length);
+  badge.hidden = state.staffCalls.length === 0;
+
+  const list = $('staff-call-list');
+  clear(list);
+  if (!state.staffCalls.length) {
+    list.appendChild(text('div', 'song-empty', '직원호출이 없습니다.'));
+    return;
+  }
+  state.staffCalls.forEach((call) => {
+    const item = document.createElement('div');
+    item.className = 'admin-list-item';
+    const info = document.createElement('div');
+    info.className = 'admin-list-info';
+    info.appendChild(text('div', 'notice-item-title', `TABLE ${call.tableNumber}`));
+    info.appendChild(text('div', 'notice-item-meta', formatDateTime(call.createdAt)));
+    item.appendChild(info);
+    item.appendChild(button('notice-delete-btn', '해결', async () => {
+      await adminApi.resolveStaffCall(call.id);
+      state.staffCalls = state.staffCalls.filter((entry) => entry.id !== call.id);
+      renderStaffCalls();
     }));
     list.appendChild(item);
   });

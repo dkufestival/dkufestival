@@ -6,7 +6,7 @@
 <title>PIU:M</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="style.css?v=53">
+<link rel="stylesheet" href="style.css?v=56">
 </head>
 <body>
 <div class="phone">
@@ -71,10 +71,16 @@
       <div class="stat-divider"></div>
       <div class="stat-block col"><span class="stat-mini-label">받은 요청</span><span id="stat-requests" class="stat-mini-num">0개</span></div>
     </div>
-    <div id="accept-toggle-banner" class="push-prompt" hidden>
-      <span id="accept-toggle-label">채팅 요청을 받고 있어요.</span>
-      <button id="accept-toggle-btn" type="button" class="accept-toggle-btn on">
-        <span class="accept-toggle-knob"></span>
+    <div class="status-row">
+      <div id="accept-toggle-banner" class="push-prompt" hidden>
+        <span id="accept-toggle-label">채팅 요청을 받고 있어요.</span>
+        <button id="accept-toggle-btn" type="button" class="accept-toggle-btn on">
+          <span class="accept-toggle-knob"></span>
+        </button>
+      </div>
+      <button id="staff-call-btn" type="button" class="staff-call-btn">
+        <svg viewBox="0 0 24 24" width="16" height="16"><path d="M12 2a7 7 0 0 0-7 7v3.09c0 .55-.2 1.08-.55 1.5L3 16h18l-1.45-2.41c-.36-.42-.55-.95-.55-1.5V9a7 7 0 0 0-7-7z"/><path d="M9.5 19a2.5 2.5 0 0 0 5 0h-5z"/></svg>
+        <span id="staff-call-text">직원호출</span>
       </button>
     </div>
     <div id="member-chips" class="member-chips"></div>
@@ -158,6 +164,10 @@
     <div class="notice-push-label">새 공지</div>
     <div id="notice-push-title" class="notice-push-title"></div>
   </div>
+  <div id="like-push" class="notice-push">
+    <div class="notice-push-label">새 좋아요</div>
+    <div id="like-push-title" class="like-push-title"></div>
+  </div>
 </div>
 
 <div id="modal-leave-confirm" class="modal-backdrop">
@@ -185,6 +195,10 @@
     <button type="button" class="modal-close" data-modal="modal-send">×</button>
     <div id="send-seat-label" class="modal-title"></div>
     <button id="send-request-btn" class="btn-dark full">요청 보내기</button>
+    <button id="send-like-btn" type="button" class="btn-dark full like">
+      <svg viewBox="0 0 24 24" width="16" height="16"><path d="M12 21s-6.7-4.35-9.33-8.2C.86 10.1 1.1 6.9 3.6 5.1c2.02-1.45 4.6-.98 6.1.86L12 8.5l2.3-2.54c1.5-1.84 4.08-2.31 6.1-.86 2.5 1.8 2.74 5 .93 7.7C18.7 16.65 12 21 12 21z"/></svg>
+      <span id="send-like-text">테이블 좋아요 누르기</span>
+    </button>
     <div id="request-block-row" class="request-block-row">
       <span>이 테이블한테 요청 받지 않기</span>
       <button id="request-block-toggle" type="button" class="accept-toggle-btn" disabled>
@@ -232,27 +246,11 @@
   </div>
 </div>
 
-<div id="modal-count" class="modal-backdrop">
+<div id="modal-received-likes" class="modal-backdrop">
   <div class="modal-card">
-    <button type="button" class="modal-close" data-modal="modal-count">×</button>
-    <div class="modal-title">인원 변경</div>
-    <div class="stepper-row">
-      <span class="stepper-label">남자</span>
-      <div class="stepper">
-        <button type="button" class="step-btn" data-target="male" data-delta="-1">-</button>
-        <span class="step-value" data-count="male">0</span>
-        <button type="button" class="step-btn" data-target="male" data-delta="1">+</button>
-      </div>
-    </div>
-    <div class="stepper-row" style="margin-top:8px;">
-      <span class="stepper-label">여자</span>
-      <div class="stepper">
-        <button type="button" class="step-btn" data-target="female" data-delta="-1">-</button>
-        <span class="step-value" data-count="female">0</span>
-        <button type="button" class="step-btn" data-target="female" data-delta="1">+</button>
-      </div>
-    </div>
-    <button id="count-confirm-btn" class="btn-dark full">변경하기</button>
+    <button type="button" class="modal-close" data-modal="modal-received-likes">×</button>
+    <div class="modal-title">우리 테이블에 좋아요 누른 테이블</div>
+    <div id="received-likes-list" class="history-list"></div>
   </div>
 </div>
 
@@ -306,6 +304,6 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-<script type="module" src="js/app.js?v=47"></script>
+<script type="module" src="js/app.js?v=49"></script>
 </body>
 </html>

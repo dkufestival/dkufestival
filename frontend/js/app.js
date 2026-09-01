@@ -3,7 +3,7 @@ import { clearParticipantAuth, getClientId, getParticipantAuth, saveParticipantA
 import { connectSocket, getSocket } from './socket.js';
 import { $, button, clear, formatDateTime, formatRemaining, text } from './dom.js';
 import { entryApi } from './entry.js';
-import { tablesApi } from './tables.js?v=2';
+import { tablesApi } from './tables.js?v=4';
 import { participantsApi } from './participants.js';
 import { chatApi } from './chat.js';
 import { globalChatApi } from './globalChat.js';
@@ -53,9 +53,27 @@ const state = {
   tableRefreshPending: false,
   requestBlock: { targetSessionId: null, blocked: false, loading: false, requestId: 0 },
   basketballLeaderboard: [],
+  givenLikes: new Set(),
+  receivedLikes: [],
+  staffCallPending: false,
 };
 
 const gameNames = { OX_QUIZ: 'OX 퀴즈', RPS: '가위바위보', WORD_GUESS: '제시어 게임', IMAGE_GAME: '이미지 게임', TIME_MATCH: '스톱워치', PINBALL: '핀볼', BASKETBALL: '농구', ROULETTE: '룰렛' };
+const HEART_SVG_PATH = 'M12 21s-6.7-4.35-9.33-8.2C.86 10.1 1.1 6.9 3.6 5.1c2.02-1.45 4.6-.98 6.1.86L12 8.5l2.3-2.54c1.5-1.84 4.08-2.31 6.1-.86 2.5 1.8 2.74 5 .93 7.7C18.7 16.65 12 21 12 21z';
+
+function createLikeButton(table) {
+  const sessionId = Number(table.activeSession?.id);
+  const liked = state.givenLikes.has(sessionId);
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = `table-like-btn${liked ? ' liked' : ''}`;
+  btn.innerHTML = `<svg viewBox="0 0 24 24"><path d="${HEART_SVG_PATH}"></path></svg>`;
+  btn.addEventListener('click', (event) => {
+    event.stopPropagation();
+    toggleTableLike(table);
+  });
+  return btn;
+}
 
 function isParticipating(gameId) {
   return state.participationDecisions.get(Number(gameId)) === true;
@@ -243,6 +261,17 @@ async function refreshBasketballLeaderboard() {
   state.basketballLeaderboard = (await basketballApi.leaderboard()).slice(0, 3);
 }
 
+async function refreshLikes() {
+  const { given, received } = await tablesApi.likes();
+  state.givenLikes = new Set(given.map((item) => Number(item.toSessionId)));
+  state.receivedLikes = received;
+}
+
+async function refreshStaffCallStatus() {
+  const { pending } = await tablesApi.staffCallStatus();
+  state.staffCallPending = pending;
+}
+
 async function syncParticipantState(options = {}) {
   if (state.syncPromise) return state.syncPromise;
   state.syncPromise = (async () => {
@@ -252,6 +281,8 @@ async function syncParticipantState(options = {}) {
       refreshChatRoom(),
       refreshNotices(),
       refreshBasketballLeaderboard(),
+      refreshLikes(),
+      refreshStaffCallStatus(),
     ]);
     if (options.render !== false) renderAll();
     if (state.chatRoom?.status === 'ACTIVE') openChat(state.chatRoom.roomId);
@@ -401,6 +432,19 @@ function bindSocket() {
     if (state.activeBoardPost?.id === id) showBoardList();
     if ($('modal-board').classList.contains('active') && !$('board-list-view').hidden) renderBoardList();
   });
+  socket.on('table:like-changed', async (result) => {
+    try {
+      const { received } = await tablesApi.likes();
+      state.receivedLikes = received;
+      renderTables();
+      if ($('modal-received-likes').classList.contains('active')) renderReceivedLikes();
+      if (result?.liked && result.fromTableNumber) showLikePopup(result.fromTableNumber);
+    } catch { /* ignore */ }
+  });
+  socket.on('staffCall:resolved', () => {
+    state.staffCallPending = false;
+    updateStaffCallButton();
+  });
   socket.on('game:global:started', (game) => {
     state.activeGame = game;
     requestGameParticipation(game);
@@ -523,6 +567,7 @@ function renderStats() {
   $('table-tag-time').textContent = `${left} 남음`;
   $('stat-requests').textContent = `${state.receivedRequestCount}개`;
   renderAcceptToggle();
+  updateStaffCallButton();
 }
 
 function renderAcceptToggle() {
@@ -533,6 +578,65 @@ function renderAcceptToggle() {
   const accepting = state.session?.acceptingRequests !== false;
   $('accept-toggle-label').textContent = accepting ? '채팅 요청을 받고 있어요.' : '채팅 요청을 받지 않아요.';
   $('accept-toggle-btn').classList.toggle('on', accepting);
+}
+
+function updateStaffCallButton() {
+  const btn = $('staff-call-btn');
+  btn.classList.toggle('calling', !!state.staffCallPending);
+  $('staff-call-text').textContent = state.staffCallPending ? '직원 호출 중...' : '직원호출';
+}
+
+async function callStaff() {
+  if (state.staffCallPending) {
+    showToast('이미 직원을 호출했습니다. 잠시만 기다려 주세요.');
+    return;
+  }
+  await tablesApi.callStaff();
+  state.staffCallPending = true;
+  updateStaffCallButton();
+  showToast('직원을 호출했습니다.');
+}
+
+function renderReceivedLikes() {
+  const list = $('received-likes-list');
+  clear(list);
+  if (!state.receivedLikes.length) {
+    list.appendChild(text('div', 'history-empty', '아직 좋아요를 받지 않았습니다.'));
+    return;
+  }
+  state.receivedLikes.forEach((like) => {
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    const info = document.createElement('div');
+    info.className = 'history-info';
+    info.appendChild(text('div', 'history-seat-name', `TABLE ${like.fromTableNumber}`));
+    item.appendChild(info);
+    list.appendChild(item);
+  });
+}
+
+function updateSendLikeButton(table) {
+  const sessionId = Number(table?.activeSession?.id);
+  const liked = state.givenLikes.has(sessionId);
+  $('send-like-btn').classList.toggle('liked', liked);
+  $('send-like-text').textContent = liked ? '좋아요 취소' : '테이블 좋아요 누르기';
+}
+
+async function toggleTableLike(table) {
+  if (!state.participant?.isHost) {
+    showToast('대표만 좋아요를 누를 수 있습니다.');
+    return;
+  }
+  try {
+    const result = await tablesApi.toggleLike(table.id);
+    const sessionId = Number(result.toSessionId);
+    if (result.liked) state.givenLikes.add(sessionId);
+    else state.givenLikes.delete(sessionId);
+    renderTables();
+    if (state.pendingTargetTable?.id === table.id) updateSendLikeButton(table);
+  } catch (error) {
+    showToast(error.message);
+  }
 }
 
 function renderParticipants() {
@@ -584,19 +688,19 @@ function renderTables() {
     cell.appendChild(text('span', 'table-cell-number', String(table.tableNumber).padStart(2, '0')));
     if (session) cell.appendChild(text('div', 'table-cell-count', formatComposition(session)));
     if (session?.inChat) cell.appendChild(text('div', 'table-cell-chatting', '채팅중'));
-    if (isMine && state.participant?.isHost) {
-      cell.appendChild(button('change-count-btn', '인원 변경', (event) => {
-        event.stopPropagation();
-        setCounts(state.session.maleCount, state.session.femaleCount);
-        openModal('modal-count');
-      }));
+    if (isMine) {
+      if (state.receivedLikes.length) {
+        const badge = text('span', 'table-cell-like-badge', state.receivedLikes.length > 99 ? '99+' : String(state.receivedLikes.length));
+        cell.appendChild(badge);
+      }
       cell.addEventListener('click', () => {
         if (mapZoom?.hasMoved()) return;
-        setCounts(state.session.maleCount, state.session.femaleCount);
-        openModal('modal-count');
+        renderReceivedLikes();
+        openModal('modal-received-likes');
       });
     }
     if (!isMine && session) {
+      cell.appendChild(createLikeButton(table));
       cell.appendChild(button('table-cell-btn', '채팅 요청', (event) => {
         event.stopPropagation();
         if (requestsOff) return showToast('합석 요청이 꺼져있어 합석이 불가능합니다.');
@@ -689,6 +793,7 @@ function openJoinModal(table) {
   const sendBtn = $('send-request-btn');
   sendBtn.disabled = inChat;
   sendBtn.textContent = inChat ? '이미 채팅 중인 테이블입니다' : '요청 보내기';
+  updateSendLikeButton(table);
   openModal('modal-send');
   loadRequestBlockState(table);
 }
@@ -1012,6 +1117,14 @@ function showNoticeDetail(notice) {
 function showNoticePopup(notice) {
   const push = $('notice-push');
   $('notice-push-title').textContent = notice.title;
+  push.classList.add('show');
+  clearTimeout(push._hideTimer);
+  push._hideTimer = setTimeout(() => push.classList.remove('show'), 3500);
+}
+
+function showLikePopup(fromTableNumber) {
+  const push = $('like-push');
+  $('like-push-title').textContent = `${fromTableNumber}번 테이블에서\n좋아요를 눌렀습니다`;
   push.classList.add('show');
   clearTimeout(push._hideTimer);
   push._hideTimer = setTimeout(() => push.classList.remove('show'), 3500);
@@ -1428,6 +1541,9 @@ function bindEvents() {
   });
   $('join-btn').addEventListener('click', () => enter().catch((error) => showToast(error.message)));
   $('send-request-btn').addEventListener('click', () => sendJoinRequest().catch((error) => showToast(error.message)));
+  $('send-like-btn').addEventListener('click', () => {
+    if (state.pendingTargetTable) toggleTableLike(state.pendingTargetTable);
+  });
   $('request-block-toggle').addEventListener('click', () => toggleRequestBlock());
   $('chat-send-btn').addEventListener('click', sendChatMessage);
   $('chat-input').addEventListener('keydown', (event) => {
@@ -1445,16 +1561,8 @@ function bindEvents() {
     renderParticipants();
     closeModal('modal-nickname');
   });
-  $('count-confirm-btn').addEventListener('click', async () => {
-    const session = await tablesApi.updateMine({
-      maleCount: state.counts.male,
-      femaleCount: state.counts.female,
-    });
-    state.session = session;
-    closeModal('modal-count');
-    renderStats();
-  });
   $('global-chat-btn').addEventListener('click', toggleGlobalChat);
+  $('staff-call-btn').addEventListener('click', () => callStaff().catch((error) => showToast(error.message)));
   $('global-chat-send-btn').addEventListener('click', sendGlobalChatMessage);
   $('global-chat-input').addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && !event.isComposing) {

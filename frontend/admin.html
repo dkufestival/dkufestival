@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
-<link rel="stylesheet" href="admin.css?v=14">
+<link rel="stylesheet" href="admin.css?v=15">
 </head>
 <body>
 <section id="screen-login" class="screen active">
@@ -31,6 +31,7 @@
     </div>
     <nav class="sidebar-nav">
       <button class="nav-btn active" data-tab="tables">테이블 현황</button>
+      <button class="nav-btn" data-tab="staffcalls">직원호출 <span id="staffcall-nav-badge" class="nav-badge urgent" hidden>0</span></button>
       <button class="nav-btn" data-tab="chats">채팅 관리</button>
       <button class="nav-btn" data-tab="games">게임 관리</button>
       <button class="nav-btn" data-tab="globalchat">전체채팅</button>
@@ -51,6 +52,13 @@
 
     <div id="tab-tables" class="tab-panel active">
       <div id="table-grid" class="table-grid"></div>
+    </div>
+
+    <div id="tab-staffcalls" class="tab-panel">
+      <div class="game-panel" style="max-width:620px;">
+        <h3 class="panel-title">직원호출</h3>
+        <div id="staff-call-list" class="admin-list"></div>
+      </div>
     </div>
 
     <div id="tab-chats" class="tab-panel">
@@ -202,6 +210,6 @@
 <div id="admin-toast" class="toast"></div>
 
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-<script type="module" src="js/admin-app.js?v=24"></script>
+<script type="module" src="js/admin-app.js?v=25"></script>
 </body>
 </html>
