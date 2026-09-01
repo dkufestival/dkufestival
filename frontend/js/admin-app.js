@@ -25,6 +25,7 @@ const state = {
   rouletteSpinning: false,
   adminRouletteSpinId: null,
   adminRouletteRotation: 0,
+  adminRouletteWinnerTimer: null,
   timer: null,
   hasConnectedOnce: false,
   initialSyncDone: false,
@@ -127,6 +128,7 @@ function bindSocket() {
       addGameLog(`${game.type} 응답 수신`);
     }
     state.activeGame = game;
+    renderWordSubmissions();
     renderGameRankList();
   });
   socket.on('game:global:current', (game) => {
@@ -475,9 +477,10 @@ function renderGameControls() {
   const phase = state.activeGame?.state?.lifecyclePhase;
   const isDirectGame = ['TIME_MATCH', 'BASKETBALL'].includes(state.activeGame?.type);
   $('broadcast-btn').hidden = isFreePlayBasketball || Boolean(state.activeGame && isDirectGame);
+  const skipsResults = ['PINBALL', 'ROULETTE'].includes(state.activeGame?.type);
   $('broadcast-btn').textContent = !state.activeGame ? (state.selectedGame === 'TIME_MATCH' ? '게임 시작' : '게임 전 알림')
     : phase === 'ANNOUNCED' ? '게임 시작'
-      : phase === 'STARTED' ? '팀별 최종 점수 공개' : '게임 종료';
+      : phase === 'STARTED' && !skipsResults ? '팀별 최종 점수 공개' : '게임 종료';
   $('end-game-btn').hidden = !state.activeGame || !isDirectGame;
   const hasRounds = Boolean(state.activeGame?.state?.rounds?.length);
   $('round-control').hidden = !hasRounds || phase !== 'STARTED';
@@ -502,9 +505,37 @@ function renderGameControls() {
   const nextSrc = isPinballActive ? pinballViewerUrl(state.activeGame) : 'about:blank';
   if (frame.getAttribute('src') !== nextSrc) frame.src = nextSrc;
   renderAdminRoulette();
+  renderWordSubmissions();
   $('game-custom-setting').querySelectorAll('input, textarea, select').forEach((node) => { node.disabled = Boolean(state.activeGame); });
   $('game-custom-setting').querySelectorAll('button').forEach((node) => { node.disabled = Boolean(state.activeGame); });
   renderStats();
+}
+
+function renderWordSubmissions() {
+  const panel = $('word-submission-panel');
+  const list = $('word-submission-list');
+  if (!panel || !list) return;
+  const game = state.activeGame;
+  const visible = game?.type === 'WORD_GUESS' && ['STARTED', 'RESULTS'].includes(game.state?.lifecyclePhase);
+  panel.hidden = !visible;
+  if (!visible) return;
+  const roundIndex = Number(game.state?.currentRound || 0);
+  const round = game.state?.rounds?.[roundIndex] || {};
+  $('word-submission-answer').textContent = `정답: ${round.answer || '-'}`;
+  const submissions = Object.values(game.state?.responses || {})
+    .filter((response) => Number(response.state?.roundIndex ?? roundIndex) === roundIndex && String(response.state?.answer || '').trim())
+    .sort((a, b) => Number(Boolean(b.state?.success)) - Number(Boolean(a.state?.success))
+      || String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+  clear(list);
+  submissions.forEach((response) => {
+    const row = document.createElement('div');
+    row.className = `word-submission-row ${response.state?.success ? 'correct' : 'incorrect'}`;
+    row.appendChild(text('strong', '', `TABLE ${tableNumberForSession(response.sessionId) ?? '-'}`));
+    row.appendChild(text('span', 'word-submission-value', String(response.state?.answer || '')));
+    row.appendChild(text('span', 'word-submission-result', response.state?.success ? '정답' : '오답'));
+    list.appendChild(row);
+  });
+  if (!submissions.length) list.appendChild(text('div', 'rank-empty', '아직 제출된 답이 없습니다.'));
 }
 
 function renderAdminRoulette() {
@@ -517,40 +548,54 @@ function renderAdminRoulette() {
   if (!visible) return;
   const round = game.state?.rounds?.[Number(game.state?.currentRound || 0)] || {};
   const options = round.options || [];
+  const spin = game.state?.rouletteSpin;
+  if (spin && state.adminRouletteSpinId === spin.spinId && state.rouletteSpinning && stage.querySelector('.roulette-wheel')) return;
   stage.replaceChildren();
   if (!options.length) return;
-  const colors = ['#ff6b6b', '#4dabf7', '#51cf66', '#ffd43b', '#845ef7', '#ff922b'];
+  const colors = ['#d7ff38', '#ff6b6b', '#6bc5ff', '#ffd66b', '#b98cff', '#62e6a6', '#ff92d0', '#ff9f5b'];
+  const slice = 360 / Math.max(options.length, 1);
+  const wrap = document.createElement('div');
+  wrap.className = 'roulette-wrap';
+  wrap.appendChild(text('div', 'roulette-pointer', '▼'));
   const wheel = document.createElement('div');
-  wheel.className = 'roulette-admin-wheel';
-  wheel.style.background = `conic-gradient(${options.map((_, index) => {
-    const start = (index / options.length) * 100;
-    const end = ((index + 1) / options.length) * 100;
-    return `${colors[index % colors.length]} ${start}% ${end}%`;
-  }).join(',')})`;
+  wheel.className = 'roulette-wheel';
+  wheel.style.background = `conic-gradient(${options.map((_, index) => `${colors[index % colors.length]} ${index * slice}deg ${(index + 1) * slice}deg`).join(', ')})`;
   options.forEach((option, index) => {
-    const label = document.createElement('span');
-    label.className = 'roulette-admin-label';
-    label.textContent = option;
-    label.style.transform = `rotate(${(index + 0.5) * (360 / options.length)}deg) translateY(-92px)`;
+    const label = text('span', 'roulette-label', option);
+    const centerAngle = (index * slice + slice / 2) * Math.PI / 180;
+    label.style.left = `${50 + Math.sin(centerAngle) * 31}%`;
+    label.style.top = `${50 - Math.cos(centerAngle) * 31}%`;
     wheel.appendChild(label);
   });
-  const spin = game.state?.rouletteSpin;
+  wheel.appendChild(text('div', 'roulette-hub', 'PIU:M'));
+  if (!spin) $('roulette-admin-winner').hidden = true;
   const previousRotation = state.adminRouletteRotation;
   let shouldAnimate = false;
   if (spin && state.adminRouletteSpinId !== spin.spinId) {
     state.adminRouletteSpinId = spin.spinId;
-    const slice = 360 / options.length;
-    state.adminRouletteRotation += 1440 + (360 - (Number(spin.resultIndex) + 0.5) * slice);
+    const targetAngle = (360 - (Number(spin.resultIndex) * slice + slice / 2)) % 360;
+    state.adminRouletteRotation = Math.floor(state.adminRouletteRotation / 360) * 360 + 360 * 7 + targetAngle;
     shouldAnimate = true;
   }
   wheel.style.transform = `rotate(${shouldAnimate ? previousRotation : state.adminRouletteRotation}deg)`;
-  stage.appendChild(wheel);
-  stage.appendChild(text('div', 'roulette-admin-pointer', '▼'));
-  if (spin?.result) stage.appendChild(text('strong', 'roulette-admin-result', `결과: ${spin.result}`));
+  wrap.appendChild(wheel);
+  stage.appendChild(wrap);
+  stage.appendChild(text('strong', 'roulette-result', state.rouletteSpinning
+    ? '룰렛이 돌아가는 중...'
+    : spin?.result ? `당첨: ${spin.result}` : '관리자가 룰렛을 돌릴 때까지 기다려 주세요.'));
   if (shouldAnimate) requestAnimationFrame(() => {
     wheel.style.transitionDuration = `${Number(spin.durationMs || 4200)}ms`;
     wheel.style.transform = `rotate(${state.adminRouletteRotation}deg)`;
   });
+  if (shouldAnimate) {
+    const winner = $('roulette-admin-winner');
+    winner.hidden = true;
+    clearTimeout(state.adminRouletteWinnerTimer);
+    state.adminRouletteWinnerTimer = setTimeout(() => {
+      $('roulette-admin-winner-value').textContent = spin.result || '-';
+      winner.hidden = false;
+    }, Number(spin.durationMs || 4200));
+  }
 }
 
 function parsePinballEntries() {
@@ -1045,7 +1090,8 @@ function bindEvents() {
     if (state.selectedGame === 'BASKETBALL') return showToast('농구게임은 관리자 시작 없이 항상 이용할 수 있습니다.');
     if (state.activeGame) {
       const phase = state.activeGame.state?.lifecyclePhase;
-      if (phase === 'RESULTS') {
+      const skipsResults = ['PINBALL', 'ROULETTE'].includes(state.activeGame.type);
+      if (phase === 'RESULTS' || (phase === 'STARTED' && skipsResults)) {
         return getSocket()?.emit('game:global:end', { gameId: state.activeGame.id }, (response) => {
           if (!response?.ok) return showToast(response?.message || response?.error || '게임 종료 실패');
           state.activeGame = null;

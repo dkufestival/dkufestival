@@ -103,7 +103,6 @@ function requestGameParticipation(game) {
 function showGameAnnouncement(game) {
   $('game-participation-title').textContent = `${gameNames[game.type] || game.type} 게임이 곧 시작됩니다.`;
   $('game-participation-message').textContent = '관리자가 게임을 시작할 때까지 잠시 기다려주세요.';
-  $('game-participation-actions').hidden = true;
   openModal('modal-game-participation');
 }
 
@@ -969,11 +968,11 @@ function renderGlobalChat({ forceBottom = false } = {}) {
   clear(log);
   state.globalChatMessages.forEach((message) => {
     const isAdmin = message.senderRole === 'ADMIN';
-    const mine = !isAdmin && message.senderParticipantId === state.participant?.id;
+    const mine = !isAdmin && Number(message.senderParticipantId) === Number(state.participant?.id);
     const session = message.senderParticipant?.session;
     const tableNumber = session?.table?.tableNumber;
     const name = isAdmin ? '관리자' : (message.senderParticipant?.nickname || '참가자');
-    const label = isAdmin ? name : `${name}(${tableNumber ?? '-'})`;
+    const label = isAdmin ? name : `${name}(Table ${tableNumber ?? '-'})`;
     const hasMale = Number(session?.maleCount || 0) > 0;
     const hasFemale = Number(session?.femaleCount || 0) > 0;
     const genderClass = isAdmin ? 'admin' : hasMale && hasFemale ? 'mixed' : hasFemale ? 'female' : hasMale ? 'male' : '';
@@ -1643,8 +1642,6 @@ function bindEvents() {
     const loading = document.querySelector('.pinball-loading');
     if (loading) loading.hidden = true;
   });
-  $('game-participation-accept').addEventListener('click', () => decideGameParticipation(true));
-  $('game-participation-decline').addEventListener('click', () => decideGameParticipation(false));
 }
 
 async function restoreFromToken() {

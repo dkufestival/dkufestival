@@ -693,9 +693,26 @@ body {
 .attempts-history-cancel:hover { border-color: #ff8a8a; }
 .attempts-history-item.cancelled { opacity: 0.45; }
 .attempts-history-item.cancelled .attempts-history-meta.cancelled-tag { color: #ff8a8a; }
-.roulette-admin-preview { margin-top:24px; }
-.roulette-admin-stage { position:relative; min-height:300px; display:grid; place-items:center; overflow:hidden; border-radius:18px; background:#f8f9fa; padding:26px 12px 12px; }
-.roulette-admin-wheel { position:relative; width:240px; height:240px; border-radius:50%; border:7px solid #fff; box-shadow:0 8px 24px rgba(0,0,0,.14); transition-property:transform; transition-timing-function:cubic-bezier(.12,.7,.12,1); }
-.roulette-admin-label { position:absolute; left:50%; top:50%; width:88px; margin-left:-44px; margin-top:-10px; color:#fff; font-size:12px; font-weight:800; text-align:center; text-shadow:0 1px 3px rgba(0,0,0,.45); transform-origin:44px 10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.roulette-admin-pointer { position:absolute; top:8px; left:50%; z-index:2; transform:translateX(-50%); color:#222; font-size:28px; }
-.roulette-admin-result { margin-top:8px; }
+.roulette-admin-preview { position:relative; margin-top:24px; }
+.roulette-admin-stage { position:relative; min-height:330px; display:flex; flex-direction:column; align-items:center; justify-content:center; overflow:hidden; border-radius:18px; background:#171815; padding:34px 12px 18px; }
+.roulette-admin-stage .roulette-wrap { position:relative; width:250px; height:250px; margin:0 auto; filter:drop-shadow(0 14px 24px rgba(0,0,0,.35)); }
+.roulette-admin-stage .roulette-pointer { position:absolute; z-index:3; top:-15px; left:50%; transform:translateX(-50%); color:#fff; font-size:30px; text-shadow:0 2px 8px #000; }
+.roulette-admin-stage .roulette-wheel { position:relative; width:250px; height:250px; overflow:hidden; border:7px solid #fff; border-radius:50%; transition-property:transform; transition-timing-function:cubic-bezier(.12,.65,.12,1); }
+.roulette-admin-stage .roulette-label { position:absolute; z-index:1; width:76px; overflow:hidden; color:#101010; font-size:11px; font-weight:900; line-height:1.2; text-align:center; text-overflow:ellipsis; white-space:nowrap; transform:translate(-50%,-50%); }
+.roulette-admin-stage .roulette-hub { position:absolute; z-index:2; top:50%; left:50%; display:flex; width:54px; height:54px; align-items:center; justify-content:center; transform:translate(-50%,-50%); border:5px solid #fff; border-radius:50%; background:#111; color:#fff; font-size:9px; font-weight:900; }
+.roulette-admin-stage .roulette-result { margin-top:17px; color:#fff; font-size:14px; font-weight:800; }
+.roulette-admin-winner { position:absolute; z-index:6; inset:25px 0 0; display:grid; place-items:center; padding:24px; background:rgba(4,5,10,.42); }
+.roulette-admin-winner[hidden] { display:none; }
+.roulette-admin-winner-card { width:min(310px,88%); padding:28px 20px 24px; border:1px solid rgba(255,255,255,.28); border-radius:22px; text-align:center; background:rgba(10,12,22,.94); box-shadow:0 18px 60px rgba(0,0,0,.58),0 0 35px rgba(185,255,69,.18); }
+.roulette-admin-winner-card span { display:block; margin-bottom:12px; color:#b9ff45; font-size:11px; font-weight:900; letter-spacing:.18em; }
+.roulette-admin-winner-card strong { display:block; overflow-wrap:anywhere; color:#fff; font-size:38px; line-height:1.15; }
+.roulette-admin-winner-card p { margin:10px 0 0; color:#d8dceb; font-size:14px; font-weight:700; }
+.word-submission-panel { margin-top:14px; padding:14px; border:1px solid var(--border-soft); border-radius:14px; background:rgba(255,255,255,.03); }
+.word-submission-head { display:flex; justify-content:space-between; gap:12px; margin-bottom:10px; }
+.word-submission-head span { color:var(--lime); font-weight:800; }
+.word-submission-list { display:grid; gap:7px; max-height:280px; overflow-y:auto; }
+.word-submission-row { display:grid; grid-template-columns:92px minmax(0,1fr) 42px; gap:10px; align-items:center; padding:9px 10px; border-radius:10px; background:rgba(255,255,255,.05); }
+.word-submission-row.correct { border:1px solid rgba(200,241,63,.55); background:rgba(200,241,63,.1); }
+.word-submission-value { overflow-wrap:anywhere; }
+.word-submission-result { text-align:right; color:#ff8585; font-weight:800; }
+.word-submission-row.correct .word-submission-result { color:var(--lime); }
