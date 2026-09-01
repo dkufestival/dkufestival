@@ -917,7 +917,7 @@ body {
 .global-chat-message.mine .global-chat-icon { grid-column:2; }
 .global-chat-message.mine .global-chat-message-body { grid-column:1; grid-row:1; justify-self:end; text-align:right; }
 .global-chat-message.mine .global-chat-message-head { justify-content:flex-end; }
-.global-chat-message.mine .global-chat-message-content { padding:7px 10px; border-radius:12px 3px 12px 12px; background:rgba(200,241,63,.18); }
+.global-chat-message.mine .global-chat-message-content { padding:7px 0; }
 .global-chat-icon {
   width: 32px;
   height: 32px;
