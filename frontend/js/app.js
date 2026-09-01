@@ -815,9 +815,11 @@ function showNoticeDetail(notice) {
 }
 
 function showNoticePopup(notice) {
-  $('notice-popup-title').textContent = notice.title;
-  $('notice-popup-content').textContent = notice.content;
-  openModal('modal-notice-popup');
+  const push = $('notice-push');
+  $('notice-push-title').textContent = notice.title;
+  push.classList.add('show');
+  clearTimeout(push._hideTimer);
+  push._hideTimer = setTimeout(() => push.classList.remove('show'), 3500);
 }
 
 function updateNoticeBadge() {

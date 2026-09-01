@@ -6,7 +6,7 @@
 <title>PIU:M</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="style.css?v=46">
+<link rel="stylesheet" href="style.css?v=48">
 </head>
 <body>
 <div class="phone">
@@ -143,6 +143,10 @@
     </div>
     <footer class="pinball-screen-footer">관전 전용 · 게임이 끝나면 자동으로 돌아갑니다</footer>
   </section>
+  <div id="notice-push" class="notice-push">
+    <div class="notice-push-label">새 공지</div>
+    <div id="notice-push-title" class="notice-push-title"></div>
+  </div>
 </div>
 
 <div id="modal-leave-confirm" class="modal-backdrop">
@@ -250,13 +254,6 @@
   </div>
 </div>
 
-<div id="modal-notice-popup" class="modal-backdrop">
-  <div class="modal-card">
-    <button type="button" class="modal-close" data-modal="modal-notice-popup">×</button>
-    <div id="notice-popup-title" class="modal-title"></div>
-    <div id="notice-popup-content" class="modal-detail"></div>
-  </div>
-</div>
 
 <div id="modal-game" class="modal-backdrop">
   <div class="modal-card">
