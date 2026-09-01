@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0a0a0a">
   <title>스톱워치 게임 | piu:m</title>
-  <link rel="stylesheet" href="./stopwatch.css?v=4">
+  <link rel="stylesheet" href="./stopwatch.css?v=5">
 </head>
 <body>
   <main class="game-shell">
@@ -22,7 +22,13 @@
         </div>
 
         <div class="sw-elapsed-wrap">
-          <div id="elapsed-time" class="sw-elapsed-value">00:00.000</div>
+          <div id="elapsed-time" class="sw-elapsed-value" aria-label="00:00.000">
+            <span class="sw-time-part sw-time-minutes" data-time-part="minutes">00</span>
+            <span class="sw-time-separator" aria-hidden="true">:</span>
+            <span class="sw-time-part sw-time-seconds" data-time-part="seconds">00</span>
+            <span class="sw-time-separator" aria-hidden="true">.</span>
+            <span class="sw-time-part sw-time-milliseconds" data-time-part="milliseconds">000</span>
+          </div>
           <p id="result-text" class="sw-notice">관리자가 스톱워치 게임을 시작하면 참여할 수 있습니다.</p>
         </div>
 
@@ -42,6 +48,6 @@
   </main>
 
   <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-  <script type="module" src="./stopwatch.js?v=5"></script>
+  <script type="module" src="./stopwatch.js?v=6"></script>
 </body>
 </html>

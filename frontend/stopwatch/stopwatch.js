@@ -39,7 +39,12 @@ function setResult(message, tone = '') {
 }
 
 function renderElapsed() {
-  $('elapsed-time').textContent = formatTime(state.elapsedMs);
+  const value = Math.max(0, Math.floor(Number(state.elapsedMs) || 0));
+  const elapsed = $('elapsed-time');
+  elapsed.querySelector('[data-time-part="minutes"]').textContent = String(Math.floor(value / 60000)).padStart(2, '0');
+  elapsed.querySelector('[data-time-part="seconds"]').textContent = String(Math.floor((value % 60000) / 1000)).padStart(2, '0');
+  elapsed.querySelector('[data-time-part="milliseconds"]').textContent = String(value % 1000).padStart(3, '0');
+  elapsed.setAttribute('aria-label', formatTime(value));
 }
 
 function resetRun() {

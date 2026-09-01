@@ -135,17 +135,27 @@ body {
   gap: 16px;
 }
 .sw-elapsed-value {
-  width: 9ch;
-  font-family: var(--font-display);
+  display: grid;
+  grid-template-columns: 2ch .6ch 2ch .6ch 3ch;
+  align-items: baseline;
+  justify-content: center;
+  width: 8.2ch;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Monaco, Consolas, monospace;
   font-size: clamp(44px, 13vw, 60px);
   font-weight: 700;
   line-height: 1;
-  letter-spacing: -.02em;
   white-space: nowrap;
-  text-align: center;
   color: var(--text);
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum' 1;
+}
+.sw-time-part,
+.sw-time-separator {
+  display: block;
+  text-align: center;
+}
+.sw-time-part {
+  min-width: 0;
 }
 .sw-notice {
   margin: 0;
