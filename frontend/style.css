@@ -809,6 +809,8 @@ body {
 .modal-card {
   width: 100%;
   max-width: 320px;
+  max-height: 100%;
+  overflow-y: auto;
   background: var(--card-dark);
   border: 1px solid var(--border-soft);
   border-radius: 10px;
