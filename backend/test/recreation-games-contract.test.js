@@ -25,4 +25,7 @@ test('imported recreation games are wired to model, admin and participant screen
   assert.match(participant, /createRouletteWheel/);
   assert.match(participant, /playRpsReveal/);
   assert.match(service, /NEXT_PROMPT/);
+  assert.match(service, /ANSWER_ALREADY_SUBMITTED/);
+  assert.match(participant, /submittedGameAnswers/);
+  assert.match(admin, /\['PINBALL', 'ROULETTE'\]/);
 });

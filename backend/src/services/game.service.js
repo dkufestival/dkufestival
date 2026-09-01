@@ -99,6 +99,14 @@ async function handleAction(sessionId, data, participantId) {
     && game.state?.lifecyclePhase !== 'STARTED') {
     throw createServiceError('아직 게임이 시작되지 않았습니다.', 'INVALID_GAME_PHASE');
   }
+  if (game.mode === 'GLOBAL' && game.type === 'WORD_GUESS' && data.action === 'ANSWER') {
+    const responseKey = participantId || sessionId;
+    const previousResponse = game.state?.responses?.[responseKey];
+    const currentRound = Number(game.state?.currentRound || 0);
+    if (previousResponse && Number(previousResponse.state?.roundIndex) === currentRound) {
+      throw createServiceError('이 라운드에는 이미 답을 제출했습니다.', 'ANSWER_ALREADY_SUBMITTED');
+    }
+  }
 
   let responseState = data.state || {};
   if (game.mode === 'GLOBAL' && game.type === 'TIME_MATCH') {

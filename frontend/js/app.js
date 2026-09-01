@@ -40,6 +40,8 @@ const state = {
   timeMatch: { phase: 'ready', startedAt: 0, elapsedMs: 0, frame: null },
   receivedRequestCount: 0,
   gameAnswer: null,
+  gameAnswerKey: null,
+  submittedGameAnswers: new Map(),
   rouletteTimer: null,
   rouletteRotation: 0,
   revealSequenceKey: null,
@@ -1354,6 +1356,10 @@ function showGlobalGameScreen() {
   $('game-demo-icon').classList.toggle('rps-call', state.activeGame?.type === 'RPS');
   $('game-demo-label').textContent = isTimeMatch ? 'TARGET TIME' : '';
   $('game-demo-label').hidden = !isTimeMatch;
+  const answerKey = `${state.activeGame?.id}:${Number(state.activeGame?.state?.currentRound || 0)}`;
+  const submittedAnswer = state.submittedGameAnswers.get(answerKey);
+  if (state.gameAnswerKey !== answerKey) state.gameAnswer = submittedAnswer ?? null;
+  state.gameAnswerKey = answerKey;
   const mission = $('game-demo-mission');
   clear(mission);
   if (isTimeMatch) {
@@ -1362,13 +1368,14 @@ function showGlobalGameScreen() {
     renderRecreationGame(mission);
   }
   resetTimeMatch();
-  state.gameAnswer = null;
   state.revealSequenceKey = null;
-  $('game-screen-action').disabled = false;
+  $('game-screen-action').disabled = submittedAnswer !== undefined;
   $('game-screen-action').hidden = state.activeGame?.type === 'ROULETTE';
   $('game-screen-action').classList.remove('is-stop');
-  $('game-screen-action').textContent = isTimeMatch ? 'START' : state.activeGame?.type === 'ROULETTE' ? '룰렛 돌리기' : '제출';
-  $('game-screen-status').textContent = '응답 대기 중';
+  $('game-screen-action').textContent = isTimeMatch ? 'START'
+    : state.activeGame?.type === 'ROULETTE' ? '룰렛 돌리기'
+      : submittedAnswer !== undefined ? '제출 완료' : '제출';
+  $('game-screen-status').textContent = submittedAnswer !== undefined ? '이 라운드의 답을 제출했습니다.' : '응답 대기 중';
   showScreen('screen-game');
 }
 
@@ -1521,6 +1528,8 @@ function gameTextInput() {
   const input = document.createElement('input');
   input.className = 'game-answer-input';
   input.placeholder = '정답을 입력하세요';
+  input.value = state.gameAnswer || '';
+  input.disabled = state.submittedGameAnswers.has(state.gameAnswerKey);
   input.addEventListener('input', () => { state.gameAnswer = input.value.trim(); });
   return input;
 }
@@ -1540,6 +1549,9 @@ function sendGameAnswer(answer, action) {
     action,
     state: { answer, roundIndex: Number(state.activeGame.state?.currentRound || 0), answeredAt: new Date().toISOString() },
   }, (response) => {
+    if (response?.ok && state.activeGame?.type === 'WORD_GUESS') {
+      state.submittedGameAnswers.set(state.gameAnswerKey, answer);
+    }
     $('game-screen-action').textContent = response?.ok ? '참여 완료' : '다시 시도하기';
     $('game-screen-action').disabled = Boolean(response?.ok);
     $('game-screen-status').textContent = response?.ok ? '응답이 관리자에게 전달되었습니다.' : response?.message || '응답 전송에 실패했습니다.';

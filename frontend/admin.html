@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
-<link rel="stylesheet" href="admin.css?v=15">
+<link rel="stylesheet" href="admin.css?v=16">
 </head>
 <body>
 <section id="screen-login" class="screen active">
@@ -132,8 +132,7 @@
           <div id="roulette-admin-winner" class="roulette-admin-winner" hidden>
             <div class="roulette-admin-winner-card">
               <span>ROULETTE WINNER</span>
-              <strong id="roulette-admin-winner-value"></strong>
-              <p>당첨되었습니다!</p>
+              <strong>당첨 : <b id="roulette-admin-winner-value"></b></strong>
             </div>
           </div>
         </div>
@@ -226,6 +225,6 @@
 <div id="admin-toast" class="toast"></div>
 
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-<script type="module" src="js/admin-app.js?v=27"></script>
+<script type="module" src="js/admin-app.js?v=28"></script>
 </body>
 </html>
