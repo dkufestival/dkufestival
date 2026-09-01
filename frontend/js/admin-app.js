@@ -136,6 +136,11 @@ function bindSocket() {
 }
 
 function updateSong(song) {
+  if (song.status === 'COMPLETED') {
+    state.songs = state.songs.filter((item) => item.id !== song.id);
+    renderSongs();
+    return;
+  }
   state.songs = state.songs.map((item) => item.id === song.id ? song : item);
   renderSongs();
 }
@@ -149,7 +154,7 @@ async function loadChatRooms() {
 }
 
 async function loadSongs() {
-  state.songs = await songsApi.adminList();
+  state.songs = (await songsApi.adminList()).filter((song) => song.status !== 'COMPLETED');
 }
 
 async function loadNotices() {
