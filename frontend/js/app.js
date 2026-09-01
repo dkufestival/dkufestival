@@ -1041,21 +1041,6 @@ function renderGame() {
   basketballCard.appendChild(basketballButton);
   box.appendChild(basketballCard);
 
-  const pinballActive = state.activeGame?.type === 'PINBALL' && state.activeGame?.status === 'ACTIVE';
-  const pinballCard = document.createElement('div');
-  pinballCard.className = 'basketball-entry';
-  pinballCard.appendChild(text('div', 'basketball-entry-icon', '🎯'));
-  pinballCard.appendChild(text('div', 'basketball-entry-title', '핀볼게임'));
-  pinballCard.appendChild(text('div', 'basketball-entry-copy', pinballActive
-    ? `${state.activeGame.state?.marbleCount || state.activeGame.state?.names?.length || 0}개의 구슬이 달리는 핀볼 게임을 관전 중입니다.`
-    : '관리자가 이름을 입력하고 게임을 시작하면 자동으로 관전 화면이 열립니다.'));
-  const pinballButton = button('btn-dark full', pinballActive ? '관전 화면으로 이동' : '관리자 시작 대기', () => {
-    showPinballScreen(state.activeGame);
-  });
-  pinballButton.disabled = !pinballActive;
-  pinballCard.appendChild(pinballButton);
-  box.appendChild(pinballCard);
-
   const stopwatchActive = state.activeGame?.type === 'TIME_MATCH' && state.activeGame?.status === 'ACTIVE';
   const stopwatchCard = document.createElement('div');
   stopwatchCard.className = 'basketball-entry';

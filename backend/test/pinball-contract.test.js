@@ -15,6 +15,8 @@ test('pinball game is registered with admin names and participant viewer', () =>
   assert.match(serviceSource, /INVALID_PINBALL_NAMES/);
   assert.match(adminSource, /parsePinballEntries/);
   assert.match(participantSource, /showPinballScreen/);
+  assert.match(participantSource, /if \(game\.type === 'PINBALL'\)[\s\S]*showPinballScreen\(game\)/);
+  assert.doesNotMatch(participantSource, /const pinballCard/);
   assert.match(participantSource, /window\.location\.href = '\/basketball\/'/);
   assert.match(participantSource, /window\.location\.href = '\/stopwatch\/'/);
 });
