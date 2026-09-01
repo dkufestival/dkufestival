@@ -96,9 +96,29 @@ function requestGameParticipation(game) {
     showToast('농구게임이 시작되었습니다. 게임 메뉴에서 입장할 수 있습니다.');
     return;
   }
-  state.pendingParticipationGame = game;
-  $('game-participation-title').textContent = `${gameNames[game.type] || game.type}이(가) 시작됩니다.`;
+  state.participationDecisions.set(Number(game.id), true);
+  showGlobalGameScreen();
+}
+
+function showGameAnnouncement(game) {
+  $('game-participation-title').textContent = `${gameNames[game.type] || game.type} 게임이 곧 시작됩니다.`;
+  $('game-participation-message').textContent = '관리자가 게임을 시작할 때까지 잠시 기다려주세요.';
+  $('game-participation-actions').hidden = true;
   openModal('modal-game-participation');
+}
+
+function showFinalScores(game) {
+  const list = $('game-final-score-list');
+  list.replaceChildren();
+  const scores = [...(game.state?.finalScoreboard || game.state?.scoreboard || [])]
+    .sort((a, b) => Number(b.score || 0) - Number(a.score || 0));
+  if (!scores.length) list.textContent = '점수가 집계되지 않는 게임입니다.';
+  scores.forEach((team, index) => {
+    const row = document.createElement('div');
+    row.textContent = `${index + 1}위 · TABLE ${team.tableNumber ?? '-'} · ${Number(team.score || 0)}점`;
+    list.appendChild(row);
+  });
+  openModal('modal-game-results');
 }
 
 function decideGameParticipation(joined) {
@@ -445,14 +465,22 @@ function bindSocket() {
     state.staffCallPending = false;
     updateStaffCallButton();
   });
+  socket.on('game:global:announced', (game) => {
+    state.activeGame = game;
+    showGameAnnouncement(game);
+    renderGame();
+  });
   socket.on('game:global:started', (game) => {
     state.activeGame = game;
+    closeModal('modal-game-participation');
     requestGameParticipation(game);
     renderGame();
   });
   socket.on('game:global:current', (game) => {
     state.activeGame = game;
-    if (game?.type !== 'TIME_MATCH') requestGameParticipation(game);
+    if (game?.state?.lifecyclePhase === 'ANNOUNCED') showGameAnnouncement(game);
+    else if (game?.state?.lifecyclePhase === 'RESULTS') showFinalScores(game);
+    else if (game?.type !== 'TIME_MATCH') requestGameParticipation(game);
     renderGame();
   });
   socket.on('game:global:ended', (game) => {
@@ -462,6 +490,8 @@ function bindSocket() {
     $('pinball-viewer-frame').src = 'about:blank';
     renderGame();
     closeModal('modal-game');
+    closeModal('modal-game-participation');
+    closeModal('modal-game-results');
     showScreen(state.activeRoomId ? 'screen-chat' : 'screen-seats');
     showToast(`${gameNames[game.type] || game.type} 게임이 종료되었습니다.`);
   });
@@ -479,6 +509,10 @@ function bindSocket() {
         showRoundResult();
       }
     }
+  });
+  socket.on('game:global:results', (game) => {
+    state.activeGame = game;
+    showFinalScores(game);
   });
   socket.on('basketball:leaderboard', (payload = {}) => {
     state.basketballLeaderboard = Array.isArray(payload.leaderboard) ? payload.leaderboard.slice(0, 3) : [];

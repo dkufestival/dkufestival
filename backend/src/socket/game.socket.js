@@ -146,8 +146,9 @@ function registerGameSocket(io, socket) {
     try {
       if (socket.data.user.role !== 'ADMIN') throw new Error('ADMIN_REQUIRED');
       const game = await gameService.startGlobalGame(payload);
-      io.to('participants').emit('game:global:started', participantGame(game));
-      if (!['TIME_MATCH', 'PINBALL', 'BASKETBALL'].includes(game.type)) {
+      const eventName = game.state?.lifecyclePhase === 'ANNOUNCED' ? 'game:global:announced' : 'game:global:started';
+      io.to('participants').emit(eventName, participantGame(game));
+      if (game.state?.lifecyclePhase === 'STARTED' && !['TIME_MATCH', 'PINBALL', 'BASKETBALL'].includes(game.type)) {
         io.to('participants').emit('game:global:round', participantRound(game));
       }
       reply(callback, { ok: true, data: game });
@@ -173,7 +174,12 @@ function registerGameSocket(io, socket) {
       if (socket.data.user.role !== 'ADMIN') throw new Error('ADMIN_REQUIRED');
       const game = await gameService.updateGlobalGame(payload);
       io.to('participants').emit('game:global:updated', participantGame(game));
-      if (payload.action === 'NEXT') {
+      if (payload.action === 'START') {
+        io.to('participants').emit('game:global:started', participantGame(game));
+        if (!['PINBALL'].includes(game.type)) io.to('participants').emit('game:global:round', participantRound(game));
+      } else if (payload.action === 'FINALIZE') {
+        io.to('participants').emit('game:global:results', participantGame(game));
+      } else if (payload.action === 'NEXT') {
         io.to('participants').emit('game:global:round', participantRound(game));
       } else if (payload.action === 'NEXT_PROMPT') {
         io.to('participants').emit('game:global:prompt', {

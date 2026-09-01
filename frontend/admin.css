@@ -693,3 +693,9 @@ body {
 .attempts-history-cancel:hover { border-color: #ff8a8a; }
 .attempts-history-item.cancelled { opacity: 0.45; }
 .attempts-history-item.cancelled .attempts-history-meta.cancelled-tag { color: #ff8a8a; }
+.roulette-admin-preview { margin-top:24px; }
+.roulette-admin-stage { position:relative; min-height:300px; display:grid; place-items:center; overflow:hidden; border-radius:18px; background:#f8f9fa; padding:26px 12px 12px; }
+.roulette-admin-wheel { position:relative; width:240px; height:240px; border-radius:50%; border:7px solid #fff; box-shadow:0 8px 24px rgba(0,0,0,.14); transition-property:transform; transition-timing-function:cubic-bezier(.12,.7,.12,1); }
+.roulette-admin-label { position:absolute; left:50%; top:50%; width:88px; margin-left:-44px; margin-top:-10px; color:#fff; font-size:12px; font-weight:800; text-align:center; text-shadow:0 1px 3px rgba(0,0,0,.45); transform-origin:44px 10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.roulette-admin-pointer { position:absolute; top:8px; left:50%; z-index:2; transform:translateX(-50%); color:#222; font-size:28px; }
+.roulette-admin-result { margin-top:8px; }

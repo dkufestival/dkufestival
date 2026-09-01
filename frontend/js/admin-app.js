@@ -23,6 +23,8 @@ const state = {
   detailCounts: { male: 0, female: 0 },
   gameRounds: {},
   rouletteSpinning: false,
+  adminRouletteSpinId: null,
+  adminRouletteRotation: 0,
   timer: null,
   hasConnectedOnce: false,
   initialSyncDone: false,
@@ -120,16 +122,11 @@ function bindSocket() {
       const diff = Number(latest.state.differenceMs || 0);
       addGameLog(latest.state.success ? '시간 맞추기 성공 · 정확히 일치' : `시간 맞추기 응답 · ${Math.abs(diff)}ms ${diff < 0 ? '빠름' : '늦음'}`);
     } else if (latest?.state) {
-      const answer = latest.state.answer ? ` · ${latest.state.answer}` : '';
-      const outcomeLabels = { WIN: '승리', DRAW: '무승부', LOSE: '패배' };
-      const result = latest.state.outcome ? ` · 참가자 ${outcomeLabels[latest.state.outcome]}`
-        : typeof latest.state.success === 'boolean' ? (latest.state.success ? ' · 정답' : ' · 오답') : '';
-      addGameLog(`${game.type} 응답${answer}${result}`);
+      addGameLog(`${game.type} 참가 응답 수신`);
     } else {
       addGameLog(`${game.type} 응답 수신`);
     }
     state.activeGame = game;
-    renderTeamScoreboard();
     renderGameRankList();
   });
   socket.on('game:global:current', (game) => {
@@ -152,7 +149,8 @@ function bindSocket() {
     state.activeGame = game;
     renderGameControls();
     renderGameList();
-    renderTeamScoreboard();
+    seedGameRecordFromResponses(game);
+    renderGameRankList();
   });
   socket.on('basketball:leaderboard', (payload = {}) => {
     state.basketballLeaderboard = Array.isArray(payload.leaderboard) ? payload.leaderboard.slice(0, 3) : [];
@@ -236,7 +234,6 @@ function renderAll() {
   renderBoard();
   renderStaffCalls();
   renderNoticeHistory();
-  renderTeamScoreboard();
   renderBasketballLeaderboard();
 }
 
@@ -262,28 +259,6 @@ function renderBasketballLeaderboard() {
     row.appendChild(text('strong', 'basketball-ranking-score', `${Number(entry.score || 0)}점`));
     list.appendChild(row);
   });
-}
-
-function renderTeamScoreboard() {
-  const box = $('team-scoreboard');
-  if (!box) return;
-  clear(box);
-  const liveScores = state.activeGame?.state?.scoreboard || [];
-  const scores = liveScores.length
-    ? liveScores
-    : state.tables
-      .filter((table) => table.activeSession)
-      .map((table) => ({ tableNumber: table.tableNumber, score: Number(table.activeSession.score || 0), delta: 0 }));
-  scores
-    .sort((a, b) => Number(b.score) - Number(a.score) || Number(a.tableNumber) - Number(b.tableNumber))
-    .forEach((team, index) => {
-      const row = document.createElement('div');
-      row.className = 'game-log-item';
-      const delta = Number(team.delta || 0);
-      row.textContent = `${index + 1}위 · TABLE ${team.tableNumber || '-'} · ${Number(team.score || 0)}점${delta ? ` (이번 라운드 +${delta})` : ''}`;
-      box.appendChild(row);
-    });
-  if (!scores.length) box.appendChild(text('div', 'game-log-empty', '활성 팀이 없습니다.'));
 }
 
 function renderStats() {
@@ -487,15 +462,25 @@ function renderGameControls() {
     : state.activeGame?.type === 'PINBALL'
       ? ` · 구슬 ${state.activeGame.state?.marbleCount || state.activeGame.state?.names?.length || 0}개`
       : '';
+  const activePhase = state.activeGame?.state?.lifecyclePhase;
   $('game-status').textContent = state.activeGame
-    ? `참가자 화면에서 게임이 진행 중입니다${activeTarget}.`
+    ? activePhase === 'ANNOUNCED'
+      ? '참가자에게 게임 시작 전 알림을 표시하고 있습니다.'
+      : activePhase === 'RESULTS'
+        ? '참가자에게 팀별 최종 점수를 공개하고 있습니다.'
+        : `참가자 화면에서 게임이 진행 중입니다${activeTarget}.`
     : isFreePlayBasketball
       ? '농구게임은 관리자 시작 없이 항상 자유롭게 이용할 수 있습니다.'
       : '게임을 시작할 수 있습니다.';
-  $('broadcast-btn').hidden = Boolean(state.activeGame) || isFreePlayBasketball;
-  $('end-game-btn').hidden = !state.activeGame;
+  const phase = state.activeGame?.state?.lifecyclePhase;
+  const isDirectGame = ['TIME_MATCH', 'BASKETBALL'].includes(state.activeGame?.type);
+  $('broadcast-btn').hidden = isFreePlayBasketball || Boolean(state.activeGame && isDirectGame);
+  $('broadcast-btn').textContent = !state.activeGame ? (state.selectedGame === 'TIME_MATCH' ? '게임 시작' : '게임 전 알림')
+    : phase === 'ANNOUNCED' ? '게임 시작'
+      : phase === 'STARTED' ? '팀별 최종 점수 공개' : '게임 종료';
+  $('end-game-btn').hidden = !state.activeGame || !isDirectGame;
   const hasRounds = Boolean(state.activeGame?.state?.rounds?.length);
-  $('round-control').hidden = !hasRounds;
+  $('round-control').hidden = !hasRounds || phase !== 'STARTED';
   if (hasRounds) {
     const index = Number(state.activeGame.state.currentRound || 0);
     const isRoulette = state.activeGame.type === 'ROULETTE';
@@ -511,14 +496,61 @@ function renderGameControls() {
   $('time-target-seconds').disabled = Boolean(state.activeGame);
   $('time-target-milliseconds').disabled = Boolean(state.activeGame);
   $('pinball-names').disabled = Boolean(state.activeGame);
-  const isPinballActive = state.activeGame?.type === 'PINBALL';
+  const isPinballActive = state.activeGame?.type === 'PINBALL' && ['STARTED', 'RESULTS'].includes(phase);
   $('pinball-admin-preview').hidden = !isPinballActive;
   const frame = $('pinball-admin-frame');
   const nextSrc = isPinballActive ? pinballViewerUrl(state.activeGame) : 'about:blank';
   if (frame.getAttribute('src') !== nextSrc) frame.src = nextSrc;
+  renderAdminRoulette();
   $('game-custom-setting').querySelectorAll('input, textarea, select').forEach((node) => { node.disabled = Boolean(state.activeGame); });
   $('game-custom-setting').querySelectorAll('button').forEach((node) => { node.disabled = Boolean(state.activeGame); });
   renderStats();
+}
+
+function renderAdminRoulette() {
+  const panel = $('roulette-admin-preview');
+  const stage = $('roulette-admin-stage');
+  if (!panel || !stage) return;
+  const game = state.activeGame;
+  const visible = game?.type === 'ROULETTE' && ['STARTED', 'RESULTS'].includes(game.state?.lifecyclePhase);
+  panel.hidden = !visible;
+  if (!visible) return;
+  const round = game.state?.rounds?.[Number(game.state?.currentRound || 0)] || {};
+  const options = round.options || [];
+  stage.replaceChildren();
+  if (!options.length) return;
+  const colors = ['#ff6b6b', '#4dabf7', '#51cf66', '#ffd43b', '#845ef7', '#ff922b'];
+  const wheel = document.createElement('div');
+  wheel.className = 'roulette-admin-wheel';
+  wheel.style.background = `conic-gradient(${options.map((_, index) => {
+    const start = (index / options.length) * 100;
+    const end = ((index + 1) / options.length) * 100;
+    return `${colors[index % colors.length]} ${start}% ${end}%`;
+  }).join(',')})`;
+  options.forEach((option, index) => {
+    const label = document.createElement('span');
+    label.className = 'roulette-admin-label';
+    label.textContent = option;
+    label.style.transform = `rotate(${(index + 0.5) * (360 / options.length)}deg) translateY(-92px)`;
+    wheel.appendChild(label);
+  });
+  const spin = game.state?.rouletteSpin;
+  const previousRotation = state.adminRouletteRotation;
+  let shouldAnimate = false;
+  if (spin && state.adminRouletteSpinId !== spin.spinId) {
+    state.adminRouletteSpinId = spin.spinId;
+    const slice = 360 / options.length;
+    state.adminRouletteRotation += 1440 + (360 - (Number(spin.resultIndex) + 0.5) * slice);
+    shouldAnimate = true;
+  }
+  wheel.style.transform = `rotate(${shouldAnimate ? previousRotation : state.adminRouletteRotation}deg)`;
+  stage.appendChild(wheel);
+  stage.appendChild(text('div', 'roulette-admin-pointer', '▼'));
+  if (spin?.result) stage.appendChild(text('strong', 'roulette-admin-result', `결과: ${spin.result}`));
+  if (shouldAnimate) requestAnimationFrame(() => {
+    wheel.style.transitionDuration = `${Number(spin.durationMs || 4200)}ms`;
+    wheel.style.transform = `rotate(${state.adminRouletteRotation}deg)`;
+  });
 }
 
 function parsePinballEntries() {
@@ -742,14 +774,18 @@ function ensureGameRecord(game) {
     record = {
       id: game.id,
       type: game.type,
-      startedAt: game.startedAt || new Date().toISOString(),
+      startedAt: game.state?.actualStartedAt || game.startedAt || new Date().toISOString(),
       endedAt: game.endedAt || null,
       results: {},
+      eligibleTeams: game.state?.eligibleTeams || [],
+      scoreboard: game.state?.finalScoreboard || game.state?.scoreboard || [],
     };
     state.gameHistoryById[game.id] = record;
     state.gameHistory.unshift(record);
   }
   record.type = game.type;
+  record.eligibleTeams = game.state?.eligibleTeams || record.eligibleTeams || [];
+  record.scoreboard = game.state?.finalScoreboard || game.state?.scoreboard || record.scoreboard || [];
   if (game.endedAt) record.endedAt = game.endedAt;
   return record;
 }
@@ -774,6 +810,7 @@ function recordGameResponse(game, response) {
 }
 
 function seedGameRecordFromResponses(game) {
+  if (!game || (!['TIME_MATCH', 'BASKETBALL'].includes(game.type) && !['STARTED', 'RESULTS'].includes(game.state?.lifecyclePhase))) return;
   const record = ensureGameRecord(game);
   if (!record) return;
   Object.values(game.state?.responses || {}).forEach((response) => recordGameResponse(game, response));
@@ -793,6 +830,11 @@ function withDenseRanks(rows, scoreOf) {
 }
 
 function computeRanking(record) {
+  if (record.scoreboard?.length && record.type !== 'TIME_MATCH') {
+    const participated = new Set(Object.keys(record.results).map(Number));
+    return withDenseRanks(record.scoreboard.filter((row) => participated.has(Number(row.tableNumber))), (row) => Number(row.score || 0))
+      .map((row) => ({ ...row, scoreLabel: `${Number(row.score || 0)}점` }));
+  }
   const rows = Object.values(record.results);
   if (record.type === 'TIME_MATCH') {
     const finished = rows.filter((row) => Number.isFinite(row.bestDiffMs));
@@ -816,7 +858,7 @@ function computeRanking(record) {
 function renderGameRankList() {
   const list = $('game-rank-list');
   clear(list);
-  const records = state.gameHistory.filter((record) => RANKED_GAME_TYPES.includes(record.type) && Object.keys(record.results).length);
+  const records = state.gameHistory.filter((record) => RANKED_GAME_TYPES.includes(record.type));
   if (!records.length) {
     list.appendChild(text('div', 'game-accordion-empty', '아직 순위를 매길 게임 결과가 없습니다.'));
     return;
@@ -854,6 +896,9 @@ function renderGameRankList() {
         body.appendChild(rowEl);
       });
     }
+    const participated = new Set(Object.keys(record.results).map(Number));
+    const missing = (record.eligibleTeams || []).filter((team) => !participated.has(Number(team.tableNumber)));
+    body.appendChild(text('div', 'rank-empty', `미참여 ${missing.length}팀${missing.length ? ` · ${missing.map((team) => `TABLE ${team.tableNumber ?? '-'}`).join(', ')}` : ''}`));
     details.appendChild(body);
     list.appendChild(details);
   });
@@ -998,6 +1043,21 @@ function bindEvents() {
   $('detail-overlay').addEventListener('click', closeDetail);
   $('broadcast-btn').addEventListener('click', () => {
     if (state.selectedGame === 'BASKETBALL') return showToast('농구게임은 관리자 시작 없이 항상 이용할 수 있습니다.');
+    if (state.activeGame) {
+      const phase = state.activeGame.state?.lifecyclePhase;
+      if (phase === 'RESULTS') {
+        return getSocket()?.emit('game:global:end', { gameId: state.activeGame.id }, (response) => {
+          if (!response?.ok) return showToast(response?.message || response?.error || '게임 종료 실패');
+          state.activeGame = null;
+          renderGameList();
+          renderGameControls();
+          renderGameRankList();
+          addGameLog('전체 게임 종료');
+        });
+      }
+      const action = phase === 'ANNOUNCED' ? 'START' : 'FINALIZE';
+      return updateGlobalGame(action);
+    }
     const targetMs = targetTimeMs();
     if (state.selectedGame === 'TIME_MATCH' && targetMs < 10) return showToast('목표 시간을 0.01초 이상 입력해주세요.');
     const pinball = parsePinballEntries();
@@ -1018,10 +1078,12 @@ function bindEvents() {
     }, (response) => {
       if (response?.ok) {
         state.activeGame = response.data;
-        ensureGameRecord(response.data);
+        if (response.data.state?.lifecyclePhase === 'STARTED') ensureGameRecord(response.data);
         renderGameList();
         renderGameControls();
-        addGameLog(`${state.selectedGame} 전체 게임 시작`);
+        addGameLog(response.data.state?.lifecyclePhase === 'ANNOUNCED'
+          ? `${state.selectedGame} 게임 전 알림`
+          : `${state.selectedGame} 전체 게임 시작`);
         renderGameRankList();
       } else {
         showToast(response?.message || response?.error || '게임 시작 실패');
@@ -1220,8 +1282,13 @@ function updateGlobalGame(action) {
       return showToast(response?.message || response?.error || '게임 진행 실패');
     }
     state.activeGame = response.data;
+    if (action === 'START') ensureGameRecord(response.data);
+    seedGameRecordFromResponses(response.data);
     renderGameControls();
-    const message = action === 'REVEAL' ? '현재 라운드 정답 공개'
+    renderGameRankList();
+    const message = action === 'START' ? '게임 시작'
+      : action === 'FINALIZE' ? '팀별 최종 점수 공개'
+      : action === 'REVEAL' ? '현재 라운드 정답 공개'
       : action === 'SPIN' ? `룰렛 결과 · ${response.data.state?.rouletteSpin?.result}`
         : action === 'NEXT_PROMPT' ? `${Number(response.data.state?.currentPrompt || 0) + 1}번째 제시어 공개`
         : `${Number(response.data.state?.currentRound || 0) + 1} 라운드 시작`;

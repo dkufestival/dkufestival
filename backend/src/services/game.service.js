@@ -1,6 +1,9 @@
 const { Op, QueryTypes } = require('sequelize');
 const { GameSession, TableSession, Participant } = require('../models');
 
+const DIRECT_START_GAME_TYPES = ['TIME_MATCH', 'BASKETBALL'];
+const SCORED_GAME_TYPES = ['OX_QUIZ', 'RPS', 'WORD_GUESS', 'IMAGE_GAME'];
+
 function createServiceError(message, code) {
   const error = new Error(message);
   error.code = code;
@@ -91,6 +94,10 @@ async function handleAction(sessionId, data, participantId) {
   }
   if (game.status !== 'ACTIVE') {
     throw createServiceError('진행 중인 게임이 아닙니다.', 'INVALID_GAME_STATUS');
+  }
+  if (game.mode === 'GLOBAL' && !DIRECT_START_GAME_TYPES.includes(game.type)
+    && game.state?.lifecyclePhase !== 'STARTED') {
+    throw createServiceError('아직 게임이 시작되지 않았습니다.', 'INVALID_GAME_PHASE');
   }
 
   let responseState = data.state || {};
@@ -208,15 +215,14 @@ async function scoreCurrentRound(game) {
   const state = game.state || {};
   const roundIndex = Number(state.currentRound || 0);
   if (state.scoredRounds?.[roundIndex]) return state.scoreboard || [];
-  if (!['OX_QUIZ', 'RPS', 'WORD_GUESS', 'IMAGE_GAME'].includes(game.type)) return state.scoreboard || [];
+  if (!SCORED_GAME_TYPES.includes(game.type)) return state.scoreboard || [];
 
   const round = state.rounds?.[roundIndex] || {};
   const responses = Object.values(state.responses || {}).filter((response) => (
     Number(response.state?.roundIndex) === roundIndex && response.state?.answer
   ));
-  const joined = Object.values(state.participants || {}).filter((entry) => entry.joined);
   const participantGroups = new Map();
-  (joined.length ? joined : responses).forEach((entry) => {
+  responses.forEach((entry) => {
     const sessionId = Number(entry.sessionId);
     if (!participantGroups.has(sessionId)) participantGroups.set(sessionId, new Set());
     participantGroups.get(sessionId).add(Number(entry.participantId || sessionId));
@@ -245,21 +251,14 @@ async function scoreCurrentRound(game) {
       const count = Math.max(1, participantGroups.get(sessionId)?.size || 0);
       delta = Math.round(rawTotal / count);
     }
-    if (delta) await TableSession.increment('score', { by: delta, where: { id: sessionId } });
     deltas.push({ sessionId, delta });
   }
-
-  const sessions = await TableSession.findAll({
-    where: { status: 'ACTIVE' },
-    include: [{ association: 'table', attributes: ['tableNumber'] }],
-    order: [['score', 'DESC'], ['id', 'ASC']],
+  const previous = new Map((state.scoreboard || []).map((entry) => [Number(entry.sessionId), Number(entry.score || 0)]));
+  const eligibleTeams = state.eligibleTeams || [];
+  return eligibleTeams.map((team) => {
+    const delta = deltas.find((item) => item.sessionId === Number(team.sessionId))?.delta || 0;
+    return { ...team, score: (previous.get(Number(team.sessionId)) || 0) + delta, delta };
   });
-  return sessions.map((session) => ({
-    sessionId: session.id,
-    tableNumber: session.table?.tableNumber,
-    score: Number(session.score || 0),
-    delta: deltas.find((item) => item.sessionId === session.id)?.delta || 0,
-  }));
 }
 
 async function endGame(sessionId, data) {
@@ -343,7 +342,7 @@ async function startGlobalGame(data) {
       names: parsed.entries,
       marbleCount: parsed.marbleCount,
       seed: Math.floor(Math.random() * 0xffffffff) || 1,
-      startAt: Date.now() + 2000,
+      startAt: null,
     };
   } else if (!['TIME_MATCH', 'BASKETBALL'].includes(data.type)) {
     const rounds = data.state?.rounds;
@@ -364,6 +363,14 @@ async function startGlobalGame(data) {
       transaction,
     });
     if (activeGame) throw createServiceError('이미 진행 중인 단체 게임이 있습니다.', 'GLOBAL_GAME_ALREADY_ACTIVE');
+    const directStart = DIRECT_START_GAME_TYPES.includes(data.type);
+    gameState = {
+      ...gameState,
+      lifecyclePhase: directStart ? 'STARTED' : 'ANNOUNCED',
+      ...(directStart
+        ? { actualStartedAt: new Date().toISOString() }
+        : { announcedAt: new Date().toISOString() }),
+    };
     return GameSession.create({
       mode: 'GLOBAL',
       type: data.type,
@@ -475,7 +482,36 @@ async function updateGlobalGame(data) {
   if (!game) throw createServiceError('진행 중인 단체 게임을 찾을 수 없습니다.', 'GLOBAL_GAME_NOT_FOUND');
   const rounds = game.state?.rounds || [];
   const currentRound = Number(game.state?.currentRound || 0);
-  if (data.action === 'REVEAL') {
+  if (data.action === 'START') {
+    if (DIRECT_START_GAME_TYPES.includes(game.type) || game.state?.lifecyclePhase !== 'ANNOUNCED') {
+      throw createServiceError('게임을 시작할 수 있는 단계가 아닙니다.', 'INVALID_GAME_PHASE');
+    }
+    const sessions = await TableSession.findAll({
+      where: { status: 'ACTIVE' },
+      include: [{ association: 'table', attributes: ['tableNumber'] }],
+    });
+    const eligibleTeams = sessions.map((session) => ({
+      sessionId: session.id,
+      tableNumber: session.table?.tableNumber ?? null,
+    })).sort((a, b) => Number(a.tableNumber || 0) - Number(b.tableNumber || 0));
+    game.state = {
+      ...(game.state || {}),
+      lifecyclePhase: 'STARTED',
+      actualStartedAt: new Date().toISOString(),
+      eligibleTeams,
+      ...(game.type === 'PINBALL' ? { startAt: Date.now() + 2000 } : {}),
+    };
+  } else if (data.action === 'FINALIZE') {
+    if (DIRECT_START_GAME_TYPES.includes(game.type) || game.state?.lifecyclePhase !== 'STARTED') {
+      throw createServiceError('최종 점수를 공개할 수 있는 단계가 아닙니다.', 'INVALID_GAME_PHASE');
+    }
+    const scoreboard = await scoreCurrentRound(game);
+    const participatedSessionIds = new Set(Object.values(game.state?.responses || {}).map((entry) => Number(entry.sessionId)));
+    const finalScoreboard = scoreboard.filter((team) => participatedSessionIds.has(Number(team.sessionId)));
+    game.state = { ...(game.state || {}), lifecyclePhase: 'RESULTS', scoreboard, finalScoreboard };
+  } else if (game.state?.lifecyclePhase !== 'STARTED') {
+    throw createServiceError('게임 진행 중에만 사용할 수 있는 명령입니다.', 'INVALID_GAME_PHASE');
+  } else if (data.action === 'REVEAL') {
     const scoreboard = await scoreCurrentRound(game);
     game.state = {
       ...(game.state || {}),

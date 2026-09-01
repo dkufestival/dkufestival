@@ -108,18 +108,20 @@
         </div>
         <div id="game-custom-setting" class="game-custom-setting" hidden></div>
         <p id="game-status" class="game-status">대기 중</p>
-        <button id="broadcast-btn" class="btn-dark full">게임 시작</button>
+        <button id="broadcast-btn" class="btn-dark full">게임 전 알림</button>
         <div id="round-control" class="round-control" hidden>
           <button id="reveal-answer-btn" class="detail-btn">정답 공개</button>
           <button id="next-prompt-btn" class="detail-btn" hidden>다음 제시어</button>
           <button id="next-round-btn" class="detail-btn">다음 라운드</button>
         </div>
         <button id="end-game-btn" class="btn-dark full danger" hidden>게임 종료</button>
-        <h3 class="panel-title" style="margin-top:24px;">팀별 현재 점수</h3>
-        <div id="team-scoreboard" class="admin-list"></div>
         <div id="pinball-admin-preview" class="pinball-admin-preview" hidden>
           <div class="pinball-preview-label"><span></span> 관리자 관전 화면</div>
           <iframe id="pinball-admin-frame" title="관리자 핀볼 관전 화면" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin"></iframe>
+        </div>
+        <div id="roulette-admin-preview" class="roulette-admin-preview" hidden>
+          <div class="pinball-preview-label"><span></span> 관리자 룰렛 화면</div>
+          <div id="roulette-admin-stage" class="roulette-admin-stage"></div>
         </div>
         <h3 class="panel-title" style="margin-top:24px;">테이블별 순위</h3>
         <div id="game-rank-list" class="game-accordion">
