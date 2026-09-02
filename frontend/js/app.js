@@ -1814,6 +1814,10 @@ function bindEvents() {
     closeModal('modal-nickname');
   });
   $('global-chat-btn').addEventListener('click', toggleGlobalChat);
+  $('map-btn').addEventListener('click', () => {
+    state.seatViewMode = 'map';
+    renderSeatView();
+  });
   $('staff-call-btn').addEventListener('click', () => callStaff().catch((error) => showToast(error.message)));
   $('global-chat-send-btn').addEventListener('click', sendGlobalChatMessage);
   $('global-chat-input').addEventListener('keydown', (event) => {
