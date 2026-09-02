@@ -11,6 +11,7 @@ const env = {
   port: Number(process.env.PORT || 3000),
   corsOrigin: process.env.CORS_ORIGIN || '*',
   jwtSecret: process.env.JWT_SECRET || 'dev-secret',
+  monitorToken: process.env.MONITOR_TOKEN || '',
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
   sessionDurationMinutes: Number(process.env.SESSION_DURATION_MINUTES || 120),
   qrOutputDir: process.env.QR_OUTPUT_DIR || path.resolve(__dirname, '../../qr-codes'),

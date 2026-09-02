@@ -14,6 +14,7 @@ const participantRoutes = require('./routes/participant.routes');
 const globalChatRoutes = require('./routes/globalChat.routes');
 const pushRoutes = require('./routes/push.routes');
 const basketballRoutes = require('./routes/basketball.routes');
+const monitorRoutes = require('./routes/monitor.routes');
 const { getPinballPage } = require('./services/pinball-page.service');
 const { notFound, errorHandler } = require('./middleware/error-handler');
 
@@ -44,6 +45,7 @@ app.use('/api/notices', noticeRoutes);
 app.use('/api/global-chat', globalChatRoutes);
 app.use('/api/push', pushRoutes);
 app.use('/api/basketball', basketballRoutes);
+app.use('/api/monitor', monitorRoutes);
 
 // API와 같은 Express 서버에서 사용자 화면, 관리자 화면, 미니게임을
 // 함께 제공한다. 별도의 프런트엔드/게임 개발 서버가 필요하지 않다.

@@ -6,7 +6,7 @@ const { validateBody } = require('../middleware/validate');
 
 const router = express.Router();
 
-router.get('/', auth, noticeController.getNotices);
+router.get('/', auth, requireRole('PARTICIPANT', 'MONITOR', 'ADMIN'), noticeController.getNotices);
 router.post('/', auth, requireRole('ADMIN'), validateBody({
   title: { required: true, type: 'string', maxLength: 150 },
   content: { required: true, type: 'string', maxLength: 5000 },

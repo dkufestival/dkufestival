@@ -34,6 +34,16 @@ export function clearParticipantAuth() {
   localStorage.removeItem(STORAGE_KEYS.participantAuth);
 }
 
+export function saveMonitorAuth(token) {
+  localStorage.setItem(STORAGE_KEYS.monitorAuth, JSON.stringify({ token }));
+}
+
+export function getMonitorAuth() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.monitorAuth) || 'null'); } catch { return null; }
+}
+
+export function clearMonitorAuth() { localStorage.removeItem(STORAGE_KEYS.monitorAuth); }
+
 export function saveAdminToken(token) {
   localStorage.setItem(STORAGE_KEYS.adminToken, token);
 }

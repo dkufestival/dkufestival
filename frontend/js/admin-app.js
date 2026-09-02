@@ -125,6 +125,9 @@ function bindSocket() {
     renderStaffCalls();
     showToast(`TABLE ${call.tableNumber}에서 직원을 호출했습니다.`);
   });
+  socket.on('staffCall:test-created', () => {
+    showToast('[MONITOR TEST] 모니터링 장치에서 직원 호출 테스트가 도착했습니다.');
+  });
   socket.on('staffCall:resolved', ({ id }) => {
     state.staffCalls = state.staffCalls.filter((call) => call.id !== id);
     renderStaffCalls();

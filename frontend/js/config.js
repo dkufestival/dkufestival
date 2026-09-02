@@ -15,6 +15,7 @@ export const SOCKET_URL =
 export const STORAGE_KEYS = {
   clientId: 'piumClientId',
   participantAuth: 'piumParticipantAuth',
+  monitorAuth: 'piumMonitorAuth',
   adminToken: 'piumAdminToken',
   seenNoticeCount: 'piumSeenNoticeCount',
   onboardingSeen: 'piumOnboardingSeenV1',

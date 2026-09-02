@@ -7,7 +7,7 @@ const socketAuth = require('./auth.socket');
 function registerSocketHandlers(io) {
   io.use(socketAuth);
   io.on('connection', (socket) => {
-    socket.join(socket.data.user.role === 'ADMIN' ? 'admins' : 'participants');
+    socket.join(socket.data.user.role === 'ADMIN' ? 'admins' : socket.data.user.role === 'MONITOR' ? 'monitors' : 'participants');
     if (socket.data.sessionId) socket.join(`session:${socket.data.sessionId}`);
     if (socket.data.participantId) socket.join(`participant:${socket.data.participantId}`);
     registerChatSocket(io, socket);

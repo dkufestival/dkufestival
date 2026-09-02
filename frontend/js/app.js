@@ -1,5 +1,5 @@
 import { setToastHandler } from './api.js';
-import { clearParticipantAuth, getClientId, getParticipantAuth, saveParticipantAuth } from './auth.js';
+import { clearParticipantAuth, getClientId, getParticipantAuth, saveMonitorAuth, saveParticipantAuth } from './auth.js';
 import { connectSocket, getSocket } from './socket.js';
 import { $, button, clear, formatDateTime, formatRemaining, text } from './dom.js';
 import { entryApi } from './entry.js';
@@ -12,9 +12,12 @@ import { noticesApi } from './notices.js?v=2';
 import { STORAGE_KEYS } from './config.js';
 import { initMapZoom } from './mapzoom.js?v=3';
 import { basketballApi } from './basketball-api.js';
+import { monitorApi } from './monitor.js';
 
 const state = {
   qrToken: new URLSearchParams(location.search).get('qr'),
+  monitorToken: new URLSearchParams(location.search).get('monitor'),
+  isMonitor: false,
   token: null,
   table: null,
   session: null,
@@ -85,6 +88,12 @@ function isParticipating(gameId) {
 
 function requestGameParticipation(game) {
   if (!game || state.participationDecisions.has(Number(game.id))) return;
+  if (state.isMonitor) {
+    state.participationDecisions.set(Number(game.id), true);
+    if (game.type === 'PINBALL') showPinballScreen(game);
+    else if (game.type !== 'BASKETBALL') showGlobalGameScreen();
+    return;
+  }
   if (game.type === 'PINBALL') {
     state.participationDecisions.set(Number(game.id), true);
     showToast('핀볼 게임이 시작되었습니다.');
@@ -381,6 +390,45 @@ function moveOnboarding(delta) {
   renderOnboarding();
 }
 
+function updateMonitorStatus(status) {
+  const node = $('monitor-connection-status');
+  if (node) node.textContent = status;
+}
+
+function markMonitorEvent() {
+  const node = $('monitor-last-event');
+  if (node) node.textContent = new Date().toLocaleTimeString('ko-KR');
+}
+
+function enableMonitorUi() {
+  document.body.classList.add('monitor-mode');
+  const banner = document.createElement('div');
+  banner.id = 'monitor-banner';
+  banner.innerHTML = '<strong>MONITOR MODE</strong><span id="monitor-connection-status">연결 중</span><span>마지막 이벤트 <time id="monitor-last-event">-</time></span>';
+  document.querySelector('.phone')?.prepend(banner);
+  ['map-viewport', 'member-chips', 'accept-toggle-banner', 'global-chat-btn', 'board-btn'].forEach((id) => { const node = $(id); if (node) node.hidden = true; });
+  $('staff-call-text').textContent = '직원호출 테스트';
+}
+
+async function initMonitor() {
+  try {
+    const data = await monitorApi.authenticate(state.monitorToken);
+    saveMonitorAuth(data.token);
+    state.isMonitor = true;
+    enableMonitorUi();
+    showScreen('screen-seats');
+    bindSocket();
+    await Promise.allSettled([refreshNotices(), refreshBasketballLeaderboard()]);
+    renderNotices();
+    renderGame();
+  } catch {
+    $('join-btn').disabled = true;
+    $('team-setup-fields').hidden = true;
+    $('nickname-input').closest('.field-group').hidden = true;
+    setLandingStatus('유효하지 않은 모니터링 QR입니다.');
+  }
+}
+
 async function refreshParticipants() {
   state.participants = await participantsApi.list();
   state.participant = state.participants.find((p) => p.id === state.participant?.id) || state.participant;
@@ -412,7 +460,7 @@ async function refreshChatRoom() {
 
 async function refreshNotices() {
   try {
-    state.notices = await noticesApi.list();
+    state.notices = await noticesApi.list(state.isMonitor ? 'MONITOR' : 'PARTICIPANT');
   } catch {
     state.notices = [];
   }
@@ -475,20 +523,24 @@ function scheduleTableRefresh() {
 }
 
 function bindSocket() {
-  const socket = connectSocket('PARTICIPANT');
+  const socket = connectSocket(state.isMonitor ? 'MONITOR' : 'PARTICIPANT');
   if (!socket) return;
 
   socket.on('connect', () => {
+    if (state.isMonitor) updateMonitorStatus('● 실시간 연결됨');
     $('connection-status').textContent = '실시간 연결됨';
     if (state.chatRoom?.status === 'ACTIVE') joinChatRoom(state.chatRoom.roomId);
     if (state.hasConnectedOnce && state.initialSyncDone) {
-      syncParticipantState().catch(() => {});
+      if (state.isMonitor) Promise.allSettled([refreshNotices(), refreshBasketballLeaderboard()]).then(() => { renderNotices(); renderGame(); });
+      else syncParticipantState().catch(() => {});
     }
     state.hasConnectedOnce = true;
   });
   socket.on('disconnect', () => {
     $('connection-status').textContent = '재연결 대기';
+    if (state.isMonitor) updateMonitorStatus('재연결 중');
   });
+  socket.onAny(() => { if (state.isMonitor) markMonitorEvent(); });
   socket.on('participant:joined', async (payload = {}) => {
     if (payload.sessionId && Number(payload.sessionId) !== Number(state.session?.id)) return;
     await refreshParticipants();
@@ -752,6 +804,12 @@ function bindSocket() {
 }
 
 function renderAll() {
+  if (state.isMonitor) {
+    renderStats();
+    renderNotices();
+    renderGame();
+    return;
+  }
   renderStats();
   renderParticipants();
   renderTables();
@@ -762,6 +820,11 @@ function renderAll() {
 }
 
 function renderStats() {
+  if (state.isMonitor) {
+    $('table-tag').textContent = 'MONITOR';
+    $('table-tag-time').textContent = '운영 데이터 미포함';
+    return;
+  }
   $('table-tag').textContent = `TABLE ${state.table?.tableNumber || '-'}`;
   $('stat-male').textContent = state.session?.maleCount ?? state.counts.male;
   $('stat-female').textContent = state.session?.femaleCount ?? state.counts.female;
@@ -786,10 +849,15 @@ function renderAcceptToggle() {
 function updateStaffCallButton() {
   const btn = $('staff-call-btn');
   btn.classList.toggle('calling', !!state.staffCallPending);
-  $('staff-call-text').textContent = state.staffCallPending ? '직원 호출 중...' : '직원호출';
+  $('staff-call-text').textContent = state.isMonitor ? '직원호출 테스트' : state.staffCallPending ? '직원 호출 중...' : '직원호출';
 }
 
 async function callStaff() {
+  if (state.isMonitor) {
+    await monitorApi.staffCallTest();
+    showToast('관리자에게 테스트 호출을 전송했습니다.');
+    return;
+  }
   if (state.staffCallPending) {
     showToast('이미 직원을 호출했습니다. 잠시만 기다려 주세요.');
     return;
@@ -1526,8 +1594,13 @@ function renderGame() {
   basketballCard.appendChild(text('div', 'basketball-entry-icon', '🏀'));
   basketballCard.appendChild(text('div', 'basketball-entry-title', '농구게임'));
   const basketballButton = button('btn-dark full', 'PLAY', () => {
+    if (state.isMonitor) return showToast('MONITOR MODE에서는 점수를 제출할 수 없습니다.');
     window.location.href = '/basketball/';
   });
+  if (state.isMonitor) {
+    basketballButton.disabled = true;
+    basketballButton.textContent = 'MONITOR VIEW';
+  }
   basketballCard.appendChild(basketballButton);
   appendBasketballLeaderboard(basketballCard);
   box.appendChild(basketballCard);
@@ -1715,13 +1788,13 @@ function showGlobalGameScreen() {
   }
   resetTimeMatch();
   state.revealSequenceKey = null;
-  $('game-screen-action').disabled = submittedAnswer !== undefined;
+  $('game-screen-action').disabled = state.isMonitor || submittedAnswer !== undefined;
   $('game-screen-action').hidden = state.activeGame?.type === 'ROULETTE';
   $('game-screen-action').classList.remove('is-stop');
-  $('game-screen-action').textContent = isTimeMatch ? 'START'
+  $('game-screen-action').textContent = state.isMonitor ? 'MONITOR VIEW' : isTimeMatch ? 'START'
     : state.activeGame?.type === 'ROULETTE' ? '룰렛 돌리기'
       : submittedAnswer !== undefined ? '제출 완료' : '제출';
-  $('game-screen-status').textContent = submittedAnswer !== undefined ? '이 라운드의 답을 제출했습니다.' : '응답 대기 중';
+  $('game-screen-status').textContent = state.isMonitor ? 'MONITOR MODE에서는 응답과 점수를 제출할 수 없습니다.' : submittedAnswer !== undefined ? '이 라운드의 답을 제출했습니다.' : '응답 대기 중';
   showScreen('screen-game');
 }
 
@@ -1868,6 +1941,7 @@ function gameChoice(value, label) {
     state.gameAnswer = value;
     document.querySelectorAll('.game-choice').forEach((node) => node.classList.toggle('selected', node === choice));
   });
+  choice.disabled = state.isMonitor;
   return choice;
 }
 
@@ -1876,7 +1950,7 @@ function gameTextInput() {
   input.className = 'game-answer-input';
   input.placeholder = '정답을 입력하세요';
   input.value = state.gameAnswer || '';
-  input.disabled = state.submittedGameAnswers.has(state.gameAnswerKey);
+  input.disabled = state.isMonitor || state.submittedGameAnswers.has(state.gameAnswerKey);
   input.addEventListener('input', () => { state.gameAnswer = input.value.trim(); });
   return input;
 }
@@ -2040,7 +2114,9 @@ async function restoreFromToken() {
 }
 
 bindEvents();
-if (state.qrToken) {
+if (state.monitorToken) {
+  initMonitor();
+} else if (state.qrToken) {
   initEntry();
 } else {
   restoreFromToken().then((restored) => {

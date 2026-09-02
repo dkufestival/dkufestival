@@ -1,5 +1,5 @@
 import { API_BASE_URL } from './config.js';
-import { clearAdminToken, clearParticipantAuth, getAdminToken, getParticipantAuth } from './auth.js';
+import { clearAdminToken, clearMonitorAuth, clearParticipantAuth, getAdminToken, getMonitorAuth, getParticipantAuth } from './auth.js';
 
 let toastHandler = (message) => window.alert(message);
 
@@ -19,6 +19,7 @@ export class ApiError extends Error {
 
 function tokenFor(role) {
   if (role === 'ADMIN') return getAdminToken();
+  if (role === 'MONITOR') return getMonitorAuth()?.token;
   return getParticipantAuth()?.token;
 }
 
@@ -51,6 +52,7 @@ export async function request(path, options = {}) {
     const error = payload.error || {};
     if (response.status === 401) {
       if (role === 'ADMIN') clearAdminToken();
+      else if (role === 'MONITOR') clearMonitorAuth();
       else clearParticipantAuth();
     }
     const apiError = new ApiError(response.status, error.code, error.message, error.details);

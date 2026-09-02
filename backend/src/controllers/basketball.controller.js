@@ -25,7 +25,7 @@ async function submitScore(req, res, next) {
     });
     const leaderboard = await basketballScoreService.getLeaderboard();
     const io = req.app.get('io');
-    if (io) io.to('participants').to('admins').emit('basketball:leaderboard', { leaderboard });
+    if (io) io.to('participants').to('monitors').to('admins').emit('basketball:leaderboard', { leaderboard });
     res.json({
       data: {
         improved: result.improved,

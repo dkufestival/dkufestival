@@ -1,10 +1,10 @@
 import { SOCKET_URL } from './config.js';
-import { getAdminToken, getParticipantAuth } from './auth.js';
+import { getAdminToken, getMonitorAuth, getParticipantAuth } from './auth.js';
 
 let socket = null;
 
 export function connectSocket(role = 'PARTICIPANT') {
-  const token = role === 'ADMIN' ? getAdminToken() : getParticipantAuth()?.token;
+  const token = role === 'ADMIN' ? getAdminToken() : role === 'MONITOR' ? getMonitorAuth()?.token : getParticipantAuth()?.token;
   if (!token || !window.io) return null;
   if (socket) socket.disconnect();
   socket = window.io(SOCKET_URL, {

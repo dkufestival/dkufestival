@@ -223,7 +223,7 @@ async function resetAllData(req, res, next) {
       if (error.original?.code !== 'ER_BAD_FIELD_ERROR') throw error;
     }
     await transaction.commit();
-    req.app.get('io')?.to('participants').to('admins').emit('admin:data-reset');
+    req.app.get('io')?.to('participants').to('monitors').to('admins').emit('admin:data-reset');
     res.json({ data: { ok: true } });
   } catch (error) {
     await transaction.rollback();

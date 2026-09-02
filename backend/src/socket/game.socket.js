@@ -2,6 +2,7 @@ const gameService = require('../services/game.service');
 
 const sessionRoom = (sessionId) => `session:${sessionId}`;
 const gameRoom = (gameId) => `game:${gameId}`;
+const emitParticipantAudience = (io, event, payload) => io.to('participants').to('monitors').emit(event, payload);
 
 function participantGame(game) {
   const plain = typeof game?.toJSON === 'function' ? game.toJSON() : game;
@@ -147,9 +148,9 @@ function registerGameSocket(io, socket) {
       if (socket.data.user.role !== 'ADMIN') throw new Error('ADMIN_REQUIRED');
       const game = await gameService.startGlobalGame(payload);
       const eventName = game.state?.lifecyclePhase === 'ANNOUNCED' ? 'game:global:announced' : 'game:global:started';
-      io.to('participants').emit(eventName, participantGame(game));
+      emitParticipantAudience(io, eventName, participantGame(game));
       if (game.state?.lifecyclePhase === 'STARTED' && !['TIME_MATCH', 'PINBALL', 'BASKETBALL'].includes(game.type)) {
-        io.to('participants').emit('game:global:round', participantRound(game));
+        emitParticipantAudience(io, 'game:global:round', participantRound(game));
       }
       reply(callback, { ok: true, data: game });
     } catch (error) {
@@ -161,7 +162,7 @@ function registerGameSocket(io, socket) {
     try {
       if (socket.data.user.role !== 'ADMIN') throw new Error('ADMIN_REQUIRED');
       const game = await gameService.endGlobalGame(payload);
-      io.to('participants').emit('game:global:ended', game);
+      emitParticipantAudience(io, 'game:global:ended', game);
       io.to('admins').emit('game:global:ended', game);
       reply(callback, { ok: true, data: game });
     } catch (error) {
@@ -173,22 +174,22 @@ function registerGameSocket(io, socket) {
     try {
       if (socket.data.user.role !== 'ADMIN') throw new Error('ADMIN_REQUIRED');
       const game = await gameService.updateGlobalGame(payload);
-      io.to('participants').emit('game:global:updated', participantGame(game));
+      emitParticipantAudience(io, 'game:global:updated', participantGame(game));
       if (payload.action === 'START') {
-        io.to('participants').emit('game:global:started', participantGame(game));
-        if (!['PINBALL'].includes(game.type)) io.to('participants').emit('game:global:round', participantRound(game));
+        emitParticipantAudience(io, 'game:global:started', participantGame(game));
+        if (!['PINBALL'].includes(game.type)) emitParticipantAudience(io, 'game:global:round', participantRound(game));
       } else if (payload.action === 'FINALIZE') {
-        io.to('participants').emit('game:global:results', participantGame(game));
+        emitParticipantAudience(io, 'game:global:results', participantGame(game));
       } else if (payload.action === 'NEXT') {
-        io.to('participants').emit('game:global:round', participantRound(game));
+        emitParticipantAudience(io, 'game:global:round', participantRound(game));
       } else if (payload.action === 'NEXT_PROMPT') {
-        io.to('participants').emit('game:global:prompt', {
+        emitParticipantAudience(io, 'game:global:prompt', {
           gameId: game.id,
           roundIndex: Number(game.state?.currentRound || 0),
           promptIndex: Number(game.state?.currentPrompt || 0),
         });
       } else if (payload.action === 'SPIN') {
-        io.to('participants').emit('game:global:spin', {
+        emitParticipantAudience(io, 'game:global:spin', {
           gameId: game.id,
           roundIndex: Number(game.state?.currentRound || 0),
           ...game.state?.rouletteSpin,
@@ -196,7 +197,7 @@ function registerGameSocket(io, socket) {
       } else if (payload.action === 'REVEAL') {
         const plain = game.toJSON();
         const roundIndex = Number(plain.state?.currentRound || 0);
-        io.to('participants').emit('game:global:answer', {
+        emitParticipantAudience(io, 'game:global:answer', {
           gameId: plain.id,
           roundIndex,
           answer: plain.state?.rounds?.[roundIndex]?.answer ?? null,

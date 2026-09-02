@@ -9,4 +9,8 @@ function signParticipantToken({ tableId, sessionId, participantId }) {
   );
 }
 
-module.exports = { signParticipantToken };
+function signMonitorToken() {
+  return jwt.sign({ role: 'MONITOR' }, env.jwtSecret, { expiresIn: '12h' });
+}
+
+module.exports = { signParticipantToken, signMonitorToken };
