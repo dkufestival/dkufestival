@@ -1090,13 +1090,13 @@ function renderSeatView() {
   $('global-chat-panel').hidden = !globalChatOpen;
   $('map-viewport').classList.toggle('global-chat-mode', globalChatOpen);
   mapZoom?.setEnabled(!globalChatOpen);
-  $('global-chat-btn').textContent = globalChatOpen ? '맵' : '전체채팅';
+  $('global-chat-btn').textContent = '전체채팅';
   document.querySelectorAll('.bottombar .pill-btn').forEach((node) => node.classList.toggle('active', node.id === `${state.activeMenu === 'chat' ? 'global-chat' : state.activeMenu}-btn`));
   if (globalChatOpen) renderGlobalChat({ forceBottom: true });
 }
 
 async function toggleGlobalChat() {
-  state.activeMenu = state.activeMenu === 'chat' ? 'map' : 'chat';
+  state.activeMenu = 'chat';
   state.seatViewMode = state.activeMenu;
   renderSeatView();
   if (state.seatViewMode !== 'globalChat' || state.globalChatLoaded) return;
