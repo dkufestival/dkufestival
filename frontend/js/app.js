@@ -640,7 +640,7 @@ function bindSocket() {
   });
   socket.on('globalChat:message', (message) => {
     mergeGlobalChatMessages([message]);
-    if (state.seatViewMode === 'globalChat') renderGlobalChat();
+    if (state.activeMenu === 'chat') renderGlobalChat();
   });
   socket.on('board:created', (post) => {
     if (!state.board.posts.some((item) => item.id === post.id)) state.board.posts.unshift(post);
@@ -1272,12 +1272,12 @@ async function toggleGlobalChat() {
   state.seatViewMode = state.activeMenu;
   renderSeatView();
   renderBottomMenuState();
-  if (state.seatViewMode !== 'globalChat' || state.globalChatLoaded) return;
+  if (state.activeMenu !== 'chat' || state.globalChatLoaded) return;
   try {
     const messages = await globalChatApi.list();
     mergeGlobalChatMessages(messages);
     state.globalChatLoaded = true;
-    if (state.seatViewMode === 'globalChat') renderGlobalChat({ forceBottom: true });
+    if (state.activeMenu === 'chat') renderGlobalChat({ forceBottom: true });
   } catch (error) {
     showToast(error.message || '전체채팅을 불러오지 못했습니다.');
   }
