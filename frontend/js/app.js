@@ -504,6 +504,13 @@ function bindSocket() {
     await refreshParticipants();
     renderParticipants();
   });
+  socket.on('participant:kicked', (payload = {}) => {
+    clearParticipantAuth();
+    if (state.timer) clearInterval(state.timer);
+    $('kicked-message').textContent = payload.message || '관리자에 의해 강제 퇴장되었습니다.';
+    showScreen('screen-kicked');
+    socket.disconnect();
+  });
   socket.on('table:updated', scheduleTableRefresh);
   socket.on('table:extended', ({ session }) => {
     state.session = session;

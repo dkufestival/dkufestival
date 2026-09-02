@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
-<link rel="stylesheet" href="admin.css?v=16">
+<link rel="stylesheet" href="admin.css?v=17">
 </head>
 <body>
 <section id="screen-login" class="screen active">
@@ -31,6 +31,7 @@
     </div>
     <nav class="sidebar-nav">
       <button class="nav-btn active" data-tab="tables">테이블 현황</button>
+      <button class="nav-btn" data-tab="participants">접속 사용자 <span id="participant-nav-badge" class="nav-badge">0</span></button>
       <button class="nav-btn" data-tab="staffcalls">직원호출 <span id="staffcall-nav-badge" class="nav-badge urgent" hidden>0</span></button>
       <button class="nav-btn" data-tab="chats">채팅 관리</button>
       <button class="nav-btn" data-tab="games">게임 관리</button>
@@ -52,6 +53,23 @@
 
     <div id="tab-tables" class="tab-panel active">
       <div id="table-grid" class="table-grid"></div>
+    </div>
+
+    <div id="tab-participants" class="tab-panel">
+      <div class="game-panel participant-admin-panel">
+        <div class="participant-admin-head">
+          <div>
+            <h3 class="panel-title">접속 사용자 관리</h3>
+            <p>테이블에 입장한 사용자별로 강제 퇴장과 재입장 차단을 관리합니다.</p>
+          </div>
+          <input id="participant-search" class="field" type="search" placeholder="닉네임 또는 테이블 검색">
+        </div>
+        <div class="participant-summary">
+          <span>이용 가능 <b id="participant-active-count">0</b>명</span>
+          <span>차단됨 <b id="participant-kicked-count">0</b>명</span>
+        </div>
+        <div id="participant-admin-list" class="participant-admin-list"></div>
+      </div>
     </div>
 
     <div id="tab-staffcalls" class="tab-panel">
@@ -233,6 +251,6 @@
 </div>
 
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-<script type="module" src="js/admin-app.js?v=28"></script>
+<script type="module" src="js/admin-app.js?v=29"></script>
 </body>
 </html>

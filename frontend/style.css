@@ -1837,3 +1837,10 @@ body {
   .onboarding-copy { padding-bottom: 12px; }
   .onboarding-copy p { font-size: 13px; line-height: 1.48; }
 }
+.kicked-screen { place-items:center; padding:28px; background:radial-gradient(circle at 50% 30%, rgba(255,92,77,.13), transparent 42%), #0e100b; }
+.kicked-screen.active { display:grid; }
+.kicked-card { width:100%; padding:34px 24px; border:1px solid rgba(255,92,77,.3); border-radius:24px; background:#171913; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,.45); }
+.kicked-icon { display:grid; width:54px; height:54px; margin:0 auto 18px; place-items:center; border:2px solid #ff7468; border-radius:50%; color:#ff7468; font-size:26px; font-weight:900; }
+.kicked-card h1 { margin:8px 0 10px; color:#fff; font-size:25px; letter-spacing:-.04em; }
+.kicked-card p { margin:0 0 12px; color:#ff8a80; font-weight:800; }
+.kicked-card span { color:#92968a; font-size:12px; line-height:1.6; }

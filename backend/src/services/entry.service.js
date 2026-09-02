@@ -77,6 +77,21 @@ async function enter(data) {
       lock: transaction.LOCK.UPDATE,
     });
 
+    const blockedParticipant = await Participant.findOne({
+      where: { clientId: data.clientId, kickedAt: { [Op.ne]: null } },
+      include: [{
+        model: TableSession,
+        as: 'session',
+        required: true,
+        where: { tableId: table.id },
+        attributes: [],
+      }],
+      transaction,
+    });
+    if (blockedParticipant) {
+      throw new AppError(403, 'PARTICIPANT_KICKED', '관리자에 의해 이용이 제한된 사용자입니다. 직원에게 문의해 주세요.');
+    }
+
     let session = await getActiveSession(table.id, transaction);
     const isFirstEntry = !session;
     if (isFirstEntry) {
@@ -100,6 +115,10 @@ async function enter(data) {
       },
       transaction,
     });
+
+    if (participant.kickedAt) {
+      throw new AppError(403, 'PARTICIPANT_KICKED', '관리자에 의해 이용이 제한된 사용자입니다. 직원에게 문의해 주세요.');
+    }
 
     if (!created && data.nickname && participant.nickname !== data.nickname.trim()) {
       await participant.update({ nickname: data.nickname.trim() }, { transaction });

@@ -21,12 +21,21 @@ const Participant = sequelize.define(
       allowNull: false,
       defaultValue: false,
     },
+    kickedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    kickedReason: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
   },
   {
     tableName: 'participants',
     indexes: [
       { unique: true, fields: ['tableSessionId', 'clientId'] },
       { fields: ['tableSessionId'] },
+      { fields: ['clientId', 'kickedAt'] },
     ],
   }
 );

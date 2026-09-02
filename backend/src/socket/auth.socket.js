@@ -14,7 +14,7 @@ async function socketAuth(socket, next) {
     if (user.role === 'PARTICIPANT' && user.participantId) {
       const participant = await Participant.findByPk(user.participantId);
       const session = participant ? await TableSession.findByPk(user.sessionId) : null;
-      if (!participant || !session || session.status !== 'ACTIVE' || new Date(session.expiresAt) <= new Date()) {
+      if (!participant || participant.kickedAt || !session || session.status !== 'ACTIVE' || new Date(session.expiresAt) <= new Date()) {
         return next(new Error('INVALID_PARTICIPANT_SESSION'));
       }
     }

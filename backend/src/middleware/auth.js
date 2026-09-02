@@ -21,7 +21,7 @@ async function auth(req, res, next) {
       const session = participant
         ? await TableSession.findByPk(req.user.sessionId)
         : null;
-      if (!participant || !session || session.status !== 'ACTIVE' || new Date(session.expiresAt) <= new Date()) {
+      if (!participant || participant.kickedAt || !session || session.status !== 'ACTIVE' || new Date(session.expiresAt) <= new Date()) {
         return res.status(401).json({
           error: { code: 'INVALID_PARTICIPANT_SESSION', message: 'Participant session is not active.' },
         });

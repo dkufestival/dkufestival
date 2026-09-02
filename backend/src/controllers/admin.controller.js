@@ -6,7 +6,8 @@ const AppError = require('../errors/AppError');
 const tableService = require('../services/table.service');
 const lifecycleService = require('../services/lifecycle.service');
 const { emitPublicTableUpdate } = require('../socket/table-updates');
-const { GameSession, GlobalChatMessage, BasketballScore, TableSession } = require('../models');
+const { Op } = require('sequelize');
+const { GameSession, GlobalChatMessage, BasketballScore, TableSession, Participant, Table } = require('../models');
 const sequelize = require('../config/db');
 const globalChatService = require('../services/globalChat.service');
 
@@ -36,6 +37,72 @@ async function getTables(req, res, next) {
   } catch (error) {
     next(error);
   }
+}
+
+async function getParticipants(req, res, next) {
+  try {
+    const participants = await Participant.findAll({
+      include: [{
+        model: TableSession,
+        as: 'session',
+        required: true,
+        include: [{ model: Table, as: 'table', attributes: ['id', 'tableNumber'] }],
+      }],
+      order: [['kickedAt', 'ASC'], ['createdAt', 'DESC']],
+    });
+    res.json({ data: participants });
+  } catch (error) { next(error); }
+}
+
+async function kickParticipant(req, res, next) {
+  const transaction = await sequelize.transaction();
+  try {
+    const participant = await Participant.findByPk(req.params.participantId, {
+      include: [{ model: TableSession, as: 'session' }], transaction, lock: transaction.LOCK.UPDATE,
+    });
+    if (!participant) throw new AppError(404, 'PARTICIPANT_NOT_FOUND', '사용자를 찾을 수 없습니다.');
+    if (!participant.kickedAt) {
+      const wasHost = participant.isHost;
+      await participant.update({
+        kickedAt: new Date(),
+        kickedReason: req.body.reason?.trim() || '관리자 강제 퇴장',
+        isHost: false,
+      }, { transaction });
+      if (wasHost) {
+        const nextHost = await Participant.findOne({
+          where: { tableSessionId: participant.tableSessionId, id: { [Op.ne]: participant.id }, kickedAt: null },
+          order: [['createdAt', 'ASC']], transaction, lock: transaction.LOCK.UPDATE,
+        });
+        if (nextHost) await nextHost.update({ isHost: true }, { transaction });
+      }
+    }
+    await transaction.commit();
+    const io = req.app.get('io');
+    io?.to(`participant:${participant.id}`).emit('participant:kicked', {
+      participantId: participant.id,
+      message: '관리자에 의해 강제 퇴장되었습니다.',
+    });
+    io?.to('admins').emit('admin:participants-updated');
+    emitPublicTableUpdate(io, { tableIds: [participant.session?.tableId], reason: 'participant:kicked' });
+    res.json({ data: participant });
+  } catch (error) {
+    if (!transaction.finished) await transaction.rollback();
+    next(error);
+  }
+}
+
+async function restoreParticipant(req, res, next) {
+  try {
+    const participant = await Participant.findByPk(req.params.participantId, {
+      include: [{ model: TableSession, as: 'session' }],
+    });
+    if (!participant) throw new AppError(404, 'PARTICIPANT_NOT_FOUND', '사용자를 찾을 수 없습니다.');
+    await participant.update({ kickedAt: null, kickedReason: null });
+    const io = req.app.get('io');
+    io?.to('admins').emit('admin:participants-updated');
+    emitPublicTableUpdate(io, { tableIds: [participant.session?.tableId], reason: 'participant:restored' });
+    res.json({ data: participant });
+  } catch (error) { next(error); }
 }
 
 async function checkoutTable(req, res, next) {
@@ -158,6 +225,9 @@ async function resetAllData(req, res, next) {
 module.exports = {
   login,
   getTables,
+  getParticipants,
+  kickParticipant,
+  restoreParticipant,
   checkoutTable,
   checkin,
   extend,

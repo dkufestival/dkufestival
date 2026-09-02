@@ -11,6 +11,7 @@ import { basketballApi } from './basketball-api.js';
 
 const state = {
   tables: [],
+  participants: [],
   chatRooms: [],
   notices: [],
   globalChatMessages: [],
@@ -99,6 +100,7 @@ function bindSocket() {
     state.hasConnectedOnce = true;
   });
   socket.on('table:updated', () => scheduleAdminRefresh({ includeChatRooms: true }));
+  socket.on('admin:participants-updated', () => loadParticipants().then(renderParticipantsAdmin).catch(() => {}));
   socket.on('chat:started', () => scheduleAdminRefresh({ includeChatRooms: true }));
   socket.on('chat:ended', () => scheduleAdminRefresh({ includeChatRooms: true }));
   socket.on('globalChat:message', (message) => {
@@ -177,6 +179,10 @@ async function loadTables() {
   state.tables = await adminApi.tables();
 }
 
+async function loadParticipants() {
+  state.participants = await adminApi.participants();
+}
+
 async function loadChatRooms() {
   state.chatRooms = await adminApi.chatRooms('ACTIVE');
 }
@@ -205,7 +211,7 @@ async function loadStaffCalls() {
 async function syncAdminState(options = {}) {
   if (state.syncPromise) return state.syncPromise;
   state.syncPromise = (async () => {
-    await Promise.allSettled([loadTables(), loadChatRooms(), loadNotices(), loadGlobalChat(), loadBoard(), loadBasketballLeaderboard(), loadStaffCalls()]);
+    await Promise.allSettled([loadTables(), loadParticipants(), loadChatRooms(), loadNotices(), loadGlobalChat(), loadBoard(), loadBasketballLeaderboard(), loadStaffCalls()]);
     if (options.render !== false) renderAll();
     if (state.activeDetailTable) openDetail(state.activeDetailTable);
   })().finally(() => {
@@ -250,6 +256,66 @@ function renderAll() {
   renderStaffCalls();
   renderNoticeHistory();
   renderBasketballLeaderboard();
+  renderParticipantsAdmin();
+}
+
+function participantTableNumber(participant) {
+  return participant.session?.table?.tableNumber ?? '-';
+}
+
+function renderParticipantsAdmin() {
+  const list = $('participant-admin-list');
+  if (!list) return;
+  const query = $('participant-search')?.value.trim().toLowerCase() || '';
+  const active = state.participants.filter((participant) => !participant.kickedAt);
+  const kicked = state.participants.filter((participant) => participant.kickedAt);
+  $('participant-active-count').textContent = active.length;
+  $('participant-kicked-count').textContent = kicked.length;
+  $('participant-nav-badge').textContent = active.length;
+  clear(list);
+  const filtered = state.participants.filter((participant) => {
+    const haystack = `${participant.nickname} ${participantTableNumber(participant)} ${participant.clientId}`.toLowerCase();
+    return !query || haystack.includes(query);
+  }).sort((a, b) => Number(Boolean(a.kickedAt)) - Number(Boolean(b.kickedAt))
+    || Number(participantTableNumber(a)) - Number(participantTableNumber(b)));
+  if (!filtered.length) {
+    list.appendChild(text('div', 'participants-empty', query ? '검색 결과가 없습니다.' : '입장한 사용자가 없습니다.'));
+    return;
+  }
+  filtered.forEach((participant) => {
+    const row = document.createElement('article');
+    row.className = `participant-admin-row${participant.kickedAt ? ' kicked' : ''}`;
+    const avatar = text('div', 'participant-avatar', participant.nickname.trim().slice(0, 1).toUpperCase() || '?');
+    const info = document.createElement('div');
+    info.className = 'participant-admin-info';
+    const nameRow = document.createElement('div');
+    nameRow.className = 'participant-name-row';
+    nameRow.appendChild(text('strong', '', participant.nickname));
+    if (participant.isHost) nameRow.appendChild(text('span', 'participant-host-tag', '대표'));
+    if (participant.kickedAt) nameRow.appendChild(text('span', 'participant-kicked-tag', '차단됨'));
+    info.appendChild(nameRow);
+    const sessionActive = participant.session?.status === 'ACTIVE' && new Date(participant.session.expiresAt) > new Date();
+    info.appendChild(text('span', 'participant-admin-meta', `TABLE ${participantTableNumber(participant)} · ${sessionActive ? '현재 세션' : '지난 세션'} · 입장 ${formatDateTime(participant.createdAt)}`));
+    if (participant.kickedAt) info.appendChild(text('span', 'participant-admin-reason', `${participant.kickedReason || '관리자 강제 퇴장'} · ${formatDateTime(participant.kickedAt)}`));
+    row.append(avatar, info);
+    const action = participant.kickedAt
+      ? button('participant-action restore', '차단 해제', async () => {
+        if (!window.confirm(`${participant.nickname} 사용자의 재입장 차단을 해제하시겠습니까?`)) return;
+        await adminApi.restoreParticipant(participant.id);
+        await loadParticipants();
+        renderParticipantsAdmin();
+        showToast('차단을 해제했습니다.');
+      })
+      : button('participant-action kick', '강제 퇴장', async () => {
+        if (!window.confirm(`TABLE ${participantTableNumber(participant)} · ${participant.nickname} 사용자를 강제 퇴장시키겠습니까?\n같은 기기의 재입장도 차단됩니다.`)) return;
+        await adminApi.kickParticipant(participant.id, { reason: '관리자 강제 퇴장' });
+        await Promise.all([loadParticipants(), loadTables()]);
+        renderAll();
+        showToast('사용자를 강제 퇴장하고 재입장을 차단했습니다.');
+      });
+    row.appendChild(action);
+    list.appendChild(row);
+  });
 }
 
 function renderBasketballLeaderboard() {
@@ -1100,6 +1166,7 @@ function bindEvents() {
   });
   $('global-chat-clear-btn').addEventListener('click', () => clearGlobalChatMessages().catch((error) => showToast(error.message)));
   $('all-data-reset-btn').addEventListener('click', () => resetAllData().catch((error) => showToast(error.message)));
+  $('participant-search').addEventListener('input', renderParticipantsAdmin);
   document.querySelectorAll('.nav-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.nav-btn').forEach((node) => node.classList.remove('active'));

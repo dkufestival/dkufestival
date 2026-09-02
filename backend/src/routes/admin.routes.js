@@ -14,6 +14,11 @@ router.post('/login', validateBody({
   password: { required: true, type: 'string', maxLength: 200 },
 }), adminController.login);
 router.get('/tables', auth, requireRole('ADMIN'), adminController.getTables);
+router.get('/participants', auth, requireRole('ADMIN'), adminController.getParticipants);
+router.post('/participants/:participantId/kick', auth, requireRole('ADMIN'), validateBody({
+  reason: { type: 'string', maxLength: 255 },
+}), adminController.kickParticipant);
+router.post('/participants/:participantId/restore', auth, requireRole('ADMIN'), adminController.restoreParticipant);
 router.post('/tables/:tableId/checkin', auth, requireRole('ADMIN'), validateBody({
   maleCount: { type: 'number', min: 0 },
   femaleCount: { type: 'number', min: 0 },
