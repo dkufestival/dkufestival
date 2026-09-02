@@ -178,6 +178,38 @@ function closeAllTransientModals() {
   document.querySelectorAll('.modal-backdrop.active').forEach((modal) => modal.classList.remove('active'));
 }
 
+function showInlineContent(modalId) {
+  const backdrop = $(modalId);
+  const card = backdrop?.querySelector('.modal-card');
+  const host = $('map-viewport');
+  if (!card || !host) return;
+  host.querySelectorAll('.inline-content-card').forEach((node) => {
+    const owner = node.dataset.inlineOwner;
+    const parent = $(owner);
+    if (parent) parent.appendChild(node);
+  });
+  card.dataset.inlineOwner = modalId;
+  card.querySelectorAll('.modal-close').forEach((button) => {
+    button.onclick = () => { restoreInlineContent(); state.activeMenu = 'map'; renderSeatView(); };
+  });
+  card.classList.add('inline-content-card');
+  host.appendChild(card);
+  backdrop.classList.remove('active');
+  $('map-view').hidden = true;
+  $('global-chat-panel').hidden = true;
+  $('map-viewport').classList.add('inline-content-mode');
+}
+
+function restoreInlineContent() {
+  document.querySelectorAll('.inline-content-card').forEach((card) => {
+    const owner = $(card.dataset.inlineOwner);
+    if (owner) owner.appendChild(card);
+    card.classList.remove('inline-content-card');
+    delete card.dataset.inlineOwner;
+  });
+  $('map-viewport').classList.remove('inline-content-mode');
+}
+
 function setCounts(male, female) {
   state.counts = { male: Number(male || 0), female: Number(female || 0) };
   document.querySelectorAll('[data-count="male"]').forEach((node) => { node.textContent = state.counts.male; });
@@ -1052,6 +1084,7 @@ function mergeGlobalChatMessages(messages) {
 
 function renderSeatView() {
   const globalChatOpen = state.activeMenu === 'chat';
+  if (state.activeMenu === 'map' || state.activeMenu === 'chat') restoreInlineContent();
   $('map-view').hidden = globalChatOpen;
   $('global-chat-panel').hidden = !globalChatOpen;
   $('map-viewport').classList.toggle('global-chat-mode', globalChatOpen);
@@ -1832,13 +1865,15 @@ function bindEvents() {
   });
   $('notice-btn').addEventListener('click', () => {
     state.activeMenu = 'notice';
+    showInlineContent('modal-notices');
     localStorage.setItem(STORAGE_KEYS.seenNoticeCount, String(state.notices.length));
     renderNotices();
     showNoticeList();
-    openModal('modal-notices');
+    renderNotices();
   });
   $('notice-detail-back').addEventListener('click', showNoticeList);
-  $('board-btn').addEventListener('click', () => { state.activeMenu = 'board'; openBoard().catch((error) => showToast(error.message)); });
+  $('board-btn').addEventListener('click', () => { state.activeMenu = 'board'; showInlineContent('modal-board'); openBoard().catch((error) => showToast(error.message)); });
+  $('game-btn').addEventListener('click', () => { state.activeMenu = 'game'; showInlineContent('modal-game'); renderGame(); });
   $('board-profile-save-btn').addEventListener('click', () => saveBoardProfile().catch((error) => showToast(error.message)));
   $('board-write-btn').addEventListener('click', showBoardWrite);
   $('board-history-btn').addEventListener('click', () => showBoardViews().catch((error) => showToast(error.message)));
