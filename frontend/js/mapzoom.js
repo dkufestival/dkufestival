@@ -60,6 +60,7 @@ export function initMapZoom({ viewport, canvas, minScale: baseMinScale = 1, maxS
 
   viewport.addEventListener('wheel', (event) => {
     if (!enabled) return;
+    if (!event.target.closest?.('#map-view')) return;
     event.preventDefault();
     const rect = viewport.getBoundingClientRect();
     const cx = event.clientX - rect.left;
@@ -69,6 +70,7 @@ export function initMapZoom({ viewport, canvas, minScale: baseMinScale = 1, maxS
 
   viewport.addEventListener('mousedown', (event) => {
     if (!enabled) return;
+    if (!event.target.closest?.('#map-view')) return;
     dragging = true;
     moved = false;
     lastX = event.clientX;
@@ -87,6 +89,7 @@ export function initMapZoom({ viewport, canvas, minScale: baseMinScale = 1, maxS
 
   viewport.addEventListener('touchstart', (event) => {
     if (!enabled) return;
+    if (!event.target.closest?.('#map-view')) return;
     if (event.touches.length === 1) {
       dragging = true;
       moved = false;
@@ -109,6 +112,7 @@ export function initMapZoom({ viewport, canvas, minScale: baseMinScale = 1, maxS
 
   viewport.addEventListener('touchmove', (event) => {
     if (!enabled) return;
+    if (!event.target.closest?.('#map-view')) return;
     if (event.touches.length === 1 && dragging) {
       const dx = event.touches[0].clientX - lastX;
       const dy = event.touches[0].clientY - lastY;

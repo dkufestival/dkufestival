@@ -192,7 +192,10 @@ function setMainContent(type) {
   Object.entries(panels).forEach(([key, id]) => { const node = $(id); if (node) node.hidden = key !== type; });
   state.activeMenu = type;
   state.seatViewMode = type;
-  $('map-viewport').classList.toggle('global-chat-mode', type === 'chat');
+  const viewport = $('map-viewport');
+  viewport?.classList.toggle('map-mode', type === 'map');
+  viewport?.classList.toggle('global-chat-mode', type === 'chat');
+  mapZoom?.setEnabled(type === 'map');
   renderBottomMenuState();
   if (type === 'chat') renderGlobalChat({ forceBottom: true });
   if (type === 'notice') renderNotices();
@@ -1230,7 +1233,6 @@ function mergeGlobalChatMessages(messages) {
 function renderSeatView() {
   const globalChatOpen = state.activeMenu === 'chat';
   setMainContent(state.activeMenu || 'map');
-  mapZoom?.setEnabled(!globalChatOpen);
   $('global-chat-btn').textContent = '전체채팅';
   document.querySelectorAll('.bottombar .pill-btn').forEach((node) => node.classList.toggle('active', node.id === `${state.activeMenu === 'chat' ? 'global-chat' : state.activeMenu}-btn`));
   if (globalChatOpen) renderGlobalChat({ forceBottom: true });
@@ -1244,10 +1246,7 @@ function renderBottomMenuState() {
 }
 
 async function toggleGlobalChat() {
-  state.activeMenu = 'chat';
-  state.seatViewMode = state.activeMenu;
-  renderSeatView();
-  renderBottomMenuState();
+  setMainContent('chat');
   if (state.activeMenu !== 'chat' || state.globalChatLoaded) return;
   try {
     const messages = await globalChatApi.list();
@@ -2004,12 +2003,7 @@ function bindEvents() {
     closeModal('modal-nickname');
   });
   $('global-chat-btn').addEventListener('click', toggleGlobalChat);
-  $('map-btn').addEventListener('click', () => {
-    state.activeMenu = 'map';
-    state.seatViewMode = 'map';
-    renderSeatView();
-    renderBottomMenuState();
-  });
+  $('map-btn').addEventListener('click', () => setMainContent('map'));
   $('staff-call-btn').addEventListener('click', () => callStaff().catch((error) => showToast(error.message)));
   $('global-chat-send-btn').addEventListener('click', sendGlobalChatMessage);
   $('global-chat-input').addEventListener('keydown', (event) => {
@@ -2019,13 +2013,9 @@ function bindEvents() {
     }
   });
   $('notice-btn').addEventListener('click', () => {
-    state.activeMenu = 'notice';
     setMainContent('notice');
     localStorage.setItem(STORAGE_KEYS.seenNoticeCount, String(state.notices.length));
-    renderNotices();
-    renderBottomMenuState();
     showNoticeList();
-    renderNotices();
   });
   $('notice-detail-back').addEventListener('click', showNoticeList);
   $('board-btn').addEventListener('click', () => { setMainContent('board'); openBoard().catch((error) => showToast(error.message)); });

@@ -554,15 +554,16 @@ body {
   border-radius: 14px;
   background: #161613;
   border: 1px solid rgba(255,255,255,0.06);
-  touch-action: none;
+  touch-action: pan-y;
   cursor: grab;
 }
+.map-viewport.map-mode { touch-action: none; }
 .map-viewport:active { cursor: grabbing; }
 .map-viewport.global-chat-mode { cursor: default; touch-action: pan-y; }
 .map-viewport.global-chat-mode:active { cursor: default; }
 .map-view { position: absolute; inset: 0; }
 .map-view[hidden] { display: none; }
-.main-content-panel { position: absolute; inset: 0; width: 100%; max-width: 100%; min-width: 0; min-height: 0; box-sizing: border-box; overflow-y: auto; overflow-x: hidden; }
+.main-content-panel { position: absolute; inset: 0; width: 100%; max-width: 100%; min-width: 0; min-height: 0; box-sizing: border-box; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
 .main-content-panel[hidden] { display: none; }
 #game-panel-host { padding: 16px 18px; }
 #game-panel-host #game-panel { width: 100%; max-width: 100%; min-width: 0; max-height: none; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
