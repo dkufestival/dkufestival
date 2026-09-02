@@ -780,7 +780,7 @@ body {
 .pill-btn:active { transform: scale(0.97); }
 .pill-btn.active { background: var(--lime); color: #111; }
 .map-viewport.inline-content-mode { overflow: hidden; }
-.map-viewport .inline-content { display: block; width: 100%; max-width: 100%; height: 100%; min-width: 0; overflow-y: auto; box-sizing: border-box; color: var(--text-light); font-family: inherit; }
+.map-viewport .inline-content { display: flex; flex-direction: column; width: 100%; max-width: 100%; height: 100%; min-width: 0; min-height: 0; overflow-y: auto; box-sizing: border-box; color: var(--text-light); font-family: inherit; }
 .inline-content { display: block; width: 100%; max-width: none; height: 100%; max-height: 100%; overflow-y: auto; transform: none; opacity: 1; border: 0; border-radius: 0; box-shadow: none; }
 .map-viewport .inline-content { display: block !important; visibility: visible !important; opacity: 1 !important; transform: none !important; }
 .map-viewport .inline-content { background: transparent !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
@@ -809,7 +809,7 @@ body {
   color: var(--text-light);
   font-family: inherit;
 }
-.map-viewport .inline-content > [id$="-view"] { padding: 16px 18px; overflow-y: auto; }
+.map-viewport .inline-content > [id$="-view"] { flex: 1 1 auto; min-height: 0; padding: 16px 18px; overflow-y: auto !important; }
 .map-viewport .inline-content #notice-list-view,
 .map-viewport .inline-content #board-list-view,
 .map-viewport .inline-content #board-views-view { height: 100%; min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.35) transparent; }
@@ -840,7 +840,7 @@ body {
 .map-viewport .inline-content .notice-detail-header,
 .map-viewport .inline-content .notice-detail-back { color: var(--text-light); }
 .map-viewport .inline-content .basketball-entry { box-sizing: border-box; width: 100%; padding: 20px 16px 14px; border-color: rgba(255,255,255,.2); background: rgba(255,255,255,.04); }
-.map-viewport .inline-content #game-panel { width: min(100%, 520px); margin: 0 auto; }
+.map-viewport .inline-content #game-panel { width: min(100%, 520px); height: 100%; min-height: 0; margin: 0 auto; overflow-y: auto; }
 .map-viewport .inline-content #game-panel,
 .map-viewport .inline-content .basketball-entry,
 .map-viewport .inline-content .basketball-top-three,
