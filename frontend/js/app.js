@@ -1387,18 +1387,17 @@ function renderGame() {
   basketballCard.className = 'basketball-entry';
   basketballCard.appendChild(text('div', 'basketball-entry-icon', '🏀'));
   basketballCard.appendChild(text('div', 'basketball-entry-title', '농구게임'));
-  basketballCard.appendChild(text('div', 'basketball-entry-copy', '언제든 자유롭게 플레이하고 연속 골 개인 최고기록에 도전하세요.'));
-  appendBasketballLeaderboard(basketballCard);
-  const basketballButton = button('btn-dark full', '농구게임 입장', () => {
+  const basketballButton = button('btn-dark full', 'PLAY', () => {
     window.location.href = '/basketball/';
   });
   basketballCard.appendChild(basketballButton);
+  appendBasketballLeaderboard(basketballCard);
   box.appendChild(basketballCard);
 
   const stopwatchActive = state.activeGame?.type === 'TIME_MATCH' && state.activeGame?.status === 'ACTIVE';
   const stopwatchCard = document.createElement('div');
   stopwatchCard.className = 'basketball-entry';
-  stopwatchCard.appendChild(text('div', 'basketball-entry-icon', '⏱'));
+  stopwatchCard.appendChild(text('div', 'basketball-entry-icon stopwatch-icon', '⏱'));
   stopwatchCard.appendChild(text('div', 'basketball-entry-title', '스톱워치 게임'));
   stopwatchCard.appendChild(text('div', 'basketball-entry-copy', stopwatchActive
     ? `목표 ${formatGameTime(state.activeGame.state?.targetMs)}에 맞춰 멈춰보세요.`
@@ -1410,10 +1409,7 @@ function renderGame() {
   stopwatchCard.appendChild(stopwatchButton);
   box.appendChild(stopwatchCard);
 
-  if (!state.activeGame) {
-    box.appendChild(text('div', 'history-empty', '관리자가 진행 중인 단체 게임이 없습니다.'));
-    return;
-  }
+  if (!state.activeGame) return;
   if (['TIME_MATCH', 'PINBALL', 'BASKETBALL'].includes(state.activeGame.type)) {
     return;
   }
@@ -1440,18 +1436,24 @@ function renderGame() {
 function appendBasketballLeaderboard(container) {
   const ranking = document.createElement('div');
   ranking.className = 'basketball-top-three';
-  ranking.appendChild(text('div', 'basketball-top-three-title', 'USER BEST · TOP 3'));
   if (!state.basketballLeaderboard.length) {
     ranking.appendChild(text('div', 'basketball-top-three-empty', '아직 등록된 기록이 없습니다.'));
   } else {
+    const podium = document.createElement('div');
+    podium.className = 'basketball-podium';
     state.basketballLeaderboard.slice(0, 3).forEach((entry, index) => {
-      const row = document.createElement('div');
-      row.className = 'basketball-top-three-row';
-      row.appendChild(text('b', '', `${index + 1}`));
-      row.appendChild(text('span', '', `${entry.nickname || '참가자'} · T${entry.tableNumber ?? '-'}`));
-      row.appendChild(text('strong', '', `${Number(entry.score || 0)}점`));
-      ranking.appendChild(row);
+      const rank = index + 1;
+      const nickname = entry.nickname || '참가자';
+      const col = document.createElement('div');
+      col.className = `podium-col rank-${rank}`;
+      col.appendChild(text('div', 'podium-medal', String(rank)));
+      col.appendChild(text('div', 'podium-avatar', nickname.slice(0, 1)));
+      col.appendChild(text('div', 'podium-name', nickname));
+      col.appendChild(text('div', 'podium-table', `T${entry.tableNumber ?? '-'}`));
+      col.appendChild(text('div', 'podium-bar', `${Number(entry.score || 0)}점`));
+      podium.appendChild(col);
     });
+    ranking.appendChild(podium);
   }
   container.appendChild(ranking);
 }
