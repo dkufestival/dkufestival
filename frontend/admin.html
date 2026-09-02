@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
-<link rel="stylesheet" href="admin.css?v=17">
+<link rel="stylesheet" href="admin.css?v=19">
 </head>
 <body>
 <section id="screen-login" class="screen active">
@@ -65,10 +65,24 @@
           <input id="participant-search" class="field" type="search" placeholder="닉네임 또는 테이블 검색">
         </div>
         <div class="participant-summary">
-          <span>이용 가능 <b id="participant-active-count">0</b>명</span>
-          <span>차단됨 <b id="participant-kicked-count">0</b>명</span>
+          <span>현재 이용 <b id="participant-active-count">0</b>명</span>
+          <span>재접속 차단 <b id="participant-kicked-count">0</b>명</span>
         </div>
-        <div id="participant-admin-list" class="participant-admin-list"></div>
+        <section class="participant-session-section current">
+          <div class="participant-session-head">
+            <div><span class="session-live-dot"></span><strong>현재 세션</strong></div>
+            <span id="participant-current-count">0명</span>
+          </div>
+          <div id="participant-current-list" class="participant-admin-list"></div>
+        </section>
+        <section class="participant-session-section past">
+          <div class="participant-session-head">
+            <div><strong>지난 세션</strong></div>
+            <span id="participant-past-count">0명</span>
+          </div>
+          <p class="participant-session-note">최근 접속 날짜와 시간 순으로 표시됩니다.</p>
+          <div id="participant-past-list" class="participant-admin-list"></div>
+        </section>
       </div>
     </div>
 
@@ -251,6 +265,6 @@
 </div>
 
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-<script type="module" src="js/admin-app.js?v=29"></script>
+<script type="module" src="js/admin-app.js?v=31"></script>
 </body>
 </html>

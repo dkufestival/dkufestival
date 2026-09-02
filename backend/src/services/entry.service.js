@@ -78,18 +78,12 @@ async function enter(data) {
     });
 
     const blockedParticipant = await Participant.findOne({
-      where: { clientId: data.clientId, kickedAt: { [Op.ne]: null } },
-      include: [{
-        model: TableSession,
-        as: 'session',
-        required: true,
-        where: { tableId: table.id },
-        attributes: [],
-      }],
+      where: { clientId: data.clientId, blockedAt: { [Op.ne]: null } },
+      include: [{ model: TableSession, as: 'session', required: true, where: { tableId: table.id }, attributes: [] }],
       transaction,
     });
     if (blockedParticipant) {
-      throw new AppError(403, 'PARTICIPANT_KICKED', '관리자에 의해 이용이 제한된 사용자입니다. 직원에게 문의해 주세요.');
+      throw new AppError(403, 'PARTICIPANT_BLOCKED', '관리자에 의해 재접속이 차단된 사용자입니다. 직원에게 문의해 주세요.');
     }
 
     let session = await getActiveSession(table.id, transaction);
@@ -116,8 +110,14 @@ async function enter(data) {
       transaction,
     });
 
+    // 강제 퇴장은 기존 로그인만 종료한다. 사용자가 다시 입장하면 즉시 새 토큰을 발급한다.
     if (participant.kickedAt) {
-      throw new AppError(403, 'PARTICIPANT_KICKED', '관리자에 의해 이용이 제한된 사용자입니다. 직원에게 문의해 주세요.');
+      await participant.update({ kickedAt: null, kickedReason: null }, { transaction });
+      const activeHost = await Participant.findOne({
+        where: { tableSessionId: session.id, isHost: true, kickedAt: null, blockedAt: null },
+        transaction,
+      });
+      if (!activeHost) await participant.update({ isHost: true }, { transaction });
     }
 
     if (!created && data.nickname && participant.nickname !== data.nickname.trim()) {

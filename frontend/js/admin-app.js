@@ -264,27 +264,34 @@ function participantTableNumber(participant) {
 }
 
 function renderParticipantsAdmin() {
-  const list = $('participant-admin-list');
-  if (!list) return;
+  const currentList = $('participant-current-list');
+  const pastList = $('participant-past-list');
+  if (!currentList || !pastList) return;
   const query = $('participant-search')?.value.trim().toLowerCase() || '';
-  const active = state.participants.filter((participant) => !participant.kickedAt);
-  const kicked = state.participants.filter((participant) => participant.kickedAt);
+  const isCurrent = (participant) => participant.session?.status === 'ACTIVE' && new Date(participant.session.expiresAt) > new Date();
+  const active = state.participants.filter((participant) => isCurrent(participant) && !participant.kickedAt && !participant.blockedAt);
+  const kicked = state.participants.filter((participant) => participant.blockedAt);
   $('participant-active-count').textContent = active.length;
   $('participant-kicked-count').textContent = kicked.length;
   $('participant-nav-badge').textContent = active.length;
-  clear(list);
   const filtered = state.participants.filter((participant) => {
     const haystack = `${participant.nickname} ${participantTableNumber(participant)} ${participant.clientId}`.toLowerCase();
     return !query || haystack.includes(query);
-  }).sort((a, b) => Number(Boolean(a.kickedAt)) - Number(Boolean(b.kickedAt))
-    || Number(participantTableNumber(a)) - Number(participantTableNumber(b)));
-  if (!filtered.length) {
-    list.appendChild(text('div', 'participants-empty', query ? '검색 결과가 없습니다.' : '입장한 사용자가 없습니다.'));
-    return;
-  }
-  filtered.forEach((participant) => {
+  }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const current = filtered.filter(isCurrent);
+  const past = filtered.filter((participant) => !isCurrent(participant));
+  $('participant-current-count').textContent = `${current.length}명`;
+  $('participant-past-count').textContent = `${past.length}명`;
+
+  function renderGroup(list, participants, emptyMessage) {
+    clear(list);
+    if (!participants.length) {
+      list.appendChild(text('div', 'participants-empty', query ? '검색 결과가 없습니다.' : emptyMessage));
+      return;
+    }
+    participants.forEach((participant) => {
     const row = document.createElement('article');
-    row.className = `participant-admin-row${participant.kickedAt ? ' kicked' : ''}`;
+    row.className = `participant-admin-row${participant.kickedAt || participant.blockedAt ? ' kicked' : ''}`;
     const avatar = text('div', 'participant-avatar', participant.nickname.trim().slice(0, 1).toUpperCase() || '?');
     const info = document.createElement('div');
     info.className = 'participant-admin-info';
@@ -292,30 +299,53 @@ function renderParticipantsAdmin() {
     nameRow.className = 'participant-name-row';
     nameRow.appendChild(text('strong', '', participant.nickname));
     if (participant.isHost) nameRow.appendChild(text('span', 'participant-host-tag', '대표'));
-    if (participant.kickedAt) nameRow.appendChild(text('span', 'participant-kicked-tag', '차단됨'));
+    if (participant.blockedAt) nameRow.appendChild(text('span', 'participant-kicked-tag', '재접속 차단'));
+    else if (participant.kickedAt) nameRow.appendChild(text('span', 'participant-ended-tag', '이용 종료됨'));
     info.appendChild(nameRow);
-    const sessionActive = participant.session?.status === 'ACTIVE' && new Date(participant.session.expiresAt) > new Date();
+    const sessionActive = isCurrent(participant);
     info.appendChild(text('span', 'participant-admin-meta', `TABLE ${participantTableNumber(participant)} · ${sessionActive ? '현재 세션' : '지난 세션'} · 입장 ${formatDateTime(participant.createdAt)}`));
-    if (participant.kickedAt) info.appendChild(text('span', 'participant-admin-reason', `${participant.kickedReason || '관리자 강제 퇴장'} · ${formatDateTime(participant.kickedAt)}`));
+    if (participant.blockedAt) info.appendChild(text('span', 'participant-admin-reason', `${participant.blockedReason || '관리자 강제 퇴장'} · ${formatDateTime(participant.blockedAt)}`));
+    else if (participant.kickedAt) info.appendChild(text('span', 'participant-admin-reason', `${participant.kickedReason || '관리자 이용 종료'} · ${formatDateTime(participant.kickedAt)}`));
     row.append(avatar, info);
-    const action = participant.kickedAt
-      ? button('participant-action restore', '차단 해제', async () => {
-        if (!window.confirm(`${participant.nickname} 사용자의 재입장 차단을 해제하시겠습니까?`)) return;
+    let action;
+    if (participant.blockedAt) {
+      action = button('participant-action restore', '차단 해제', async () => {
+        if (!window.confirm(`${participant.nickname} 사용자의 재접속 차단을 해제하시겠습니까?`)) return;
         await adminApi.restoreParticipant(participant.id);
         await loadParticipants();
         renderParticipantsAdmin();
-        showToast('차단을 해제했습니다.');
-      })
-      : button('participant-action kick', '강제 퇴장', async () => {
-        if (!window.confirm(`TABLE ${participantTableNumber(participant)} · ${participant.nickname} 사용자를 강제 퇴장시키겠습니까?\n같은 기기의 재입장도 차단됩니다.`)) return;
+        showToast('재접속 차단을 해제했습니다.');
+      });
+    } else if (!sessionActive) {
+      action = text('span', 'participant-session-ended', '지난 이용');
+    } else if (participant.kickedAt) {
+      action = text('span', 'participant-reentry-status', '재접속 가능');
+    } else {
+      action = document.createElement('div');
+      action.className = 'participant-action-group';
+      action.appendChild(button('participant-action end-access', '이용 종료', async () => {
+        if (!window.confirm(`TABLE ${participantTableNumber(participant)} · ${participant.nickname} 사용자의 이용을 종료하시겠습니까?\n사용자는 다시 접속할 수 있습니다.`)) return;
+        await adminApi.endParticipantAccess(participant.id, { reason: '관리자 이용 종료' });
+        await Promise.all([loadParticipants(), loadTables()]);
+        renderAll();
+        showToast('이용을 종료했습니다. 사용자는 다시 접속할 수 있습니다.');
+      }));
+      action.appendChild(button('participant-action kick', '강제 퇴장', async () => {
+        if (!window.confirm(`TABLE ${participantTableNumber(participant)} · ${participant.nickname} 사용자를 강제 퇴장시키겠습니까?\n강제 퇴장 후에는 다시 접속할 수 없습니다.`)) return;
+        if (!window.confirm(`정말 강제 퇴장하시겠습니까?\n실수로 선택했다면 취소를 눌러주세요.`)) return;
         await adminApi.kickParticipant(participant.id, { reason: '관리자 강제 퇴장' });
         await Promise.all([loadParticipants(), loadTables()]);
         renderAll();
-        showToast('사용자를 강제 퇴장하고 재입장을 차단했습니다.');
-      });
+        showToast('사용자를 강제 퇴장하고 재접속을 차단했습니다.');
+      }));
+    }
     row.appendChild(action);
     list.appendChild(row);
-  });
+    });
+  }
+
+  renderGroup(currentList, current, '현재 세션 사용자가 없습니다.');
+  renderGroup(pastList, past, '지난 세션 사용자가 없습니다.');
 }
 
 function renderBasketballLeaderboard() {

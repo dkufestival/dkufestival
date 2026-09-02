@@ -29,6 +29,14 @@ const Participant = sequelize.define(
       type: DataTypes.STRING(255),
       allowNull: true,
     },
+    blockedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    blockedReason: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
   },
   {
     tableName: 'participants',
@@ -36,6 +44,7 @@ const Participant = sequelize.define(
       { unique: true, fields: ['tableSessionId', 'clientId'] },
       { fields: ['tableSessionId'] },
       { fields: ['clientId', 'kickedAt'] },
+      { fields: ['clientId', 'blockedAt'] },
     ],
   }
 );

@@ -54,41 +54,50 @@ async function getParticipants(req, res, next) {
   } catch (error) { next(error); }
 }
 
-async function kickParticipant(req, res, next) {
+async function changeParticipantAccess(req, res, next, { block }) {
   const transaction = await sequelize.transaction();
   try {
     const participant = await Participant.findByPk(req.params.participantId, {
       include: [{ model: TableSession, as: 'session' }], transaction, lock: transaction.LOCK.UPDATE,
     });
     if (!participant) throw new AppError(404, 'PARTICIPANT_NOT_FOUND', '사용자를 찾을 수 없습니다.');
-    if (!participant.kickedAt) {
-      const wasHost = participant.isHost;
-      await participant.update({
-        kickedAt: new Date(),
-        kickedReason: req.body.reason?.trim() || '관리자 강제 퇴장',
-        isHost: false,
-      }, { transaction });
-      if (wasHost) {
-        const nextHost = await Participant.findOne({
-          where: { tableSessionId: participant.tableSessionId, id: { [Op.ne]: participant.id }, kickedAt: null },
-          order: [['createdAt', 'ASC']], transaction, lock: transaction.LOCK.UPDATE,
-        });
-        if (nextHost) await nextHost.update({ isHost: true }, { transaction });
-      }
+    const now = new Date();
+    const wasHost = participant.isHost;
+    await participant.update({
+      kickedAt: now,
+      kickedReason: req.body.reason?.trim() || (block ? '관리자 강제 퇴장' : '관리자 이용 종료'),
+      ...(block ? { blockedAt: now, blockedReason: req.body.reason?.trim() || '관리자 강제 퇴장' } : {}),
+      isHost: false,
+    }, { transaction });
+    if (wasHost) {
+      const nextHost = await Participant.findOne({
+        where: { tableSessionId: participant.tableSessionId, id: { [Op.ne]: participant.id }, kickedAt: null, blockedAt: null },
+        order: [['createdAt', 'ASC']], transaction, lock: transaction.LOCK.UPDATE,
+      });
+      if (nextHost) await nextHost.update({ isHost: true }, { transaction });
     }
     await transaction.commit();
     const io = req.app.get('io');
     io?.to(`participant:${participant.id}`).emit('participant:kicked', {
       participantId: participant.id,
-      message: '관리자에 의해 강제 퇴장되었습니다.',
+      blocked: block,
+      message: block ? '관리자에 의해 강제 퇴장되었습니다.' : '관리자에 의해 이용이 종료되었습니다.',
     });
     io?.to('admins').emit('admin:participants-updated');
-    emitPublicTableUpdate(io, { tableIds: [participant.session?.tableId], reason: 'participant:kicked' });
+    emitPublicTableUpdate(io, { tableIds: [participant.session?.tableId], reason: block ? 'participant:blocked' : 'participant:ended' });
     res.json({ data: participant });
   } catch (error) {
     if (!transaction.finished) await transaction.rollback();
     next(error);
   }
+}
+
+async function endParticipantAccess(req, res, next) {
+  return changeParticipantAccess(req, res, next, { block: false });
+}
+
+async function kickParticipant(req, res, next) {
+  return changeParticipantAccess(req, res, next, { block: true });
 }
 
 async function restoreParticipant(req, res, next) {
@@ -97,7 +106,7 @@ async function restoreParticipant(req, res, next) {
       include: [{ model: TableSession, as: 'session' }],
     });
     if (!participant) throw new AppError(404, 'PARTICIPANT_NOT_FOUND', '사용자를 찾을 수 없습니다.');
-    await participant.update({ kickedAt: null, kickedReason: null });
+    await participant.update({ kickedAt: null, kickedReason: null, blockedAt: null, blockedReason: null });
     const io = req.app.get('io');
     io?.to('admins').emit('admin:participants-updated');
     emitPublicTableUpdate(io, { tableIds: [participant.session?.tableId], reason: 'participant:restored' });
@@ -226,6 +235,7 @@ module.exports = {
   login,
   getTables,
   getParticipants,
+  endParticipantAccess,
   kickParticipant,
   restoreParticipant,
   checkoutTable,

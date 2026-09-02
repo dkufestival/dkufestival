@@ -6,6 +6,7 @@ export const adminApi = {
   login: (body) => api.post('/api/admin/login', body),
   tables: () => api.get('/api/admin/tables', adminOptions),
   participants: () => api.get('/api/admin/participants', adminOptions),
+  endParticipantAccess: (participantId, body = {}) => api.post(`/api/admin/participants/${participantId}/end-access`, body, adminOptions),
   kickParticipant: (participantId, body = {}) => api.post(`/api/admin/participants/${participantId}/kick`, body, adminOptions),
   restoreParticipant: (participantId) => api.post(`/api/admin/participants/${participantId}/restore`, {}, adminOptions),
   checkin: (tableId, body) => api.post(`/api/admin/tables/${tableId}/checkin`, body, adminOptions),

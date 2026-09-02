@@ -11,19 +11,24 @@ test('admin can list, kick and restore individual participants', () => {
   const controller = read('backend/src/controllers/admin.controller.js');
   assert.match(routes, /router\.get\('\/participants'/);
   assert.match(routes, /participants\/:participantId\/kick/);
+  assert.match(routes, /participants\/:participantId\/end-access/);
   assert.match(routes, /participants\/:participantId\/restore/);
   assert.match(controller, /participant:kicked/);
   assert.match(controller, /admin:participants-updated/);
 });
 
-test('kicked participant tokens and repeat QR entry are rejected', () => {
+test('access end allows re-entry while forced removal blocks repeat QR entry', () => {
   const auth = read('backend/src/middleware/auth.js');
   const socketAuth = read('backend/src/socket/auth.socket.js');
   const entry = read('backend/src/services/entry.service.js');
   assert.match(auth, /participant\.kickedAt/);
   assert.match(socketAuth, /participant\.kickedAt/);
-  assert.match(entry, /PARTICIPANT_KICKED/);
-  assert.match(entry, /clientId: data\.clientId, kickedAt/);
+  assert.match(auth, /participant\.blockedAt/);
+  assert.match(socketAuth, /participant\.blockedAt/);
+  assert.match(entry, /PARTICIPANT_BLOCKED/);
+  assert.match(entry, /blockedParticipant/);
+  assert.match(entry, /tableSessionId: session\.id, clientId: data\.clientId/);
+  assert.match(entry, /participant\.update\(\{ kickedAt: null, kickedReason: null \}/);
 });
 
 test('admin UI exposes an individual participant management tab', () => {
@@ -31,6 +36,10 @@ test('admin UI exposes an individual participant management tab', () => {
   const app = read('frontend/js/admin-app.js');
   assert.match(html, /data-tab="participants"/);
   assert.match(html, /접속 사용자 관리/);
+  assert.match(html, /현재 세션/);
+  assert.match(html, /지난 세션/);
   assert.match(app, /강제 퇴장/);
-  assert.match(app, /차단 해제/);
+  assert.match(app, /이용 종료/);
+  assert.match(app, /재접속 가능/);
+  assert.match(app, /정말 강제 퇴장하시겠습니까/);
 });
