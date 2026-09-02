@@ -171,6 +171,11 @@ function closeModal(id) {
   $(id).classList.remove('active');
 }
 
+// 화면/게임 전환 시 이전 화면에 종속된 일시적 모달을 일괄 정리한다.
+function closeAllTransientModals() {
+  document.querySelectorAll('.modal-backdrop.active').forEach((modal) => modal.classList.remove('active'));
+}
+
 function setCounts(male, female) {
   state.counts = { male: Number(male || 0), female: Number(female || 0) };
   document.querySelectorAll('[data-count="male"]').forEach((node) => { node.textContent = state.counts.male; });
@@ -477,17 +482,20 @@ function bindSocket() {
     updateStaffCallButton();
   });
   socket.on('game:global:announced', (game) => {
+    closeAllTransientModals();
     state.activeGame = game;
     showGameAnnouncement(game);
     renderGame();
   });
   socket.on('game:global:started', (game) => {
+    closeAllTransientModals();
     state.activeGame = game;
     closeModal('modal-game-participation');
     requestGameParticipation(game);
     renderGame();
   });
   socket.on('game:global:current', (game) => {
+    closeAllTransientModals();
     state.activeGame = game;
     if (game?.state?.lifecyclePhase === 'ANNOUNCED') showGameAnnouncement(game);
     else if (game?.state?.lifecyclePhase === 'RESULTS') showFinalScores(game);
@@ -495,6 +503,7 @@ function bindSocket() {
     renderGame();
   });
   socket.on('game:global:ended', (game) => {
+    closeAllTransientModals();
     resetTimeMatch();
     state.activeGame = null;
     state.participationDecisions.delete(Number(game.id));
@@ -511,6 +520,7 @@ function bindSocket() {
     state.activeGame = game;
     const currentRound = Number(game.state?.currentRound || 0);
     if (currentRound !== previousRound) {
+      closeAllTransientModals();
       state.gameAnswer = null;
       if (isParticipating(game.id)) showGlobalGameScreen();
       showToast(`${currentRound + 1}라운드가 시작되었습니다.`);
@@ -522,6 +532,7 @@ function bindSocket() {
     }
   });
   socket.on('game:global:results', (game) => {
+    closeAllTransientModals();
     state.activeGame = game;
     showFinalScores(game);
   });
@@ -530,6 +541,7 @@ function bindSocket() {
     renderGame();
   });
   socket.on('game:global:round', (payload) => {
+    closeAllTransientModals();
     if (!state.activeGame || Number(payload.gameId) !== Number(state.activeGame.id)) return;
     if (['TIME_MATCH', 'PINBALL'].includes(payload.type || state.activeGame.type)) return;
     const rounds = [...(state.activeGame.state?.rounds || [])];
@@ -542,6 +554,7 @@ function bindSocket() {
     if (isParticipating(state.activeGame.id)) showGlobalGameScreen();
   });
   socket.on('game:global:prompt', (payload) => {
+    closeAllTransientModals();
     if (!state.activeGame || Number(payload.gameId) !== Number(state.activeGame.id)) return;
     state.activeGame = {
       ...state.activeGame,
@@ -568,6 +581,7 @@ function bindSocket() {
     }
   });
   socket.on('game:global:spin', (payload) => {
+    closeAllTransientModals();
     if (!state.activeGame || Number(payload.gameId) !== Number(state.activeGame.id)) return;
     if (isParticipating(state.activeGame.id)) {
       if (!$('screen-game').classList.contains('active')) showGlobalGameScreen();
