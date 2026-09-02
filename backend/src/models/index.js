@@ -13,6 +13,8 @@ const TableRequestBlock = require('./TableRequestBlock');
 const BasketballScore = require('./BasketballScore');
 const TableLike = require('./TableLike');
 const StaffCall = require('./StaffCall');
+const BoardProfile = require('./BoardProfile');
+const BoardProfileView = require('./BoardProfileView');
 
 Table.hasMany(TableSession, { foreignKey: 'tableId', as: 'sessions', constraints: false });
 TableSession.belongsTo(Table, { foreignKey: 'tableId', as: 'table', constraints: false });
@@ -77,6 +79,16 @@ TableLike.belongsTo(TableSession, { foreignKey: 'toSessionId', as: 'toSession', 
 TableSession.hasMany(StaffCall, { foreignKey: 'tableSessionId', as: 'staffCalls', constraints: false });
 StaffCall.belongsTo(TableSession, { foreignKey: 'tableSessionId', as: 'session', constraints: false });
 
+Participant.hasOne(BoardProfile, { foreignKey: 'participantId', as: 'boardProfile', constraints: false });
+BoardProfile.belongsTo(Participant, { foreignKey: 'participantId', as: 'participant', constraints: false });
+BoardProfile.hasMany(BoardPost, { sourceKey: 'participantId', foreignKey: 'authorParticipantId', as: 'posts', constraints: false });
+BoardPost.belongsTo(BoardProfile, { targetKey: 'participantId', foreignKey: 'authorParticipantId', as: 'authorProfile', constraints: false });
+Participant.hasMany(BoardProfileView, { foreignKey: 'viewerParticipantId', as: 'profileViewsMade', constraints: false });
+Participant.hasMany(BoardProfileView, { foreignKey: 'viewedParticipantId', as: 'profileViewsReceived', constraints: false });
+BoardProfileView.belongsTo(Participant, { foreignKey: 'viewerParticipantId', as: 'viewer', constraints: false });
+BoardProfileView.belongsTo(Participant, { foreignKey: 'viewedParticipantId', as: 'viewed', constraints: false });
+BoardProfileView.belongsTo(BoardPost, { foreignKey: 'sourcePostId', as: 'sourcePost', constraints: false });
+
 module.exports = {
   Table,
   TableSession,
@@ -92,4 +104,6 @@ module.exports = {
   BasketballScore,
   TableLike,
   StaffCall,
+  BoardProfile,
+  BoardProfileView,
 };

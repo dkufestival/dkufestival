@@ -58,6 +58,7 @@ const state = {
   givenLikes: new Set(),
   receivedLikes: [],
   staffCallPending: false,
+  board: { profile: null, posts: [], currentPost: null, revealedProfile: null, views: [] },
 };
 
 const gameNames = { OX_QUIZ: 'OX 퀴즈', RPS: '가위바위보', WORD_GUESS: '제시어 게임', IMAGE_GAME: '이미지 게임', TIME_MATCH: '스톱워치', PINBALL: '핀볼', BASKETBALL: '농구', ROULETTE: '룰렛' };
@@ -459,14 +460,16 @@ function bindSocket() {
     if (state.seatViewMode === 'globalChat') renderGlobalChat();
   });
   socket.on('board:created', (post) => {
-    if (state.boardPosts.some((entry) => entry.id === post.id)) return;
-    state.boardPosts.unshift(post);
+    if (!state.board.posts.some((item) => item.id === post.id)) state.board.posts.unshift(post);
     if ($('modal-board').classList.contains('active') && !$('board-list-view').hidden) renderBoardList();
   });
   socket.on('board:deleted', ({ id }) => {
-    state.boardPosts = state.boardPosts.filter((post) => post.id !== id);
-    if (state.activeBoardPost?.id === id) showBoardList();
+    state.board.posts = state.board.posts.filter((post) => post.id !== id);
+    if (state.board.currentPost?.id === id) showBoardList();
     if ($('modal-board').classList.contains('active') && !$('board-list-view').hidden) renderBoardList();
+  });
+  socket.on('board:profile-viewed', async () => {
+    if (!$('board-views-view').hidden) await showBoardViews();
   });
   socket.on('table:like-changed', async (result) => {
     try {
@@ -1085,7 +1088,7 @@ function sendGlobalChatMessage() {
   });
 }
 
-function renderBoardList() {
+function renderBoardListLegacy() {
   const list = $('board-list');
   clear(list);
   if (!state.boardPosts.length) {
@@ -1107,14 +1110,14 @@ function renderBoardList() {
   });
 }
 
-function showBoardList() {
+function showBoardListLegacy() {
   state.activeBoardPost = null;
   $('board-write-view').hidden = true;
   $('board-detail-view').hidden = true;
   $('board-list-view').hidden = false;
 }
 
-function showBoardWrite() {
+function showBoardWriteLegacy() {
   $('board-title-input').value = '';
   $('board-content-input').value = '';
   $('board-list-view').hidden = true;
@@ -1122,7 +1125,7 @@ function showBoardWrite() {
   $('board-write-view').hidden = false;
 }
 
-function showBoardDetail(post) {
+function showBoardDetailLegacy(post) {
   state.activeBoardPost = post;
   $('board-detail-title').textContent = post.title;
   $('board-detail-content').textContent = post.content;
@@ -1136,7 +1139,7 @@ function showBoardDetail(post) {
   $('board-detail-view').hidden = false;
 }
 
-async function submitBoardPost() {
+async function submitBoardPostLegacy() {
   const title = $('board-title-input').value.trim();
   const content = $('board-content-input').value.trim();
   if (!title || !content) return showToast('제목과 내용을 입력해 주세요.');
@@ -1146,7 +1149,7 @@ async function submitBoardPost() {
   renderBoardList();
 }
 
-async function deleteActiveBoardPost() {
+async function deleteActiveBoardPostLegacy() {
   if (!state.activeBoardPost) return;
   const id = state.activeBoardPost.id;
   await boardApi.remove(id);
@@ -1209,6 +1212,171 @@ function updateNoticeBadge() {
   const badge = $('notice-badge');
   badge.textContent = unread > 99 ? '99+' : unread;
   badge.hidden = unread === 0;
+}
+
+function showBoardView(viewId) {
+  ['board-profile-view', 'board-list-view', 'board-write-view', 'board-detail-view', 'board-confirm-view', 'board-views-view']
+    .forEach((id) => { $(id).hidden = id !== viewId; });
+}
+
+async function openBoard() {
+  state.board.profile = await boardApi.profile();
+  if (!state.board.profile) {
+    showBoardView('board-profile-view');
+    openModal('modal-board');
+    return;
+  }
+  await loadBoardPosts();
+  showBoardList();
+  openModal('modal-board');
+}
+
+async function loadBoardPosts() {
+  state.board.posts = await boardApi.posts();
+}
+
+function genderLabel(gender) {
+  return gender === 'FEMALE' ? '여성' : gender === 'MALE' ? '남성' : '-';
+}
+
+function formatBoardDate(value) {
+  if (!value) return '-';
+  return new Date(value).toLocaleString('ko-KR', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function renderBoardList() {
+  const list = $('board-post-list');
+  if (!list) return;
+  clear(list);
+  if (!state.board.posts.length) {
+    list.appendChild(text('div', 'history-empty', '아직 게시글이 없습니다.'));
+    return;
+  }
+  state.board.posts.forEach((post) => {
+    const item = document.createElement('div');
+    item.className = 'history-item board-post-item';
+    const info = document.createElement('div');
+    info.className = 'history-info';
+    const genderClass = post.author?.gender === 'FEMALE' ? 'female' : post.author?.gender === 'MALE' ? 'male' : '';
+    const title = text('div', `history-seat-name board-title ${genderClass}`.trim(), post.title);
+    const tableLabel = post.author?.tableNumber ? `TABLE ${post.author.tableNumber}` : 'TABLE -';
+    info.appendChild(title);
+    info.appendChild(text('div', 'history-preview', `${tableLabel} · ${post.author?.nickname || '참가자'} · ${formatBoardDate(post.createdAt)}`));
+    item.appendChild(info);
+    item.addEventListener('click', () => showBoardDetail(post.id).catch((error) => showToast(error.message)));
+    list.appendChild(item);
+  });
+}
+
+function showBoardList() {
+  state.board.currentPost = null;
+  state.board.revealedProfile = null;
+  renderBoardList();
+  showBoardView('board-list-view');
+}
+
+function showBoardWrite() {
+  $('board-title-input').value = '';
+  $('board-content-input').value = '';
+  showBoardView('board-write-view');
+}
+
+async function saveBoardProfile() {
+  const gender = document.querySelector('input[name="board-gender"]:checked')?.value;
+  const instagramId = $('board-instagram-input').value.trim();
+  state.board.profile = await boardApi.saveProfile({ gender, instagramId });
+  await loadBoardPosts();
+  showBoardList();
+}
+
+async function createBoardPost() {
+  const title = $('board-title-input').value.trim();
+  const content = $('board-content-input').value.trim();
+  const post = await boardApi.createPost({ title, content });
+  if (!state.board.posts.some((item) => item.id === post.id)) state.board.posts.unshift(post);
+  showBoardList();
+}
+
+function renderRevealedProfile(profile) {
+  const box = $('board-revealed-profile');
+  clear(box);
+  if (!profile) {
+    box.hidden = true;
+    return;
+  }
+  box.hidden = false;
+  box.appendChild(text('div', 'board-profile-line', `성별: ${genderLabel(profile.gender)}`));
+  const link = document.createElement('a');
+  link.className = 'board-profile-link';
+  link.href = `https://www.instagram.com/${profile.instagramId}/`;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  link.textContent = `@${profile.instagramId}`;
+  box.appendChild(link);
+}
+
+async function showBoardDetail(postId) {
+  const post = await boardApi.post(postId);
+  state.board.currentPost = post;
+  state.board.revealedProfile = null;
+  $('board-detail-title').textContent = post.title;
+  const tableLabel = post.author?.tableNumber ? `TABLE ${post.author.tableNumber}` : 'TABLE -';
+  $('board-detail-meta').textContent = `${tableLabel} · ${post.author?.nickname || '참가자'} · ${formatBoardDate(post.createdAt)}`;
+  $('board-detail-content').textContent = post.content;
+  $('board-reveal-btn').hidden = !!post.isMine;
+  $('board-delete-btn').hidden = !post.isMine;
+  renderRevealedProfile(null);
+  showBoardView('board-detail-view');
+}
+
+function showBoardRevealConfirm() {
+  if (!state.board.currentPost) return;
+  showBoardView('board-confirm-view');
+}
+
+async function revealBoardProfile() {
+  const post = state.board.currentPost;
+  if (!post) return;
+  const result = await boardApi.revealProfile(post.id);
+  state.board.currentPost = result.post;
+  state.board.revealedProfile = result.profile;
+  renderRevealedProfile(result.profile);
+  showBoardView('board-detail-view');
+}
+
+async function deleteBoardPost() {
+  const post = state.board.currentPost;
+  if (!post) return;
+  await boardApi.removePost(post.id);
+  state.board.posts = state.board.posts.filter((item) => item.id !== post.id);
+  showBoardList();
+}
+
+async function showBoardViews() {
+  state.board.views = await boardApi.profileViews();
+  const list = $('board-view-list');
+  clear(list);
+  if (!state.board.views.length) {
+    list.appendChild(text('div', 'history-empty', '아직 내 정보를 열람한 사람이 없습니다.'));
+  } else {
+    state.board.views.forEach((view) => {
+      const item = document.createElement('div');
+      item.className = 'history-item';
+      const info = document.createElement('div');
+      info.className = 'history-info';
+      const tableLabel = view.viewer?.tableNumber ? `TABLE ${view.viewer.tableNumber}` : 'TABLE -';
+      info.appendChild(text('div', 'history-seat-name', `${view.viewer?.nickname || '참가자'} · ${tableLabel}`));
+      info.appendChild(text('div', 'history-preview', `${genderLabel(view.viewer?.gender)} · @${view.viewer?.instagramId || '-'} · ${view.sourcePostTitle || '삭제된 게시글'} · ${formatBoardDate(view.createdAt)}`));
+      item.appendChild(info);
+      list.appendChild(item);
+    });
+  }
+  showBoardView('board-views-view');
 }
 
 function renderGame() {
@@ -1654,20 +1822,6 @@ function bindEvents() {
       sendGlobalChatMessage();
     }
   });
-  $('board-btn').addEventListener('click', async () => {
-    openModal('modal-board');
-    showBoardList();
-    if (!state.boardLoaded) {
-      state.boardPosts = await boardApi.list();
-      state.boardLoaded = true;
-    }
-    renderBoardList();
-  });
-  $('board-write-btn').addEventListener('click', showBoardWrite);
-  $('board-write-back').addEventListener('click', showBoardList);
-  $('board-detail-back').addEventListener('click', showBoardList);
-  $('board-submit-btn').addEventListener('click', () => submitBoardPost().catch((error) => showToast(error.message)));
-  $('board-delete-btn').addEventListener('click', () => deleteActiveBoardPost().catch((error) => showToast(error.message)));
   $('notice-btn').addEventListener('click', () => {
     localStorage.setItem(STORAGE_KEYS.seenNoticeCount, String(state.notices.length));
     renderNotices();
@@ -1675,6 +1829,18 @@ function bindEvents() {
     openModal('modal-notices');
   });
   $('notice-detail-back').addEventListener('click', showNoticeList);
+  $('board-btn').addEventListener('click', () => openBoard().catch((error) => showToast(error.message)));
+  $('board-profile-save-btn').addEventListener('click', () => saveBoardProfile().catch((error) => showToast(error.message)));
+  $('board-write-btn').addEventListener('click', showBoardWrite);
+  $('board-history-btn').addEventListener('click', () => showBoardViews().catch((error) => showToast(error.message)));
+  $('board-write-back').addEventListener('click', showBoardList);
+  $('board-detail-back').addEventListener('click', showBoardList);
+  $('board-views-back').addEventListener('click', showBoardList);
+  $('board-submit-btn').addEventListener('click', () => createBoardPost().catch((error) => showToast(error.message)));
+  $('board-reveal-btn').addEventListener('click', showBoardRevealConfirm);
+  $('board-reveal-cancel-btn').addEventListener('click', () => showBoardView('board-detail-view'));
+  $('board-reveal-confirm-btn').addEventListener('click', () => revealBoardProfile().catch((error) => showToast(error.message)));
+  $('board-delete-btn').addEventListener('click', () => deleteBoardPost().catch((error) => showToast(error.message)));
   $('game-btn').addEventListener('click', () => {
     renderGame();
     openModal('modal-game');
