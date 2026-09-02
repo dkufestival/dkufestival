@@ -840,6 +840,12 @@ body {
 .map-viewport .inline-content-card .notice-detail-back { color: var(--text-light); }
 .map-viewport .inline-content-card .basketball-entry { box-sizing: border-box; width: 100%; padding: 20px 16px 14px; border-color: rgba(255,255,255,.2); background: rgba(255,255,255,.04); }
 .map-viewport .inline-content-card #game-panel { width: min(100%, 520px); margin: 0 auto; }
+.map-viewport .inline-content-card #game-panel,
+.map-viewport .inline-content-card .basketball-entry,
+.map-viewport .inline-content-card .basketball-top-three,
+.map-viewport .inline-content-card .basketball-podium { min-width: 0; max-width: 100%; box-sizing: border-box; }
+.map-viewport .inline-content-card .basketball-podium { gap: clamp(6px, 2vw, 14px); }
+.map-viewport .inline-content-card * { max-width: 100%; box-sizing: border-box; }
 .map-viewport .inline-content-card .basketball-entry-title,
 .map-viewport .inline-content-card .basketball-entry-copy,
 .map-viewport .inline-content-card .basketball-top-three-empty { color: #fff; }
