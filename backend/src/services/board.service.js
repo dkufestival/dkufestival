@@ -71,6 +71,32 @@ function serializeProfile(profile) {
   };
 }
 
+async function getParticipantIdentity(participantId, transaction) {
+  const participant = await Participant.findByPk(participantId, {
+    attributes: ['id', 'nickname', 'tableSessionId'],
+    include: [{
+      model: TableSession,
+      as: 'session',
+      attributes: ['id'],
+      include: [{ model: Table, as: 'table', attributes: ['tableNumber'] }],
+    }],
+    transaction,
+  });
+  return {
+    nickname: participant?.nickname || null,
+    tableNumber: participant?.session?.table?.tableNumber || null,
+  };
+}
+
+function serializeRevealedProfile(profile, post) {
+  const json = post.toJSON ? post.toJSON() : post;
+  return {
+    ...serializeProfile(profile),
+    nickname: json.author?.nickname || null,
+    tableNumber: json.author?.session?.table?.tableNumber || null,
+  };
+}
+
 async function getMyProfile(user) {
   const profile = await BoardProfile.findOne({ where: { participantId: user.participantId } });
   return profile ? serializeProfile(profile) : null;
@@ -146,7 +172,7 @@ async function revealProfile(user, postId) {
     }
     if (!post.authorProfile) throw new AppError(404, 'BOARD_PROFILE_NOT_FOUND', '게시판 프로필을 찾을 수 없습니다.');
 
-    const [view] = await BoardProfileView.findOrCreate({
+    const [view, created] = await BoardProfileView.findOrCreate({
       where: { viewerParticipantId: user.participantId, viewedParticipantId: post.authorParticipantId },
       defaults: {
         viewerParticipantId: user.participantId,
@@ -156,9 +182,12 @@ async function revealProfile(user, postId) {
       },
       transaction,
     });
+    const viewer = await getParticipantIdentity(user.participantId, transaction);
     return {
       view,
-      profile: serializeProfile(post.authorProfile),
+      created,
+      viewer,
+      profile: serializeRevealedProfile(post.authorProfile, post),
       post: serializePost(post, user.participantId, { includeContent: true }),
     };
   });

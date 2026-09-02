@@ -1017,6 +1017,7 @@ body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  color: #fff;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }

@@ -468,8 +468,10 @@ function bindSocket() {
     if (state.board.currentPost?.id === id) showBoardList();
     if ($('modal-board').classList.contains('active') && !$('board-list-view').hidden) renderBoardList();
   });
-  socket.on('board:profile-viewed', async () => {
+  socket.on('board:profile-viewed', async (view = {}) => {
     if (!$('board-views-view').hidden) await showBoardViews();
+    const tableLabel = view.viewer?.tableNumber ? `TABLE ${view.viewer.tableNumber}` : 'TABLE -';
+    showToast(`${view.viewer?.nickname || '참가자'} · ${tableLabel}님이 내 정보를 열람했습니다.`);
   });
   socket.on('table:like-changed', async (result) => {
     try {
@@ -1241,12 +1243,9 @@ function genderLabel(gender) {
 
 function formatBoardDate(value) {
   if (!value) return '-';
-  return new Date(value).toLocaleString('ko-KR', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  const date = new Date(value);
+  const pad = (number) => String(number).padStart(2, '0');
+  return `${pad(date.getMonth() + 1)}/${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function renderBoardList() {
@@ -1264,9 +1263,8 @@ function renderBoardList() {
     info.className = 'history-info';
     const genderClass = post.author?.gender === 'FEMALE' ? 'female' : post.author?.gender === 'MALE' ? 'male' : '';
     const title = text('div', `history-seat-name board-title ${genderClass}`.trim(), post.title);
-    const tableLabel = post.author?.tableNumber ? `TABLE ${post.author.tableNumber}` : 'TABLE -';
     info.appendChild(title);
-    info.appendChild(text('div', 'history-preview', `${tableLabel} · ${post.author?.nickname || '참가자'} · ${formatBoardDate(post.createdAt)}`));
+    info.appendChild(text('div', 'history-preview', formatBoardDate(post.createdAt)));
     item.appendChild(info);
     item.addEventListener('click', () => showBoardDetail(post.id).catch((error) => showToast(error.message)));
     list.appendChild(item);
@@ -1310,7 +1308,8 @@ function renderRevealedProfile(profile) {
     return;
   }
   box.hidden = false;
-  box.appendChild(text('div', 'board-profile-line', `성별: ${genderLabel(profile.gender)}`));
+  const tableLabel = profile.tableNumber ? `TABLE ${profile.tableNumber}` : 'TABLE -';
+  box.appendChild(text('div', 'board-profile-line', `${profile.nickname || '참가자'} · ${tableLabel}`));
   const link = document.createElement('a');
   link.className = 'board-profile-link';
   link.href = `https://www.instagram.com/${profile.instagramId}/`;
@@ -1325,8 +1324,7 @@ async function showBoardDetail(postId) {
   state.board.currentPost = post;
   state.board.revealedProfile = null;
   $('board-detail-title').textContent = post.title;
-  const tableLabel = post.author?.tableNumber ? `TABLE ${post.author.tableNumber}` : 'TABLE -';
-  $('board-detail-meta').textContent = `${tableLabel} · ${post.author?.nickname || '참가자'} · ${formatBoardDate(post.createdAt)}`;
+  $('board-detail-meta').textContent = formatBoardDate(post.createdAt);
   $('board-detail-content').textContent = post.content;
   $('board-reveal-btn').hidden = !!post.isMine;
   $('board-delete-btn').hidden = !post.isMine;

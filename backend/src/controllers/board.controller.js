@@ -55,14 +55,17 @@ async function remove(req, res, next) {
 async function revealProfile(req, res, next) {
   try {
     const result = await boardService.revealProfile(req.user, req.params.id);
-    req.app.get('io')?.to(`participant:${result.view.viewedParticipantId}`).emit('board:profile-viewed', {
-      id: result.view.id,
-      viewerParticipantId: result.view.viewerParticipantId,
-      viewedParticipantId: result.view.viewedParticipantId,
-      sourcePostId: result.view.sourcePostId,
-      sourcePostTitle: result.view.sourcePostTitle,
-      createdAt: result.view.createdAt,
-    });
+    if (result.created) {
+      req.app.get('io')?.to(`participant:${result.view.viewedParticipantId}`).emit('board:profile-viewed', {
+        id: result.view.id,
+        viewerParticipantId: result.view.viewerParticipantId,
+        viewedParticipantId: result.view.viewedParticipantId,
+        sourcePostId: result.view.sourcePostId,
+        sourcePostTitle: result.view.sourcePostTitle,
+        createdAt: result.view.createdAt,
+        viewer: result.viewer,
+      });
+    }
     res.json({ data: { profile: result.profile, post: result.post } });
   } catch (error) {
     next(error);
