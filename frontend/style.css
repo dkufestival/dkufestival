@@ -809,6 +809,15 @@ body {
   font-family: inherit;
 }
 .map-viewport .inline-content-card > [id$="-view"] { padding: 16px 18px; overflow-y: auto; }
+.map-viewport .inline-content-card #notice-list-view,
+.map-viewport .inline-content-card #board-list-view,
+.map-viewport .inline-content-card #board-views-view { height: 100%; min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.35) transparent; }
+.map-viewport .inline-content-card #notice-list-view::-webkit-scrollbar,
+.map-viewport .inline-content-card #board-list-view::-webkit-scrollbar,
+.map-viewport .inline-content-card #board-views-view::-webkit-scrollbar { width: 6px; }
+.map-viewport .inline-content-card #notice-list-view::-webkit-scrollbar-thumb,
+.map-viewport .inline-content-card #board-list-view::-webkit-scrollbar-thumb,
+.map-viewport .inline-content-card #board-views-view::-webkit-scrollbar-thumb { border-radius: 6px; background: rgba(255,255,255,.35); }
 .map-viewport .inline-content-card .history-list { gap: 8px; }
 .map-viewport .inline-content-card .history-item,
 .map-viewport .inline-content-card .history-seat-item {
