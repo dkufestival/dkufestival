@@ -778,6 +778,7 @@ body {
   gap: 6px;
 }
 .pill-btn:active { transform: scale(0.97); }
+.pill-btn.active { background: var(--lime); color: #111; }
 .notice-badge {
   position: absolute;
   top: -7px;

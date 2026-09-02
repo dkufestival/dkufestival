@@ -28,6 +28,7 @@ const state = {
   globalChatLoaded: false,
   globalChatSending: false,
   seatViewMode: 'map',
+  activeMenu: 'map',
   boardPosts: [],
   boardLoaded: false,
   activeBoardPost: null,
@@ -1050,17 +1051,19 @@ function mergeGlobalChatMessages(messages) {
 }
 
 function renderSeatView() {
-  const globalChatOpen = state.seatViewMode === 'globalChat';
+  const globalChatOpen = state.activeMenu === 'chat';
   $('map-view').hidden = globalChatOpen;
   $('global-chat-panel').hidden = !globalChatOpen;
   $('map-viewport').classList.toggle('global-chat-mode', globalChatOpen);
   mapZoom?.setEnabled(!globalChatOpen);
   $('global-chat-btn').textContent = globalChatOpen ? '맵' : '전체채팅';
+  document.querySelectorAll('.bottombar .pill-btn').forEach((node) => node.classList.toggle('active', node.id === `${state.activeMenu === 'chat' ? 'global-chat' : state.activeMenu}-btn`));
   if (globalChatOpen) renderGlobalChat({ forceBottom: true });
 }
 
 async function toggleGlobalChat() {
-  state.seatViewMode = state.seatViewMode === 'map' ? 'globalChat' : 'map';
+  state.activeMenu = state.activeMenu === 'chat' ? 'map' : 'chat';
+  state.seatViewMode = state.activeMenu;
   renderSeatView();
   if (state.seatViewMode !== 'globalChat' || state.globalChatLoaded) return;
   try {
@@ -1815,6 +1818,7 @@ function bindEvents() {
   });
   $('global-chat-btn').addEventListener('click', toggleGlobalChat);
   $('map-btn').addEventListener('click', () => {
+    state.activeMenu = 'map';
     state.seatViewMode = 'map';
     renderSeatView();
   });
@@ -1827,13 +1831,14 @@ function bindEvents() {
     }
   });
   $('notice-btn').addEventListener('click', () => {
+    state.activeMenu = 'notice';
     localStorage.setItem(STORAGE_KEYS.seenNoticeCount, String(state.notices.length));
     renderNotices();
     showNoticeList();
     openModal('modal-notices');
   });
   $('notice-detail-back').addEventListener('click', showNoticeList);
-  $('board-btn').addEventListener('click', () => openBoard().catch((error) => showToast(error.message)));
+  $('board-btn').addEventListener('click', () => { state.activeMenu = 'board'; openBoard().catch((error) => showToast(error.message)); });
   $('board-profile-save-btn').addEventListener('click', () => saveBoardProfile().catch((error) => showToast(error.message)));
   $('board-write-btn').addEventListener('click', showBoardWrite);
   $('board-history-btn').addEventListener('click', () => showBoardViews().catch((error) => showToast(error.message)));
