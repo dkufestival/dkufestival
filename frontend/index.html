@@ -6,7 +6,7 @@
 <title>PIU:M</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="style.css?v=78">
+<link rel="stylesheet" href="style.css?v=83">
 <style>
 #monitor-banner { position:fixed; z-index:100; top:10px; left:50%; transform:translateX(-50%); display:flex; gap:9px; align-items:center; padding:7px 10px; border:1px solid #d7ff38; border-radius:999px; background:rgba(16,17,12,.94); color:#f5f5f0; font-size:11px; white-space:nowrap; }
 #monitor-banner strong { color:#d7ff38; letter-spacing:.06em; } #monitor-connection-status { color:#a8f7b0; } .monitor-mode .topbar { padding-top:54px; } .monitor-mode #staff-call-btn { margin-left:auto; }
@@ -73,7 +73,7 @@
       <div class="stat-divider"></div>
       <div class="stat-block col"><span class="stat-mini-label">남은 시간</span><span id="stat-time" class="stat-mini-num">00:00</span></div>
       <div class="stat-divider"></div>
-      <div class="stat-block col"><span class="stat-mini-label">받은 요청</span><span id="stat-requests" class="stat-mini-num">0개</span></div>
+      <div id="stat-requests-block" class="stat-block col clickable"><span class="stat-mini-label">받은 요청</span><span id="stat-requests" class="stat-mini-num">0개</span></div>
     </div>
     <div class="status-row">
       <div id="accept-toggle-banner" class="push-prompt" hidden>
@@ -192,6 +192,9 @@
     <div class="notice-push-label">새 좋아요</div>
     <div id="like-push-title" class="like-push-title"></div>
   </div>
+  <div id="request-push" class="notice-push">
+    <div class="like-push-title">채팅 요청이 도착하였습니다<br>받은 요청함에서 확인해주세요</div>
+  </div>
 </div>
 
 <div id="modal-leave-confirm" class="modal-backdrop">
@@ -232,20 +235,9 @@
   </div>
 </div>
 
-<div id="modal-incoming" class="modal-backdrop">
-  <div class="modal-card">
-    <button type="button" id="incoming-close" class="modal-close">×</button>
-    <div class="modal-title">채팅 요청이 도착했습니다</div>
-    <div id="incoming-detail" class="modal-detail"></div>
-    <div class="modal-row">
-      <button id="accept-btn" class="btn-half accept">수락</button>
-      <button id="reject-btn" class="btn-half reject">거절</button>
-    </div>
-  </div>
-</div>
-
 <!-- 게시판 콘텐츠는 #board-panel에서 표시합니다. -->
 <!--
+<div id="modal-board" class="modal-backdrop">
   <div class="modal-card">
     <button type="button" class="modal-close" data-modal="modal-board">×</button>
     <div id="board-profile-view" hidden>
@@ -305,6 +297,14 @@
     <button type="button" class="modal-close" data-modal="modal-received-likes">×</button>
     <div class="modal-title">우리 테이블에 좋아요 누른 테이블</div>
     <div id="received-likes-list" class="history-list"></div>
+  </div>
+</div>
+
+<div id="modal-received-requests" class="modal-backdrop">
+  <div class="modal-card">
+    <button type="button" class="modal-close" data-modal="modal-received-requests">×</button>
+    <div class="modal-title">받은 채팅 요청</div>
+    <div id="received-requests-list" class="history-list"></div>
   </div>
 </div>
 
@@ -379,6 +379,6 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-<script type="module" src="js/app.js?v=63"></script>
+<script type="module" src="js/app.js?v=72"></script>
 </body>
 </html>

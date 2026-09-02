@@ -62,10 +62,9 @@ async function expirePendingRooms(options = {}) {
   return rooms;
 }
 
-async function assertSessionAvailable(sessionId, transaction, excludeRoomId = null) {
+async function assertRequesterAvailable(sessionId, transaction) {
   const active = await ChatRoom.findOne({
     where: {
-      ...(excludeRoomId ? { id: { [Op.ne]: excludeRoomId } } : {}),
       status: { [Op.in]: BUSY_STATUSES },
       [Op.or]: [{ requesterSessionId: sessionId }, { targetSessionId: sessionId }],
     },
@@ -73,6 +72,35 @@ async function assertSessionAvailable(sessionId, transaction, excludeRoomId = nu
     lock: transaction.LOCK.UPDATE,
   });
   if (active) throw new AppError(409, 'SESSION_CHAT_BUSY', '이미 다른 테이블과 채팅 요청 중이거나 채팅 중입니다.');
+}
+
+async function assertNotActiveElsewhere(sessionId, transaction, excludeRoomId = null) {
+  const active = await ChatRoom.findOne({
+    where: {
+      ...(excludeRoomId ? { id: { [Op.ne]: excludeRoomId } } : {}),
+      status: 'ACTIVE',
+      [Op.or]: [{ requesterSessionId: sessionId }, { targetSessionId: sessionId }],
+    },
+    transaction,
+    lock: transaction.LOCK.UPDATE,
+  });
+  if (active) throw new AppError(409, 'SESSION_CHAT_BUSY', '이미 다른 테이블과 채팅 중입니다.');
+}
+
+async function autoRejectOtherPending(sessionId, keepRoomId, transaction) {
+  const rooms = await ChatRoom.findAll({
+    where: {
+      id: { [Op.ne]: keepRoomId },
+      status: 'PENDING',
+      [Op.or]: [{ requesterSessionId: sessionId }, { targetSessionId: sessionId }],
+    },
+    transaction,
+    lock: transaction.LOCK.UPDATE,
+  });
+  for (const room of rooms) {
+    await room.update({ status: 'REJECTED', rejectedAt: now() }, { transaction });
+  }
+  return rooms;
 }
 
 async function assertRequestNotBlocked(blockerSessionId, blockedSessionId, transaction) {
@@ -102,8 +130,8 @@ async function createRequest(user, data) {
       throw new AppError(409, 'REQUESTS_DISABLED', '합석 요청이 꺼져있어 합석이 불가능합니다.');
     }
     await assertRequestNotBlocked(targetSessionId, requesterSessionId, transaction);
-    await assertSessionAvailable(requesterSessionId, transaction);
-    await assertSessionAvailable(targetSessionId, transaction);
+    await assertRequesterAvailable(requesterSessionId, transaction);
+    await assertNotActiveElsewhere(targetSessionId, transaction);
 
     const [sessionAId, sessionBId] = sessionPair(requesterSessionId, targetSessionId);
     const room = await ChatRoom.create({
@@ -239,10 +267,12 @@ async function acceptRequest(roomId, user) {
   return sequelize.transaction(async (transaction) => {
     await expirePendingRooms({ transaction });
     const room = await getRequestForChange(roomId, user.sessionId, user.participantId, 'accept', transaction);
-    await assertSessionAvailable(room.requesterSessionId, transaction, room.id);
-    await assertSessionAvailable(room.targetSessionId, transaction, room.id);
+    await assertNotActiveElsewhere(room.requesterSessionId, transaction, room.id);
+    await assertNotActiveElsewhere(room.targetSessionId, transaction, room.id);
     await room.update({ status: 'ACTIVE', acceptedAt: now() }, { transaction });
-    return room;
+    const rejectedAtTarget = await autoRejectOtherPending(room.targetSessionId, room.id, transaction);
+    const rejectedAtRequester = await autoRejectOtherPending(room.requesterSessionId, room.id, transaction);
+    return { room, autoRejected: [...rejectedAtTarget, ...rejectedAtRequester] };
   });
 }
 

@@ -42,7 +42,6 @@ const state = {
   timer: null,
   pendingTargetTable: null,
   timeMatch: { phase: 'ready', startedAt: 0, elapsedMs: 0, frame: null },
-  receivedRequestCount: 0,
   gameAnswer: null,
   gameAnswerKey: null,
   submittedGameAnswers: new Map(),
@@ -61,6 +60,7 @@ const state = {
   basketballLeaderboard: [],
   givenLikes: new Set(),
   receivedLikes: [],
+  receivedRequestsLog: [],
   staffCallPending: false,
   board: { profile: null, posts: [], currentPost: null, revealedProfile: null, views: [] },
 };
@@ -590,29 +590,43 @@ function bindSocket() {
   });
   socket.on('chat:request-received', (room) => {
     state.chatRoom = room;
-    if (room.direction === 'received') state.receivedRequestCount += 1;
+    if (room.direction === 'received') {
+      state.receivedRequestsLog.unshift({
+        roomId: room.roomId,
+        tableNumber: room.peerTableNumber,
+        maleCount: room.peerMaleCount,
+        femaleCount: room.peerFemaleCount,
+        createdAt: new Date().toISOString(),
+      });
+    }
     renderChatRequest();
+    refreshReceivedRequestsIfOpen();
   });
   socket.on('chat:request-cancelled', (room) => {
     if (state.chatRoom?.roomId === room.roomId) state.chatRoom = null;
-    closeModal('modal-incoming');
+    removeReceivedRequest(room.roomId);
     renderStats();
+    refreshReceivedRequestsIfOpen();
     showToast('상대방이 채팅 요청을 취소했습니다.');
   });
   socket.on('chat:request-rejected', (room) => {
     if (state.chatRoom?.roomId === room.roomId) state.chatRoom = null;
+    removeReceivedRequest(room.roomId);
     renderStats();
+    refreshReceivedRequestsIfOpen();
     showToast('채팅 요청이 거절되었습니다.');
   });
   socket.on('chat:request-expired', (room) => {
     if (state.chatRoom?.roomId === room.roomId) state.chatRoom = null;
-    closeModal('modal-incoming');
+    removeReceivedRequest(room.roomId);
     renderStats();
+    refreshReceivedRequestsIfOpen();
     showToast('채팅 요청 시간이 만료되었습니다.');
   });
   socket.on('chat:started', async (room) => {
     state.chatRoom = room;
-    closeModal('modal-incoming');
+    removeReceivedRequest(room.roomId);
+    closeModal('modal-received-requests');
     await loadMessages(room.roomId);
     showToast('채팅 요청이 수락되었습니다!');
     openChat(room.roomId);
@@ -846,7 +860,7 @@ function renderStats() {
   const left = state.session?.expiresAt ? formatRemaining(state.session.expiresAt) : '00:00';
   $('stat-time').textContent = left;
   $('table-tag-time').textContent = `${left} 남음`;
-  $('stat-requests').textContent = `${state.receivedRequestCount}개`;
+  $('stat-requests').textContent = `${state.receivedRequestsLog.length}개`;
   renderAcceptToggle();
   updateStaffCallButton();
 }
@@ -907,6 +921,47 @@ function renderReceivedLikes() {
   });
 }
 
+function removeReceivedRequest(roomId) {
+  const index = state.receivedRequestsLog.findIndex((item) => item.roomId === roomId);
+  if (index !== -1) state.receivedRequestsLog.splice(index, 1);
+}
+
+function refreshReceivedRequestsIfOpen() {
+  if ($('modal-received-requests').classList.contains('active')) renderReceivedRequests();
+}
+
+function renderReceivedRequests() {
+  const list = $('received-requests-list');
+  clear(list);
+  if (!state.receivedRequestsLog.length) {
+    list.appendChild(text('div', 'history-empty', '받은 채팅 요청이 없습니다.'));
+    return;
+  }
+  state.receivedRequestsLog.forEach((entry) => {
+    const card = document.createElement('div');
+    card.className = 'request-card';
+    card.appendChild(text('div', 'request-card-icon', '💬'));
+
+    const body = document.createElement('div');
+    body.className = 'request-card-body';
+    const top = document.createElement('div');
+    top.className = 'request-card-top';
+    top.appendChild(text('div', 'request-card-title', `TABLE ${entry.tableNumber} 채팅 요청`));
+    top.appendChild(text('div', 'request-card-time', '지금'));
+    body.appendChild(top);
+    body.appendChild(text('div', 'request-card-sub', formatComposition({ maleCount: entry.maleCount, femaleCount: entry.femaleCount })));
+
+    const actions = document.createElement('div');
+    actions.className = 'request-card-actions';
+    actions.appendChild(button('request-action reject', '거절', () => rejectReceivedRequest(entry.roomId)));
+    actions.appendChild(button('request-action accept', '수락', () => acceptReceivedRequest(entry.roomId)));
+    body.appendChild(actions);
+
+    card.appendChild(body);
+    list.appendChild(card);
+  });
+}
+
 function updateSendLikeButton(table) {
   const sessionId = Number(table?.activeSession?.id);
   const liked = state.givenLikes.has(sessionId);
@@ -955,6 +1010,33 @@ function formatComposition(session) {
   return parts.join(' · ') || '-';
 }
 
+const LIKE_HEAT_BASE_OPACITY = 0.12;
+const LIKE_HEAT_STEP_PER_LIKE = 0.05;
+const LIKE_HEAT_MAX_SPREAD = 0.25;
+const LIKE_HEAT_CATEGORY_RGB = {
+  male: '102, 178, 255',
+  female: '255, 121, 164',
+  mixed: '159, 216, 63',
+};
+
+function tableGenderCategory(session) {
+  const hasMale = (session?.maleCount || 0) > 0;
+  const hasFemale = (session?.femaleCount || 0) > 0;
+  return hasMale && hasFemale ? 'mixed' : hasFemale ? 'female' : hasMale ? 'male' : null;
+}
+
+function computeLikeHeatMaxByCategory(tables) {
+  const max = { male: 0, female: 0, mixed: 0 };
+  tables.forEach((table) => {
+    const session = table.activeSession;
+    const category = session && tableGenderCategory(session);
+    if (!category) return;
+    const count = session.receivedLikeCount || 0;
+    if (count > max[category]) max[category] = count;
+  });
+  return max;
+}
+
 function renderTables() {
   const canvas = $('map-canvas');
   clear(canvas);
@@ -965,18 +1047,28 @@ function renderTables() {
   stage.appendChild(text('div', 'map-stage-label', '무대'));
   canvas.appendChild(stage);
 
+  const likeHeatMax = computeLikeHeatMaxByCategory(state.tables);
+
   state.tables.forEach((table) => {
     const session = table.activeSession;
     const isMine = table.id === state.table?.id;
     const requestsOff = !isMine && !!session && session.acceptingRequests === false;
     let genderClass = '';
+    let category = null;
     if (session && !isMine) {
-      const hasMale = (session.maleCount || 0) > 0;
-      const hasFemale = (session.femaleCount || 0) > 0;
-      genderClass = hasMale && hasFemale ? ' mixed' : hasFemale ? ' female' : hasMale ? ' male' : '';
+      category = tableGenderCategory(session);
+      genderClass = category ? ` ${category}` : '';
     }
     const cell = document.createElement('div');
     cell.className = `table-cell ${isMine ? 'mine' : session ? `taken${genderClass}` : 'available'}${requestsOff ? ' requests-off' : ''}`;
+    if (category && !requestsOff) {
+      const maxForCategory = likeHeatMax[category] || 0;
+      const likeCount = session.receivedLikeCount || 0;
+      const t = maxForCategory > 0 ? Math.min(1, likeCount / maxForCategory) : 0;
+      const spread = Math.min(LIKE_HEAT_MAX_SPREAD, maxForCategory * LIKE_HEAT_STEP_PER_LIKE);
+      const opacity = LIKE_HEAT_BASE_OPACITY + spread * t;
+      cell.style.background = `rgba(${LIKE_HEAT_CATEGORY_RGB[category]}, ${opacity.toFixed(3)})`;
+    }
     cell.appendChild(text('span', 'table-cell-number', String(table.tableNumber).padStart(2, '0')));
     if (session) cell.appendChild(text('div', 'table-cell-count', formatComposition(session)));
     if (session?.inChat) cell.appendChild(text('div', 'table-cell-chatting', '채팅중'));
@@ -1024,37 +1116,43 @@ function initTableMap() {
   $('map-zoom-reset').addEventListener('click', () => mapZoom.reset());
 }
 
+async function acceptReceivedRequest(roomId) {
+  try {
+    const accepted = await chatApi.accept(roomId);
+    state.chatRoom = accepted;
+    removeReceivedRequest(roomId);
+    closeModal('modal-received-requests');
+    renderStats();
+    await loadMessages(accepted.roomId);
+    openChat(accepted.roomId);
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
+async function rejectReceivedRequest(roomId) {
+  try {
+    await chatApi.reject(roomId);
+    if (state.chatRoom?.roomId === roomId) state.chatRoom = null;
+    removeReceivedRequest(roomId);
+    renderStats();
+    renderReceivedRequests();
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
+function showRequestPopup() {
+  const push = $('request-push');
+  push.classList.add('show');
+  clearTimeout(push._hideTimer);
+  push._hideTimer = setTimeout(() => push.classList.remove('show'), 3500);
+}
+
 function renderChatRequest() {
   const room = state.chatRoom;
   const pending = room?.status === 'PENDING' && room.direction === 'received';
-  if (pending && state.participant?.isHost) {
-    $('incoming-detail').textContent = `TABLE ${room.peerTableNumber} · ${formatComposition({ maleCount: room.peerMaleCount, femaleCount: room.peerFemaleCount })}`;
-    $('accept-btn').onclick = async () => {
-      try {
-        const accepted = await chatApi.accept(room.roomId);
-        state.chatRoom = accepted;
-        closeModal('modal-incoming');
-        await loadMessages(accepted.roomId);
-        openChat(accepted.roomId);
-      } catch (error) {
-        showToast(error.message);
-      }
-    };
-    $('reject-btn').onclick = async () => {
-      try {
-        await chatApi.reject(room.roomId);
-        state.chatRoom = null;
-        closeModal('modal-incoming');
-        renderStats();
-      } catch (error) {
-        showToast(error.message);
-      }
-    };
-    $('incoming-close').onclick = () => closeModal('modal-incoming');
-    openModal('modal-incoming');
-  } else {
-    closeModal('modal-incoming');
-  }
+  if (pending && state.participant?.isHost) showRequestPopup();
   renderStats();
 }
 
@@ -2044,6 +2142,10 @@ function bindEvents() {
   $('global-chat-btn').addEventListener('click', toggleGlobalChat);
   $('map-btn').addEventListener('click', () => setMainContent('map'));
   $('staff-call-btn').addEventListener('click', () => callStaff().catch((error) => showToast(error.message)));
+  $('stat-requests-block').addEventListener('click', () => {
+    renderReceivedRequests();
+    openModal('modal-received-requests');
+  });
   $('global-chat-send-btn').addEventListener('click', sendGlobalChatMessage);
   $('global-chat-input').addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && !event.isComposing) {

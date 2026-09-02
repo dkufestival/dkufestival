@@ -1,7 +1,7 @@
 // 테이블 비즈니스 로직
-const { Op } = require('sequelize');
+const { Op, fn, col } = require('sequelize');
 const sequelize = require('../config/db');
-const { Table, TableSession, Participant, ChatRoom } = require('../models');
+const { Table, TableSession, Participant, ChatRoom, TableLike } = require('../models');
 const AppError = require('../errors/AppError');
 const { defaultExpiresAt } = require('./session.service');
 const lifecycleService = require('./lifecycle.service');
@@ -28,12 +28,26 @@ async function getTables(options = {}) {
     chattingSessionIds.add(Number(room.targetSessionId));
   });
 
+  const activeSessionIds = tables.map((table) => table.sessions?.[0]?.id).filter(Boolean);
+  const likeCounts = activeSessionIds.length
+    ? await TableLike.findAll({
+      where: { toSessionId: { [Op.in]: activeSessionIds } },
+      attributes: ['toSessionId', [fn('COUNT', col('id')), 'count']],
+      group: ['toSessionId'],
+      raw: true,
+    })
+    : [];
+  const likeCountBySessionId = new Map(likeCounts.map((row) => [Number(row.toSessionId), Number(row.count)]));
+
   return tables.map((table) => {
     const json = table.toJSON();
     const activeSession = json.sessions?.[0] || null;
     delete json.sessions;
     if (!options.includeQrToken) delete json.qrToken;
-    if (activeSession) activeSession.inChat = chattingSessionIds.has(Number(activeSession.id));
+    if (activeSession) {
+      activeSession.inChat = chattingSessionIds.has(Number(activeSession.id));
+      activeSession.receivedLikeCount = likeCountBySessionId.get(Number(activeSession.id)) || 0;
+    }
     return { ...json, activeSession };
   });
 }
