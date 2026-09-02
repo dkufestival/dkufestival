@@ -7,7 +7,6 @@ const BasketballScore = sequelize.define(
     participantId: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      unique: true,
     },
     tableSessionId: {
       type: DataTypes.INTEGER,
@@ -27,7 +26,7 @@ const BasketballScore = sequelize.define(
   {
     tableName: 'basketball_scores',
     indexes: [
-      { unique: true, fields: ['participantId'] },
+      { unique: true, fields: ['participantId', 'tableSessionId'] },
       { fields: ['bestScore', 'achievedAt'] },
       { fields: ['tableSessionId'] },
     ],

@@ -19,7 +19,7 @@ async function submitBestScore({ participantId, tableSessionId, score: rawScore 
 
   const achievedAt = new Date();
   const [record, created] = await BasketballScore.findOrCreate({
-    where: { participantId: Number(participantId) },
+    where: { participantId: Number(participantId), tableSessionId: Number(tableSessionId) },
     defaults: {
       tableSessionId: Number(tableSessionId),
       bestScore: score,
@@ -35,21 +35,22 @@ async function submitBestScore({ participantId, tableSessionId, score: rawScore 
   }, {
     where: {
       participantId: Number(participantId),
+      tableSessionId: Number(tableSessionId),
       bestScore: { [Op.lt]: score },
     },
   });
 
   if (!updatedCount) {
-    const latest = await BasketballScore.findOne({ where: { participantId: Number(participantId) } });
+    const latest = await BasketballScore.findOne({ where: { participantId: Number(participantId), tableSessionId: Number(tableSessionId) } });
     return { improved: false, personalBest: Number(latest.bestScore), record: latest };
   }
-  const updated = await BasketballScore.findOne({ where: { participantId: Number(participantId) } });
+  const updated = await BasketballScore.findOne({ where: { participantId: Number(participantId), tableSessionId: Number(tableSessionId) } });
   return { improved: true, personalBest: Number(updated.bestScore), record: updated };
 }
 
-async function getPersonalBest(participantId) {
-  if (!participantId) return 0;
-  const record = await BasketballScore.findOne({ where: { participantId: Number(participantId) } });
+async function getPersonalBest(participantId, tableSessionId) {
+  if (!participantId || !tableSessionId) return 0;
+  const record = await BasketballScore.findOne({ where: { participantId: Number(participantId), tableSessionId: Number(tableSessionId) } });
   return Number(record?.bestScore || 0);
 }
 
@@ -78,10 +79,10 @@ async function getLeaderboard() {
   }));
 }
 
-async function getState(participantId) {
+async function getState(participantId, tableSessionId) {
   return {
     freePlay: true,
-    personalBest: await getPersonalBest(participantId),
+    personalBest: await getPersonalBest(participantId, tableSessionId),
   };
 }
 

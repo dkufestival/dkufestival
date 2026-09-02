@@ -10,7 +10,7 @@ async function leaderboard(req, res, next) {
 
 async function state(req, res, next) {
   try {
-    res.json({ data: await basketballScoreService.getState(req.user.participantId) });
+    res.json({ data: await basketballScoreService.getState(req.user.participantId, req.user.sessionId) });
   } catch (error) {
     next(error);
   }

@@ -20,6 +20,8 @@ test('basketball is an always-available single-server game with a persistent top
   assert.match(scoreService, /limit: 3/);
   assert.match(scoreService, /bestScore.*DESC/);
   assert.match(scoreService, /freePlay: true/);
+  assert.match(scoreService, /participantId: Number\(participantId\), tableSessionId: Number\(tableSessionId\)/);
+  assert.match(scoreService, /getPersonalBest\(participantId, tableSessionId\)/);
   assert.doesNotMatch(scoreService, /requireActiveBasketballGame/);
   assert.match(app, /app\.use\('\/api\/basketball'/);
   assert.match(app, /express\.static/);
