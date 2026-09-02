@@ -186,8 +186,9 @@ function showInlineContent(modalId) {
   host.querySelectorAll('.inline-content-card').forEach((node) => {
     const owner = node.dataset.inlineOwner;
     const parent = $(owner);
-    if (parent) parent.appendChild(node);
+    if (parent) { parent.appendChild(node); node.classList.remove('inline-content-card'); delete node.dataset.inlineOwner; }
   });
+  document.querySelectorAll('.modal-backdrop').forEach((node) => node.classList.remove('active'));
   card.dataset.inlineOwner = modalId;
   card.querySelectorAll('.modal-close').forEach((button) => {
     button.onclick = () => { restoreInlineContent(); state.activeMenu = 'map'; renderSeatView(); };
@@ -1261,12 +1262,10 @@ async function openBoard() {
   state.board.profile = await boardApi.profile();
   if (!state.board.profile) {
     showBoardView('board-profile-view');
-    openModal('modal-board');
     return;
   }
   await loadBoardPosts();
   showBoardList();
-  openModal('modal-board');
 }
 
 async function loadBoardPosts() {
@@ -1885,10 +1884,6 @@ function bindEvents() {
   $('board-reveal-cancel-btn').addEventListener('click', () => showBoardView('board-detail-view'));
   $('board-reveal-confirm-btn').addEventListener('click', () => revealBoardProfile().catch((error) => showToast(error.message)));
   $('board-delete-btn').addEventListener('click', () => deleteBoardPost().catch((error) => showToast(error.message)));
-  $('game-btn').addEventListener('click', () => {
-    renderGame();
-    openModal('modal-game');
-  });
   $('game-screen-action').addEventListener('click', () => {
     if (!state.activeGame) return;
     if (state.activeGame.type === 'TIME_MATCH') {
