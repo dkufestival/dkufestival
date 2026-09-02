@@ -137,8 +137,13 @@ async function resetAllData(req, res, next) {
   try {
     await GlobalChatMessage.destroy({ where: {}, transaction });
     await GameSession.destroy({ where: {}, transaction });
-    await BasketballScore.destroy({ where: {}, transaction });
-    await TableSession.update({ score: 0 }, { where: {}, transaction });
+    // 구버전 DB에서 선택 기능 테이블/컬럼이 아직 없더라도 전체 리셋은 계속 수행한다.
+    try { await BasketballScore.destroy({ where: {}, transaction }); } catch (error) {
+      if (!['ER_NO_SUCH_TABLE', 'ER_BAD_FIELD_ERROR'].includes(error.original?.code)) throw error;
+    }
+    try { await TableSession.update({ score: 0 }, { where: {}, transaction }); } catch (error) {
+      if (error.original?.code !== 'ER_BAD_FIELD_ERROR') throw error;
+    }
     await transaction.commit();
     req.app.get('io')?.to('participants').to('admins').emit('admin:data-reset');
     res.json({ data: { ok: true } });
