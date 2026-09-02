@@ -83,13 +83,13 @@ async function withPatched(target, key, replacement, run) {
   }
 }
 
-test('public table update is emitted to participants and admins once', () => {
+test('public table update is emitted to participants, monitors and admins once', () => {
   const { io, calls } = createIo();
 
   emitPublicTableUpdate(io, { tableIds: [2, '2', null, 3], reason: 'test' });
 
   assert.equal(calls.length, 1);
-  assert.deepEqual(calls[0].rooms, ['participants', 'admins']);
+  assert.deepEqual(calls[0].rooms, ['participants', 'monitors', 'admins']);
   assert.equal(calls[0].event, 'table:updated');
   assert.deepEqual(calls[0].payload, { tableIds: [2, 3], reason: 'test' });
 });
@@ -108,7 +108,7 @@ test('QR entry emits participant join to the session and public table update to 
 
   assert.deepEqual(calls.map((call) => call.event), ['participant:joined', 'table:updated']);
   assert.deepEqual(calls[0].rooms, ['session:70']);
-  assert.deepEqual(calls[1].rooms, ['participants', 'admins']);
+  assert.deepEqual(calls[1].rooms, ['participants', 'monitors', 'admins']);
   assert.deepEqual(calls[1].payload, { tableIds: [7], reason: 'entry:joined' });
 });
 
@@ -121,7 +121,7 @@ test('admin extend keeps table:extended on the target session and emits public r
   assert.equal(calls.length, 2);
   assert.deepEqual(calls[0].rooms, ['session:11']);
   assert.equal(calls[0].event, 'table:extended');
-  assert.deepEqual(calls[1].rooms, ['participants', 'admins']);
+  assert.deepEqual(calls[1].rooms, ['participants', 'monitors', 'admins']);
   assert.equal(calls[1].event, 'table:updated');
 });
 
@@ -145,7 +145,7 @@ test('lifecycle checkout emits table:checked-out only to ended session and publi
   const publicUpdate = calls.find((call) => call.event === 'table:updated');
 
   assert.deepEqual(checkout.rooms, ['session:21']);
-  assert.deepEqual(publicUpdate.rooms, ['participants', 'admins']);
+  assert.deepEqual(publicUpdate.rooms, ['participants', 'monitors', 'admins']);
   assert.deepEqual(publicUpdate.payload.tableIds, [2, 3]);
 });
 

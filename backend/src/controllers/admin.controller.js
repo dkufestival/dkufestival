@@ -213,7 +213,7 @@ async function disableQr(req, res, next) {
 async function clearGlobalChat(req, res, next) {
   try {
     const deleted = await globalChatService.clearMessages();
-    req.app.get('io')?.to('participants').to('admins').emit('globalChat:cleared');
+    req.app.get('io')?.to('participants').to('monitors').to('admins').emit('globalChat:cleared');
     res.json({ data: { deleted } });
   } catch (error) { next(error); }
 }

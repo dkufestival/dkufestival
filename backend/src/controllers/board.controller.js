@@ -27,7 +27,7 @@ async function saveProfile(req, res, next) {
 async function create(req, res, next) {
   try {
     const post = await boardService.createPost(req.user.sessionId, req.user.participantId, req.body);
-    req.app.get('io')?.to('participants').to('admins').emit('board:created', post);
+    req.app.get('io')?.to('participants').to('monitors').to('admins').emit('board:created', post);
     res.status(201).json({ data: post });
   } catch (error) {
     next(error);
@@ -45,7 +45,7 @@ async function get(req, res, next) {
 async function remove(req, res, next) {
   try {
     const post = await boardService.deletePost(req.params.id, req.user);
-    req.app.get('io')?.to('participants').to('admins').emit('board:deleted', { id: post.id });
+    req.app.get('io')?.to('participants').to('monitors').to('admins').emit('board:deleted', { id: post.id });
     res.json({ data: { id: post.id } });
   } catch (error) {
     next(error);

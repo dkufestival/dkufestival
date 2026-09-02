@@ -13,7 +13,7 @@ async function send(req, res, next) {
     const message = req.user.role === 'ADMIN'
       ? await globalChatService.sendAsAdmin(req.body.content)
       : await globalChatService.sendAsParticipant(req.user.sessionId, req.user.participantId, req.body.content);
-    req.app.get('io')?.to('participants').to('admins').emit('globalChat:message', message);
+    req.app.get('io')?.to('participants').to('monitors').to('admins').emit('globalChat:message', message);
     res.status(201).json({ data: message });
   } catch (error) {
     next(error);

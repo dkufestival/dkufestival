@@ -53,7 +53,7 @@ test('global chat trusts authenticated socket identity and broadcasts only to ev
     assert.deepEqual(calls, [[3, 7, '안녕하세요']]);
     assert.equal(response.ok, true);
     assert.deepEqual(broadcasts, [{
-      rooms: ['participants', 'admins'],
+      rooms: ['participants', 'monitors', 'admins'],
       event: 'globalChat:message',
       message: { id: 1, content: '안녕하세요' },
     }]);

@@ -17,7 +17,7 @@ function roomTableIds(room) {
 
 function emitPublicTableUpdate(io, { tableIds = [], reason = 'table:updated' } = {}) {
   if (!io) return;
-  io.to('participants').to('admins').emit('table:updated', {
+  io.to('participants').to('monitors').to('admins').emit('table:updated', {
     tableIds: uniqueIds(tableIds),
     reason,
   });

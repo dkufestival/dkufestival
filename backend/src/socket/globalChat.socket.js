@@ -7,6 +7,7 @@ function reply(callback, response) {
 function registerGlobalChatSocket(io, socket) {
   socket.on('globalChat:send', async (payload = {}, callback) => {
     try {
+      if (!['PARTICIPANT', 'ADMIN'].includes(socket.data.user.role)) throw new Error('FORBIDDEN');
       const message = socket.data.user.role === 'ADMIN'
         ? await globalChatService.sendAsAdmin(payload.content)
         : await globalChatService.sendAsParticipant(
@@ -14,7 +15,7 @@ function registerGlobalChatSocket(io, socket) {
           socket.data.participantId,
           payload.content
         );
-      io.to('participants').to('admins').emit('globalChat:message', message);
+      io.to('participants').to('monitors').to('admins').emit('globalChat:message', message);
       reply(callback, { ok: true, data: message });
     } catch (error) {
       reply(callback, {

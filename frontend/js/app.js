@@ -386,8 +386,9 @@ function enableMonitorUi() {
   document.body.classList.add('monitor-mode');
   const banner = document.createElement('div');
   banner.id = 'monitor-banner';
-  banner.innerHTML = '<strong>MONITOR MODE</strong><span id="monitor-connection-status">연결 중</span><span>마지막 이벤트 <time id="monitor-last-event">-</time></span>';
   document.querySelector('.phone')?.prepend(banner);
+  banner.innerHTML = '<strong>MONITOR MODE</strong><span id="monitor-connection-status">연결 중</span><span id="monitor-current-game">현재 전체게임: -</span><span>마지막 이벤트 <time id="monitor-last-event">-</time></span>';
+  document.querySelector('.stats-bar').hidden = true;
   ['map-viewport', 'member-chips', 'accept-toggle-banner', 'global-chat-btn', 'board-btn'].forEach((id) => { const node = $(id); if (node) node.hidden = true; });
   $('staff-call-text').textContent = '직원호출 테스트';
 }
@@ -398,11 +399,14 @@ async function initMonitor() {
     saveMonitorAuth(data.token);
     state.isMonitor = true;
     enableMonitorUi();
+    ['map-viewport', 'global-chat-btn', 'board-btn'].forEach((id) => { const node = $(id); if (node) node.hidden = false; });
+    ['global-chat-input', 'global-chat-send-btn', 'board-write-btn', 'board-history-btn'].forEach((id) => { const node = $(id); if (node) node.disabled = true; });
     showScreen('screen-seats');
+    initTableMap();
     bindSocket();
-    await Promise.allSettled([refreshNotices(), refreshBasketballLeaderboard()]);
-    renderNotices();
-    renderGame();
+    await syncMonitorState({ render: false });
+    state.initialSyncDone = true;
+    renderAll();
   } catch {
     $('join-btn').disabled = true;
     $('team-setup-fields').hidden = true;
@@ -483,6 +487,33 @@ async function syncParticipantState(options = {}) {
   return state.syncPromise;
 }
 
+function renderMonitorGameStatus() {
+  const node = $('monitor-current-game');
+  if (!node) return;
+  const game = state.activeGame;
+  node.textContent = game ? `현재 전체게임: ${gameNames[game.type] || game.type} · ${game.state?.lifecyclePhase || game.status || '-'}` : '현재 전체게임: 없음';
+}
+
+async function refreshGlobalChat() {
+  const messages = await globalChatApi.list(state.isMonitor ? 'MONITOR' : 'PARTICIPANT');
+  mergeGlobalChatMessages(messages);
+  state.globalChatLoaded = true;
+}
+
+async function syncMonitorState(options = {}) {
+  if (state.syncPromise) return state.syncPromise;
+  state.syncPromise = Promise.allSettled([
+    refreshTables(),
+    refreshNotices(),
+    refreshBasketballLeaderboard(),
+    refreshGlobalChat(),
+    loadBoardPosts(),
+  ]).then(() => {
+    if (options.render !== false) renderAll();
+  }).finally(() => { state.syncPromise = null; });
+  return state.syncPromise;
+}
+
 function scheduleTableRefresh() {
   state.tableRefreshPending = true;
   if (state.tableRefreshTimer || state.tableRefreshPromise) return;
@@ -513,7 +544,7 @@ function bindSocket() {
     $('connection-status').textContent = '실시간 연결됨';
     if (state.chatRoom?.status === 'ACTIVE') joinChatRoom(state.chatRoom.roomId);
     if (state.hasConnectedOnce && state.initialSyncDone) {
-      if (state.isMonitor) Promise.allSettled([refreshNotices(), refreshBasketballLeaderboard()]).then(() => { renderNotices(); renderGame(); });
+      if (state.isMonitor) syncMonitorState().catch(() => {});
       else syncParticipantState().catch(() => {});
     }
     state.hasConnectedOnce = true;
@@ -669,7 +700,7 @@ function bindSocket() {
     state.activeGame = game;
     if (game?.state?.lifecyclePhase === 'ANNOUNCED') showGameAnnouncement(game);
     else if (game?.state?.lifecyclePhase === 'RESULTS') showFinalScores(game);
-    else if (game?.type !== 'TIME_MATCH') requestGameParticipation(game);
+    else if (state.isMonitor || game?.type !== 'TIME_MATCH') requestGameParticipation(game);
     renderGame();
   });
   socket.on('game:global:ended', (game) => {
@@ -788,6 +819,8 @@ function bindSocket() {
 function renderAll() {
   if (state.isMonitor) {
     renderStats();
+    renderTables();
+    renderSeatView();
     renderNotices();
     renderGame();
     return;
@@ -958,7 +991,7 @@ function renderTables() {
         openModal('modal-received-likes');
       });
     }
-    if (!isMine && session) {
+    if (!isMine && session && !state.isMonitor) {
       cell.appendChild(createLikeButton(table));
       cell.appendChild(button('table-cell-btn', '채팅 요청', (event) => {
         event.stopPropagation();
@@ -1249,7 +1282,7 @@ async function toggleGlobalChat() {
   setMainContent('chat');
   if (state.activeMenu !== 'chat' || state.globalChatLoaded) return;
   try {
-    const messages = await globalChatApi.list();
+    const messages = await globalChatApi.list(state.isMonitor ? 'MONITOR' : 'PARTICIPANT');
     mergeGlobalChatMessages(messages);
     state.globalChatLoaded = true;
     if (state.activeMenu === 'chat') renderGlobalChat({ forceBottom: true });
@@ -1407,6 +1440,11 @@ function showBoardView(viewId) {
 }
 
 async function openBoard() {
+  if (state.isMonitor) {
+    await loadBoardPosts();
+    showBoardList();
+    return;
+  }
   state.board.profile = await boardApi.profile();
   if (!state.board.profile) {
     showBoardView('board-profile-view');
@@ -1417,7 +1455,7 @@ async function openBoard() {
 }
 
 async function loadBoardPosts() {
-  state.board.posts = await boardApi.posts();
+  state.board.posts = await boardApi.posts(state.isMonitor ? 'MONITOR' : 'PARTICIPANT');
 }
 
 function genderLabel(gender) {
@@ -1503,14 +1541,14 @@ function renderRevealedProfile(profile) {
 }
 
 async function showBoardDetail(postId) {
-  const post = await boardApi.post(postId);
+  const post = await boardApi.post(postId, state.isMonitor ? 'MONITOR' : 'PARTICIPANT');
   state.board.currentPost = post;
   state.board.revealedProfile = null;
   $('board-detail-title').textContent = post.title;
   $('board-detail-meta').textContent = formatBoardDate(post.createdAt);
   $('board-detail-content').textContent = post.content;
-  $('board-reveal-btn').hidden = !!post.isMine;
-  $('board-delete-btn').hidden = !post.isMine;
+  $('board-reveal-btn').hidden = state.isMonitor || !!post.isMine;
+  $('board-delete-btn').hidden = state.isMonitor || !post.isMine;
   renderRevealedProfile(null);
   showBoardView('board-detail-view');
 }
@@ -1561,6 +1599,7 @@ async function showBoardViews() {
 }
 
 function renderGame() {
+  if (state.isMonitor) renderMonitorGameStatus();
   const box = $('game-panel');
   clear(box);
 

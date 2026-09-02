@@ -7,4 +7,6 @@ real value. Create the monitoring QR with this URL:
 
 The URL first exchanges the token for a short-lived monitor JWT. A monitor is
 not a table or participant and is excluded from operational tables, sessions,
-counts, chat, likes, board activity, staff-call records, and game scoring.
+counts, chat participation, likes, board mutations, staff-call records, and
+game scoring. It can read the participant map, notices, global chat, board,
+game state, and leaderboards.
