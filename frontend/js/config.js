@@ -17,4 +17,5 @@ export const STORAGE_KEYS = {
   participantAuth: 'piumParticipantAuth',
   adminToken: 'piumAdminToken',
   seenNoticeCount: 'piumSeenNoticeCount',
+  onboardingSeen: 'piumOnboardingSeenV1',
 };

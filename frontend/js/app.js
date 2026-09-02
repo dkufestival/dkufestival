@@ -289,6 +289,96 @@ async function afterAuthenticated() {
   renderAll();
   startTimer();
   if (state.chatRoom?.status === 'ACTIVE') openChat(state.chatRoom.roomId);
+  showOnboardingIfNeeded();
+}
+
+const ONBOARDING_SLIDES = [
+  {
+    eyebrow: 'TABLE MAP', title: '테이블을 눌러 대화를 시작해요',
+    body: '지도에서 다른 테이블을 누르면 채팅 요청을 보낼 수 있어요. 원하지 않는 테이블의 요청은 테이블별로 차단할 수도 있어요.',
+    image: 'assets/onboarding/02-chat-request.png', alt: '다른 테이블 채팅 요청 화면', badge: '채팅 요청 · 테이블별 차단'
+  },
+  {
+    eyebrow: 'PRIVATE CHAT', title: '수락하면 둘만의 채팅방이 열려요',
+    body: '상대가 요청을 수락하면 바로 채팅할 수 있고, 언제든 채팅방 나가기로 대화를 종료할 수 있어요.',
+    image: 'assets/onboarding/01-table-map.png', alt: '테이블 채팅 화면 예시', badge: '요청 수락 · 채팅 · 나가기'
+  },
+  {
+    eyebrow: 'LIKE', title: '대화 중인 테이블에는 좋아요를 남겨요',
+    body: '상대가 다른 채팅 중이라 요청할 수 없다면 좋아요로 관심을 표현해 보세요. 내 테이블을 누르면 누가 좋아요를 보냈는지 확인할 수 있어요.',
+    image: 'assets/onboarding/03-likes.png', alt: '받은 좋아요 목록 화면', badge: '간접 관심 표현 · 받은 좋아요 확인'
+  },
+  {
+    eyebrow: 'OPEN CHAT', title: '축제 이야기는 전체채팅에서',
+    body: '하단의 전체채팅을 누르면 행사장 모든 참가자와 실시간으로 대화할 수 있어요. 서로 배려하는 대화를 부탁드려요.',
+    image: 'assets/onboarding/04-global-chat.png', alt: '실제 전체채팅 화면', badge: '모든 테이블과 실시간 대화'
+  },
+  {
+    eyebrow: 'SOLO GAME', title: '기다리는 동안 개인 게임 한 판!',
+    body: '농구게임과 시간 맞추기는 언제든 자유롭게 즐길 수 있어요. 농구 최고 기록은 참가자 순위에도 반영돼요.',
+    image: 'assets/onboarding/05-personal-games.png', alt: '실제 개인 게임 선택 화면', badge: '농구게임 · 시간 맞추기'
+  },
+  {
+    eyebrow: 'GROUP GAME', title: '다 함께 즐기는 단체 게임',
+    body: '핀볼 관전, OX퀴즈, 가위바위보, 제시어 맞히기, 룰렛, 이미지게임이 준비되어 있어요. 게임마다 소정의 상품도 놓치지 마세요.',
+    image: 'assets/onboarding/05-personal-games.png', alt: '실제 게임 메뉴 화면', badge: '6가지 단체 게임 · 상품 증정'
+  },
+  {
+    eyebrow: 'AUTO PLAY', title: '전체 게임은 자동으로 시작돼요',
+    body: '관리자가 전체 게임을 시작하면 채팅 중이어도 게임 화면으로 자동 전환돼요. 게임이 끝나면 시작 전 화면으로 안전하게 돌아옵니다.',
+    image: 'assets/onboarding/01-table-map.png', alt: '전체 게임 자동 전환 안내', badge: '자동 전환 · 이전 화면 복귀'
+  },
+  {
+    eyebrow: 'NOTICE', title: '공지 확인은 꼭 해주세요',
+    body: '게임 시작, 상품 수령, 현장 운영 안내 등 중요한 소식이 공지에 올라와요. 새 공지 배지가 보이면 바로 확인해 주세요.',
+    image: 'assets/onboarding/06-notices.png', alt: '실제 공지 화면', badge: '운영 안내 · 상품 수령 정보'
+  }
+];
+
+let onboardingIndex = 0;
+let onboardingPointerX = null;
+
+function renderOnboarding() {
+  const slide = ONBOARDING_SLIDES[onboardingIndex];
+  $('onboarding-progress').style.width = `${((onboardingIndex + 1) / ONBOARDING_SLIDES.length) * 100}%`;
+  $('onboarding-slide').innerHTML = `
+    <div class="onboarding-image-wrap">
+      <img src="${slide.image}" alt="${slide.alt}" draggable="false">
+      <span class="onboarding-count">${onboardingIndex + 1} / ${ONBOARDING_SLIDES.length}</span>
+    </div>
+    <div class="onboarding-copy">
+      <div class="onboarding-eyebrow">${slide.eyebrow}</div>
+      <h2>${slide.title}</h2>
+      <p>${slide.body}</p>
+      <div class="onboarding-badge">${slide.badge}</div>
+    </div>`;
+  $('onboarding-dots').innerHTML = ONBOARDING_SLIDES.map((_, index) =>
+    `<button type="button" class="onboarding-dot${index === onboardingIndex ? ' active' : ''}" data-onboarding-index="${index}" aria-label="${index + 1}번째 안내"></button>`
+  ).join('');
+  $('onboarding-prev').disabled = onboardingIndex === 0;
+  $('onboarding-next').textContent = onboardingIndex === ONBOARDING_SLIDES.length - 1 ? '시작하기' : '다음';
+}
+
+function openOnboarding() {
+  onboardingIndex = 0;
+  renderOnboarding();
+  openModal('modal-onboarding');
+}
+
+function finishOnboarding() {
+  localStorage.setItem(STORAGE_KEYS.onboardingSeen, '1');
+  closeModal('modal-onboarding');
+}
+
+function showOnboardingIfNeeded() {
+  if (!localStorage.getItem(STORAGE_KEYS.onboardingSeen)) openOnboarding();
+}
+
+function moveOnboarding(delta) {
+  const next = onboardingIndex + delta;
+  if (next >= ONBOARDING_SLIDES.length) return finishOnboarding();
+  onboardingIndex = Math.max(0, next);
+  renderOnboarding();
 }
 
 async function refreshParticipants() {
@@ -1884,6 +1974,23 @@ function bindEvents() {
   $('board-reveal-cancel-btn').addEventListener('click', () => showBoardView('board-detail-view'));
   $('board-reveal-confirm-btn').addEventListener('click', () => revealBoardProfile().catch((error) => showToast(error.message)));
   $('board-delete-btn').addEventListener('click', () => deleteBoardPost().catch((error) => showToast(error.message)));
+  $('guide-btn').addEventListener('click', openOnboarding);
+  $('onboarding-skip').addEventListener('click', finishOnboarding);
+  $('onboarding-prev').addEventListener('click', () => moveOnboarding(-1));
+  $('onboarding-next').addEventListener('click', () => moveOnboarding(1));
+  $('onboarding-dots').addEventListener('click', (event) => {
+    const dot = event.target.closest('[data-onboarding-index]');
+    if (!dot) return;
+    onboardingIndex = Number(dot.dataset.onboardingIndex);
+    renderOnboarding();
+  });
+  $('onboarding-slide').addEventListener('pointerdown', (event) => { onboardingPointerX = event.clientX; });
+  $('onboarding-slide').addEventListener('pointerup', (event) => {
+    if (onboardingPointerX === null) return;
+    const distance = event.clientX - onboardingPointerX;
+    onboardingPointerX = null;
+    if (Math.abs(distance) > 45) moveOnboarding(distance < 0 ? 1 : -1);
+  });
   $('game-screen-action').addEventListener('click', () => {
     if (!state.activeGame) return;
     if (state.activeGame.type === 'TIME_MATCH') {
