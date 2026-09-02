@@ -1144,6 +1144,22 @@ body {
   flex-direction: column;
   gap: 4px;
 }
+#modal-received-likes .modal-card {
+  height: 60vh;
+  height: 60dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#received-likes-list {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+#received-likes-list::-webkit-scrollbar { display: none; }
 .history-empty {
   padding: 20px 0;
   text-align: center;

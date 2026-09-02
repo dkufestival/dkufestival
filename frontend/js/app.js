@@ -670,6 +670,12 @@ function renderReceivedLikes() {
     info.className = 'history-info';
     info.appendChild(text('div', 'history-seat-name', `TABLE ${like.fromTableNumber}`));
     item.appendChild(info);
+    item.addEventListener('click', () => {
+      const table = state.tables.find((entry) => entry.tableNumber === like.fromTableNumber);
+      if (!table?.activeSession) return showToast('사용 중인 테이블에만 요청할 수 있습니다.');
+      closeModal('modal-received-likes');
+      openJoinModal(table);
+    });
     list.appendChild(item);
   });
 }
