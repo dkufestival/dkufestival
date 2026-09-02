@@ -1192,10 +1192,18 @@ function renderSeatView() {
   if (globalChatOpen) renderGlobalChat({ forceBottom: true });
 }
 
+function renderBottomMenuState() {
+  document.querySelectorAll('.bottombar .pill-btn').forEach((node) => {
+    const key = node.id === 'global-chat-btn' ? 'chat' : node.id.replace('-btn', '');
+    node.classList.toggle('active', key === state.activeMenu);
+  });
+}
+
 async function toggleGlobalChat() {
   state.activeMenu = 'chat';
   state.seatViewMode = state.activeMenu;
   renderSeatView();
+  renderBottomMenuState();
   if (state.seatViewMode !== 'globalChat' || state.globalChatLoaded) return;
   try {
     const messages = await globalChatApi.list();
@@ -1950,6 +1958,7 @@ function bindEvents() {
     state.activeMenu = 'map';
     state.seatViewMode = 'map';
     renderSeatView();
+    renderBottomMenuState();
   });
   $('staff-call-btn').addEventListener('click', () => callStaff().catch((error) => showToast(error.message)));
   $('global-chat-send-btn').addEventListener('click', sendGlobalChatMessage);
@@ -1964,12 +1973,13 @@ function bindEvents() {
     showInlineContent('modal-notices');
     localStorage.setItem(STORAGE_KEYS.seenNoticeCount, String(state.notices.length));
     renderNotices();
+    renderBottomMenuState();
     showNoticeList();
     renderNotices();
   });
   $('notice-detail-back').addEventListener('click', showNoticeList);
-  $('board-btn').addEventListener('click', () => { state.activeMenu = 'board'; showInlineContent('modal-board'); openBoard().catch((error) => showToast(error.message)); });
-  $('game-btn').addEventListener('click', () => { state.activeMenu = 'game'; showInlineContent('modal-game'); renderGame(); });
+  $('board-btn').addEventListener('click', () => { state.activeMenu = 'board'; showInlineContent('modal-board'); renderBottomMenuState(); openBoard().catch((error) => showToast(error.message)); });
+  $('game-btn').addEventListener('click', () => { state.activeMenu = 'game'; showInlineContent('modal-game'); renderBottomMenuState(); renderGame(); });
   $('board-profile-save-btn').addEventListener('click', () => saveBoardProfile().catch((error) => showToast(error.message)));
   $('board-write-btn').addEventListener('click', showBoardWrite);
   $('board-history-btn').addEventListener('click', () => showBoardViews().catch((error) => showToast(error.message)));
