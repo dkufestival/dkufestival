@@ -15,6 +15,8 @@ test('admin can list, kick and restore individual participants', () => {
   assert.match(routes, /participants\/:participantId\/restore/);
   assert.match(controller, /participant:kicked/);
   assert.match(controller, /admin:participants-updated/);
+  assert.match(controller, /maleCount.*femaleCount/);
+  assert.match(controller, /tableService\.checkoutTable/);
 });
 
 test('access end allows re-entry while forced removal blocks repeat QR entry', () => {

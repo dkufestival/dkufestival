@@ -56,6 +56,7 @@ async function getParticipants(req, res, next) {
 
 async function changeParticipantAccess(req, res, next, { block }) {
   const transaction = await sequelize.transaction();
+  let autoCheckoutResult = null;
   try {
     const participant = await Participant.findByPk(req.params.participantId, {
       include: [{ model: TableSession, as: 'session' }], transaction, lock: transaction.LOCK.UPDATE,
@@ -82,6 +83,10 @@ async function changeParticipantAccess(req, res, next, { block }) {
     }
     await transaction.commit();
     const io = req.app.get('io');
+    const latestSession = await TableSession.findByPk(participant.tableSessionId);
+    if (latestSession?.status === 'ACTIVE' && Number(latestSession.maleCount) + Number(latestSession.femaleCount) === 0) {
+      autoCheckoutResult = await tableService.checkoutTable(latestSession.tableId);
+    }
     io?.to(`participant:${participant.id}`).emit('participant:kicked', {
       participantId: participant.id,
       blocked: block,
@@ -89,6 +94,7 @@ async function changeParticipantAccess(req, res, next, { block }) {
     });
     io?.to('admins').emit('admin:participants-updated');
     emitPublicTableUpdate(io, { tableIds: [participant.session?.tableId], reason: block ? 'participant:blocked' : 'participant:ended' });
+    if (autoCheckoutResult) lifecycleService.emitLifecycle(io, autoCheckoutResult);
     res.json({ data: participant });
   } catch (error) {
     if (!transaction.finished) await transaction.rollback();
