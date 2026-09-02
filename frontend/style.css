@@ -782,6 +782,9 @@ body {
 .map-viewport.inline-content-mode { overflow: hidden; }
 .inline-content-card { display: block; width: 100%; max-width: none; height: 100%; max-height: 100%; overflow-y: auto; transform: none; opacity: 1; border: 0; border-radius: 0; box-shadow: none; }
 .map-viewport .inline-content-card { display: block !important; visibility: visible !important; opacity: 1 !important; transform: none !important; }
+.map-viewport .inline-content-card { background: transparent !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
+.map-viewport .inline-content-card > .modal-close,
+.map-viewport .inline-content-card > .modal-title { display: none !important; }
 .notice-badge {
   position: absolute;
   top: -7px;
