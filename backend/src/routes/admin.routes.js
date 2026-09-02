@@ -31,6 +31,8 @@ router.patch('/tables/:tableId/counts', auth, requireRole('ADMIN'), validateBody
 router.post('/tables/:tableId/qr/regenerate', auth, requireRole('ADMIN'), adminController.regenerateQr);
 router.patch('/tables/:tableId/qr/enable', auth, requireRole('ADMIN'), adminController.enableQr);
 router.patch('/tables/:tableId/qr/disable', auth, requireRole('ADMIN'), adminController.disableQr);
+router.delete('/global-chat', auth, requireRole('ADMIN'), adminController.clearGlobalChat);
+router.post('/data/reset', auth, requireRole('ADMIN'), adminController.resetAllData);
 router.get('/chat/rooms', auth, requireRole('ADMIN'), chatController.adminListRooms);
 router.post('/chat/rooms/:roomId/end', auth, requireRole('ADMIN'), chatController.adminEndRoom);
 router.get('/staff-calls', auth, requireRole('ADMIN'), staffCallController.adminList);

@@ -6,6 +6,9 @@ const AppError = require('../errors/AppError');
 const tableService = require('../services/table.service');
 const lifecycleService = require('../services/lifecycle.service');
 const { emitPublicTableUpdate } = require('../socket/table-updates');
+const { GameSession, GlobalChatMessage, BasketballScore, TableSession } = require('../models');
+const sequelize = require('../config/db');
+const globalChatService = require('../services/globalChat.service');
 
 async function login(req, res, next) {
   try {
@@ -121,6 +124,30 @@ async function disableQr(req, res, next) {
   }
 }
 
+async function clearGlobalChat(req, res, next) {
+  try {
+    const deleted = await globalChatService.clearMessages();
+    req.app.get('io')?.to('participants').to('admins').emit('globalChat:cleared');
+    res.json({ data: { deleted } });
+  } catch (error) { next(error); }
+}
+
+async function resetAllData(req, res, next) {
+  const transaction = await sequelize.transaction();
+  try {
+    await GlobalChatMessage.destroy({ where: {}, transaction });
+    await GameSession.destroy({ where: {}, transaction });
+    await BasketballScore.destroy({ where: {}, transaction });
+    await TableSession.update({ score: 0 }, { where: {}, transaction });
+    await transaction.commit();
+    req.app.get('io')?.to('participants').to('admins').emit('admin:data-reset');
+    res.json({ data: { ok: true } });
+  } catch (error) {
+    await transaction.rollback();
+    next(error);
+  }
+}
+
 module.exports = {
   login,
   getTables,
@@ -132,4 +159,6 @@ module.exports = {
   regenerateQr,
   enableQr,
   disableQr,
+  clearGlobalChat,
+  resetAllData,
 };

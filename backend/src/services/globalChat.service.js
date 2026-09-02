@@ -47,4 +47,8 @@ async function sendAsAdmin(content) {
   });
 }
 
-module.exports = { getMessages, sendAsParticipant, sendAsAdmin };
+async function clearMessages() {
+  return GlobalChatMessage.destroy({ where: {} });
+}
+
+module.exports = { getMessages, sendAsParticipant, sendAsAdmin, clearMessages };

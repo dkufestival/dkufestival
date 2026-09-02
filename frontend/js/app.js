@@ -515,6 +515,14 @@ function bindSocket() {
     showScreen(state.activeRoomId ? 'screen-chat' : 'screen-seats');
     showToast(`${gameNames[game.type] || game.type} 게임이 종료되었습니다.`);
   });
+  socket.on('admin:data-reset', () => {
+    closeAllTransientModals();
+    state.activeGame = null;
+    state.participationDecisions.clear();
+    $('pinball-viewer-frame').src = 'about:blank';
+    renderGame();
+    showScreen(state.activeRoomId ? 'screen-chat' : 'screen-seats');
+  });
   socket.on('game:global:updated', (game) => {
     const previousRound = Number(state.activeGame?.state?.currentRound || 0);
     state.activeGame = game;

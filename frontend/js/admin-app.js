@@ -105,6 +105,11 @@ function bindSocket() {
     state.globalChatMessages.push(message);
     renderGlobalChat();
   });
+  socket.on('globalChat:cleared', () => { state.globalChatMessages = []; renderGlobalChat(); });
+  socket.on('admin:data-reset', () => {
+    state.globalChatMessages = []; state.gameHistory = []; state.gameHistoryById = {};
+    renderGlobalChat(); renderGameRankList();
+  });
   socket.on('board:created', (post) => {
     state.boardPosts.unshift(post);
     renderBoard();
@@ -975,6 +980,22 @@ async function sendGlobalChatMessage() {
   input.value = '';
 }
 
+async function clearGlobalChatMessages() {
+  if (!window.confirm('전체채팅 내용을 모두 삭제하시겠습니까?')) return;
+  await adminApi.clearGlobalChat();
+  state.globalChatMessages = [];
+  renderGlobalChat();
+  showToast('전체채팅을 삭제했습니다.');
+}
+
+async function resetAllData() {
+  if (!window.confirm('게임 기록과 점수, 전체채팅을 모두 초기화하시겠습니까?')) return;
+  await adminApi.resetAllData();
+  state.activeGame = null; state.globalChatMessages = []; state.gameHistory = []; state.gameHistoryById = {};
+  renderAll();
+  showToast('전체 데이터가 초기화되었습니다.');
+}
+
 function renderBoard() {
   const list = $('board-post-list');
   clear(list);
@@ -1077,6 +1098,8 @@ function bindEvents() {
     getSocket()?.disconnect();
     showLogin();
   });
+  $('global-chat-clear-btn').addEventListener('click', () => clearGlobalChatMessages().catch((error) => showToast(error.message)));
+  $('all-data-reset-btn').addEventListener('click', () => resetAllData().catch((error) => showToast(error.message)));
   document.querySelectorAll('.nav-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.nav-btn').forEach((node) => node.classList.remove('active'));

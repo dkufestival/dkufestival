@@ -147,11 +147,17 @@
     <div id="tab-globalchat" class="tab-panel">
       <div class="game-panel" style="max-width:620px;">
         <h3 class="panel-title">전체채팅</h3>
+        <button id="global-chat-clear-btn" class="btn-dark danger" style="margin-bottom:10px;">전체채팅 지우기</button>
         <div id="global-chat-log" class="global-chat-log admin-global-chat-log"></div>
         <div class="chat-input-row">
           <input id="global-chat-input" class="field" maxlength="500" placeholder="관리자로 메시지 보내기" style="margin-bottom:0;">
           <button id="global-chat-send-btn" class="btn-dark">전송</button>
         </div>
+      </div>
+      <div class="game-panel" style="max-width:620px;margin-top:16px;">
+        <h3 class="panel-title">데이터 관리</h3>
+        <p class="game-status">게임 기록, 점수, 농구 기록, 전체채팅을 모두 삭제하고 점수를 0점으로 초기화합니다.</p>
+        <button id="all-data-reset-btn" class="btn-dark danger full">전체 리셋</button>
       </div>
     </div>
 

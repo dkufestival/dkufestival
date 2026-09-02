@@ -13,6 +13,8 @@ export const adminApi = {
   regenerateQr: (tableId) => api.post(`/api/admin/tables/${tableId}/qr/regenerate`, {}, adminOptions),
   enableQr: (tableId) => api.patch(`/api/admin/tables/${tableId}/qr/enable`, {}, adminOptions),
   disableQr: (tableId) => api.patch(`/api/admin/tables/${tableId}/qr/disable`, {}, adminOptions),
+  clearGlobalChat: () => api.delete('/api/admin/global-chat', adminOptions),
+  resetAllData: () => api.post('/api/admin/data/reset', {}, adminOptions),
   chatRooms: (status = 'ACTIVE') => api.get(`/api/admin/chat/rooms?status=${encodeURIComponent(status)}`, adminOptions),
   endChatRoom: (roomId) => api.post(`/api/admin/chat/rooms/${roomId}/end`, {}, adminOptions),
   staffCalls: () => api.get('/api/admin/staff-calls', adminOptions),
