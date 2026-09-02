@@ -192,18 +192,15 @@ function showInlineContent(modalId) {
   const card = backdrop?.querySelector('.modal-card');
   const host = $('map-viewport');
   if (!card || !host) return;
-  host.querySelectorAll('.inline-content-card').forEach((node) => {
-    const owner = node.dataset.inlineOwner;
-    const parent = $(owner);
-    if (parent) { parent.appendChild(node); node.classList.remove('inline-content-card'); delete node.dataset.inlineOwner; }
-  });
+  restoreInlineContent();
   document.querySelectorAll('.modal-backdrop').forEach((node) => node.classList.remove('active'));
-  card.dataset.inlineOwner = modalId;
-  card.querySelectorAll('.modal-close').forEach((button) => {
-    button.onclick = () => { restoreInlineContent(); state.activeMenu = 'map'; renderSeatView(); };
+  const content = document.createElement('div');
+  content.className = 'inline-content';
+  content.dataset.inlineOwner = modalId;
+  [...card.children].forEach((child) => {
+    if (!child.classList.contains('modal-close')) content.appendChild(child);
   });
-  card.classList.add('inline-content-card');
-  host.appendChild(card);
+  host.appendChild(content);
   backdrop.classList.remove('active');
   $('map-view').hidden = true;
   $('global-chat-panel').hidden = true;
@@ -211,11 +208,11 @@ function showInlineContent(modalId) {
 }
 
 function restoreInlineContent() {
-  document.querySelectorAll('.inline-content-card').forEach((card) => {
-    const owner = $(card.dataset.inlineOwner);
-    if (owner) owner.appendChild(card);
-    card.classList.remove('inline-content-card');
-    delete card.dataset.inlineOwner;
+  document.querySelectorAll('.inline-content').forEach((content) => {
+    const owner = $(content.dataset.inlineOwner);
+    const card = owner?.querySelector('.modal-card');
+    if (card) [...content.children].forEach((child) => card.appendChild(child));
+    content.remove();
   });
   $('map-viewport').classList.remove('inline-content-mode');
 }
