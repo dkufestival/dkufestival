@@ -9,8 +9,7 @@ router.post('/', validateBody({
   qrToken: { required: true, type: 'string', maxLength: 255 },
   clientId: { required: true, type: 'string', maxLength: 255 },
   nickname: { required: true, type: 'string', maxLength: 100 },
-  maleCount: { type: 'number', min: 0 },
-  femaleCount: { type: 'number', min: 0 },
+  gender: { required: true, type: 'string', maxLength: 10 },
 }), entryController.enter);
 
 module.exports = router;

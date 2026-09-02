@@ -243,13 +243,17 @@ async function initEntry() {
     state.table = { id: state.entryContext.tableId, tableNumber: state.entryContext.tableNumber };
     $('table-label').textContent = `TABLE ${state.entryContext.tableNumber}`;
     $('occupied-notice').classList.toggle('show', state.entryContext.hasActiveSession);
-    $('team-setup-fields').hidden = !state.entryContext.requiresTeamSetup;
     $('join-btn').textContent = state.entryContext.requiresTeamSetup ? '입장하기' : '합류하기';
-    setLandingStatus(state.entryContext.hasActiveSession ? '사용 중인 테이블입니다. 닉네임만 입력하면 합류합니다.' : '첫 입장자입니다. 팀 인원을 입력해 주세요.');
+    setLandingStatus(state.entryContext.hasActiveSession ? '사용 중인 테이블입니다. 성별을 선택하고 합류해 주세요.' : '성별을 선택하고 입장해 주세요.');
 
     const auth = getParticipantAuth();
     if (auth?.token && auth.tableId === state.table.id) {
       $('nickname-input').value = auth.participant?.nickname || '';
+      const savedGender = auth.participant?.gender;
+      if (savedGender) {
+        const genderInput = document.querySelector(`input[name="entry-gender"][value="${savedGender}"]`);
+        if (genderInput) genderInput.checked = true;
+      }
       setLandingStatus('저장된 참가자 정보를 복구하는 중입니다.');
       await restoreFromToken();
     }
@@ -262,19 +266,15 @@ async function initEntry() {
 async function enter() {
   const nickname = $('nickname-input').value.trim();
   if (!nickname) return showToast('닉네임을 입력해 주세요.');
-  if (state.entryContext?.requiresTeamSetup && state.counts.male + state.counts.female < 1) {
-    return showToast('첫 입장자는 남녀 인원을 1명 이상 입력해야 합니다.');
-  }
+  const gender = document.querySelector('input[name="entry-gender"]:checked')?.value;
+  if (!gender) return showToast('성별을 선택해 주세요.');
 
   const body = {
     qrToken: state.qrToken,
     clientId: getClientId(),
     nickname,
+    gender,
   };
-  if (state.entryContext?.requiresTeamSetup) {
-    body.maleCount = state.counts.male;
-    body.femaleCount = state.counts.female;
-  }
 
   const data = await entryApi.enter(body);
   saveParticipantAuth(data);

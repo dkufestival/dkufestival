@@ -18,6 +18,11 @@ function validateCounts(data, required) {
   return { maleCount, femaleCount };
 }
 
+function validateGender(value) {
+  if (!['MALE', 'FEMALE'].includes(value)) throw new AppError(400, 'INVALID_GENDER', 'gender must be MALE or FEMALE.');
+  return value;
+}
+
 async function findTableByQr(qrToken, options = {}) {
   const table = await Table.findOne({ where: { qrToken }, ...options });
   if (!table || !table.qrEnabled) {
@@ -33,7 +38,7 @@ async function getActiveSession(tableId, transaction) {
       status: 'ACTIVE',
       expiresAt: { [Op.gt]: new Date() },
     },
-    include: [{ model: Participant, as: 'participants' }],
+    include: [{ model: Participant, as: 'participants', where: { kickedAt: null, blockedAt: null }, required: false }],
     order: [['startedAt', 'DESC']],
     transaction,
   });
@@ -66,9 +71,10 @@ async function getContext(qrToken) {
 }
 
 async function enter(data) {
-  if (!data.qrToken || !data.clientId || !data.nickname) {
-    throw new AppError(400, 'INVALID_ENTRY', 'qrToken, clientId and nickname are required.');
+  if (!data.qrToken || !data.clientId || !data.nickname || !data.gender) {
+    throw new AppError(400, 'INVALID_ENTRY', 'qrToken, clientId, nickname and gender are required.');
   }
+  const gender = validateGender(data.gender);
 
   await lifecycleService.expireSessions();
   return sequelize.transaction(async (transaction) => {
@@ -89,12 +95,11 @@ async function enter(data) {
     let session = await getActiveSession(table.id, transaction);
     const isFirstEntry = !session;
     if (isFirstEntry) {
-      const counts = validateCounts(data, true);
       const startedAt = new Date();
       session = await TableSession.create({
         tableId: table.id,
-        maleCount: counts.maleCount,
-        femaleCount: counts.femaleCount,
+        maleCount: 0,
+        femaleCount: 0,
         startedAt,
         expiresAt: defaultExpiresAt(startedAt),
         status: 'ACTIVE',
@@ -105,13 +110,15 @@ async function enter(data) {
       where: { tableSessionId: session.id, clientId: data.clientId },
       defaults: {
         nickname: data.nickname.trim(),
+        gender,
         isHost: isFirstEntry,
       },
       transaction,
     });
 
     // 강제 퇴장은 기존 로그인만 종료한다. 사용자가 다시 입장하면 즉시 새 토큰을 발급한다.
-    if (participant.kickedAt) {
+    const wasKicked = Boolean(participant.kickedAt);
+    if (wasKicked) {
       await participant.update({ kickedAt: null, kickedReason: null }, { transaction });
       const activeHost = await Participant.findOne({
         where: { tableSessionId: session.id, isHost: true, kickedAt: null, blockedAt: null },
@@ -119,6 +126,24 @@ async function enter(data) {
       });
       if (!activeHost) await participant.update({ isHost: true }, { transaction });
     }
+
+    const previousGender = participant.gender;
+    if (previousGender !== gender) {
+      const delta = { maleCount: 0, femaleCount: 0 };
+      if (previousGender === 'MALE') delta.maleCount -= 1;
+      if (previousGender === 'FEMALE') delta.femaleCount -= 1;
+      if (gender === 'MALE') delta.maleCount += 1;
+      if (gender === 'FEMALE') delta.femaleCount += 1;
+      await participant.update({ gender }, { transaction });
+      await session.increment(delta, { transaction });
+    }
+    if (created && previousGender === gender) {
+      await session.increment(gender === 'MALE' ? { maleCount: 1 } : { femaleCount: 1 }, { transaction });
+    }
+    if (wasKicked && previousGender === gender) {
+      await session.increment(gender === 'MALE' ? { maleCount: 1 } : { femaleCount: 1 }, { transaction });
+    }
+    await session.reload({ transaction });
 
     if (!created && data.nickname && participant.nickname !== data.nickname.trim()) {
       await participant.update({ nickname: data.nickname.trim() }, { transaction });

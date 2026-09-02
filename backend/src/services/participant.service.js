@@ -16,7 +16,7 @@ async function updateMe(participantId, data) {
 
 async function list(sessionId) {
   return Participant.findAll({
-    where: { tableSessionId: sessionId },
+    where: { tableSessionId: sessionId, kickedAt: null, blockedAt: null },
     order: [['createdAt', 'ASC']],
   });
 }

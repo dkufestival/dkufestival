@@ -16,6 +16,7 @@ const Participant = sequelize.define(
       type: DataTypes.STRING(100),
       allowNull: false,
     },
+    gender: { type: DataTypes.ENUM('MALE', 'FEMALE'), allowNull: true },
     isHost: {
       type: DataTypes.BOOLEAN,
       allowNull: false,

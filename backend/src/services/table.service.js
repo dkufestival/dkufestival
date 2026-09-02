@@ -14,7 +14,7 @@ async function getTables(options = {}) {
       as: 'sessions',
       where: { status: 'ACTIVE', expiresAt: { [Op.gt]: new Date() } },
       required: false,
-      include: [{ model: Participant, as: 'participants' }],
+      include: [{ model: Participant, as: 'participants', where: { kickedAt: null, blockedAt: null }, required: false }],
     }],
     order: [['tableNumber', 'ASC']],
   });
@@ -41,7 +41,7 @@ async function getTables(options = {}) {
 async function getTable(tableId) {
   return Table.findByPk(tableId, {
     attributes: { exclude: ['qrToken'] },
-    include: [{ model: TableSession, as: 'sessions', where: { status: 'ACTIVE' }, required: false, include: [{ model: Participant, as: 'participants' }] }],
+    include: [{ model: TableSession, as: 'sessions', where: { status: 'ACTIVE' }, required: false, include: [{ model: Participant, as: 'participants', where: { kickedAt: null, blockedAt: null }, required: false }] }],
   });
 }
 

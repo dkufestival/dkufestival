@@ -1915,3 +1915,8 @@ body {
 .kicked-card h1 { margin:8px 0 10px; color:#fff; font-size:25px; letter-spacing:-.04em; }
 .kicked-card p { margin:0 0 12px; color:#ff8a80; font-weight:800; }
 .kicked-card span { color:#92968a; font-size:12px; line-height:1.6; }
+.gender-choice { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.gender-option { cursor:pointer; }
+.gender-option input { position:absolute; opacity:0; pointer-events:none; }
+.gender-option span { display:block; padding:13px 12px; border:1px solid var(--border-soft); border-radius:12px; color:var(--text-muted); text-align:center; font-size:14px; font-weight:800; transition:.2s ease; }
+.gender-option input:checked + span { border-color:var(--lime); background:rgba(200,241,63,.13); color:var(--lime); box-shadow:0 0 0 1px rgba(200,241,63,.25); }

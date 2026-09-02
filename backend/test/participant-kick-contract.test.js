@@ -27,6 +27,7 @@ test('access end allows re-entry while forced removal blocks repeat QR entry', (
   assert.match(socketAuth, /participant\.blockedAt/);
   assert.match(entry, /PARTICIPANT_BLOCKED/);
   assert.match(entry, /blockedParticipant/);
+  assert.match(entry, /gender/);
   assert.match(entry, /tableSessionId: session\.id, clientId: data\.clientId/);
   assert.match(entry, /participant\.update\(\{ kickedAt: null, kickedReason: null \}/);
 });
