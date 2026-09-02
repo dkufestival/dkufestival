@@ -135,13 +135,15 @@ async function clearGlobalChat(req, res, next) {
 async function resetAllData(req, res, next) {
   const transaction = await sequelize.transaction();
   try {
-    await GlobalChatMessage.destroy({ where: {}, transaction });
-    await GameSession.destroy({ where: {}, transaction });
+    const tables = (await sequelize.getQueryInterface().showAllTables()).map(String).map((name) => name.toLowerCase());
+    const has = (name) => tables.includes(name.toLowerCase());
+    if (has('global_chat_messages')) await GlobalChatMessage.destroy({ where: {}, transaction });
+    if (has('game_sessions')) await GameSession.destroy({ where: {}, transaction });
     // 구버전 DB에서 선택 기능 테이블/컬럼이 아직 없더라도 전체 리셋은 계속 수행한다.
-    try { await BasketballScore.destroy({ where: {}, transaction }); } catch (error) {
+    try { if (has('basketball_scores')) await BasketballScore.destroy({ where: {}, transaction }); } catch (error) {
       if (!['ER_NO_SUCH_TABLE', 'ER_BAD_FIELD_ERROR'].includes(error.original?.code)) throw error;
     }
-    try { await TableSession.update({ score: 0 }, { where: {}, transaction }); } catch (error) {
+    try { if (has('table_sessions')) await TableSession.update({ score: 0 }, { where: {}, transaction }); } catch (error) {
       if (error.original?.code !== 'ER_BAD_FIELD_ERROR') throw error;
     }
     await transaction.commit();
