@@ -7,6 +7,9 @@ const rankingNode = document.getElementById('ranking');
 const params = new URLSearchParams(location.search);
 const editMode = params.get('edit') === '1';
 const MAP_STORAGE_KEY = 'festival-pinball-map-v1';
+document.getElementById('winner-close')?.addEventListener('click', () => {
+  document.getElementById('winner-popup').hidden = true;
+});
 
 function seededRandom(value) {
   let seed = Number(value) >>> 0 || 1;

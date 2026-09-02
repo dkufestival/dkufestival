@@ -1080,6 +1080,12 @@ body {
   line-height: 1.6;
   white-space: pre-line;
 }
+
+/* 게임 시작 전 안내 모달은 모든 안내 문구를 밝게 표시합니다. */
+#modal-game-participation .modal-detail,
+#modal-game-participation p {
+  color: var(--text-light);
+}
 .modal-textarea, .modal-input {
   width: 100%;
   border: 1px solid var(--border-soft);

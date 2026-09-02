@@ -109,7 +109,17 @@ function showGameAnnouncement(game) {
 }
 
 function showFinalScores(game) {
+  const titleNode = $('modal-game-results').querySelector('.modal-title');
+  if (game?.type === 'ROULETTE') {
+    const list = $('game-final-score-list');
+    list.replaceChildren();
+    list.textContent = `당첨: ${game.state?.rouletteSpin?.result || game.state?.rounds?.[Number(game.state?.currentRound || 0)]?.answer || '-'}`;
+    titleNode.textContent = '룰렛 결과';
+    openModal('modal-game-results');
+    return;
+  }
   const list = $('game-final-score-list');
+  titleNode.textContent = '팀별 최종 점수';
   list.replaceChildren();
   const scores = [...(game.state?.finalScoreboard || game.state?.scoreboard || [])]
     .sort((a, b) => Number(b.score || 0) - Number(a.score || 0));
@@ -1461,6 +1471,7 @@ function spinRoulette(payload) {
   result.textContent = '룰렛이 돌아가는 중...';
   setTimeout(() => {
     result.textContent = `당첨: ${payload.result}`;
+    showFinalScores({ type: 'ROULETTE', state: { rouletteSpin: payload } });
   }, Number(payload.durationMs || 4200));
 }
 

@@ -53,6 +53,13 @@ function showToast(message) {
   setTimeout(() => toast.classList.remove('show'), 2200);
 }
 
+function showRouletteResult(result) {
+  const modal = $('modal-roulette-result');
+  if (!modal) return;
+  $('roulette-result-value').textContent = `당첨: ${result || '-'}`;
+  modal.classList.add('active');
+}
+
 setToastHandler(showToast);
 
 function showAdmin() {
@@ -158,6 +165,7 @@ function bindSocket() {
     state.basketballLeaderboard = Array.isArray(payload.leaderboard) ? payload.leaderboard.slice(0, 3) : [];
     renderBasketballLeaderboard();
   });
+  $('roulette-result-close')?.addEventListener('click', () => $('modal-roulette-result')?.classList.remove('active'));
 }
 
 async function loadTables() {
@@ -469,7 +477,7 @@ function renderGameControls() {
     ? activePhase === 'ANNOUNCED'
       ? '참가자에게 게임 시작 전 알림을 표시하고 있습니다.'
       : activePhase === 'RESULTS'
-        ? '참가자에게 팀별 최종 점수를 공개하고 있습니다.'
+        ? '게임 결과를 확인할 수 있습니다.'
         : `참가자 화면에서 게임이 진행 중입니다${activeTarget}.`
     : isFreePlayBasketball
       ? '농구게임은 관리자 시작 없이 항상 자유롭게 이용할 수 있습니다.'
@@ -568,7 +576,6 @@ function renderAdminRoulette() {
     wheel.appendChild(label);
   });
   wheel.appendChild(text('div', 'roulette-hub', 'PIU:M'));
-  if (!spin) $('roulette-admin-winner').hidden = true;
   const previousRotation = state.adminRouletteRotation;
   let shouldAnimate = false;
   if (spin && state.adminRouletteSpinId !== spin.spinId) {
@@ -588,13 +595,7 @@ function renderAdminRoulette() {
     wheel.style.transform = `rotate(${state.adminRouletteRotation}deg)`;
   });
   if (shouldAnimate) {
-    const winner = $('roulette-admin-winner');
-    winner.hidden = true;
     clearTimeout(state.adminRouletteWinnerTimer);
-    state.adminRouletteWinnerTimer = setTimeout(() => {
-      $('roulette-admin-winner-value').textContent = spin.result || '-';
-      winner.hidden = false;
-    }, Number(spin.durationMs || 4200));
   }
 }
 
@@ -1333,7 +1334,7 @@ function updateGlobalGame(action) {
     renderGameControls();
     renderGameRankList();
     const message = action === 'START' ? '게임 시작'
-      : action === 'FINALIZE' ? '팀별 최종 점수 공개'
+      : action === 'FINALIZE' ? '게임 결과 확정'
       : action === 'REVEAL' ? '현재 라운드 정답 공개'
       : action === 'SPIN' ? `룰렛 결과 · ${response.data.state?.rouletteSpin?.result}`
         : action === 'NEXT_PROMPT' ? `${Number(response.data.state?.currentPrompt || 0) + 1}번째 제시어 공개`
@@ -1342,6 +1343,7 @@ function updateGlobalGame(action) {
     if (action === 'SPIN') setTimeout(() => {
       state.rouletteSpinning = false;
       renderGameControls();
+      showRouletteResult(response.data.state?.rouletteSpin?.result);
     }, Number(response.data.state?.rouletteSpin?.durationMs || 4200));
   });
 }
