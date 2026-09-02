@@ -853,6 +853,7 @@ body {
   -ms-overflow-style: none;
 }
 #notice-list-view::-webkit-scrollbar { display: none; }
+#notice-list-view .modal-title { margin-bottom: 26px; }
 #notice-detail-view {
   display: flex;
   flex-direction: column;
@@ -861,9 +862,13 @@ body {
 }
 #notice-detail-view[hidden] { display: none; }
 .notice-detail-header { flex-shrink: 0; }
+#notice-detail-view .notice-detail-back { margin-bottom: 26px; }
 #notice-detail-content {
   flex: 1;
   min-height: 0;
+  margin-top: 12px;
+  text-align: left;
+  color: var(--text-light);
   overflow-y: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -1317,7 +1322,7 @@ body {
   font-size: 11px;
   line-height: 1.5;
 }
-.basketball-entry .btn-dark.full { margin-top: 0; margin-bottom: 14px; }
+.basketball-entry .btn-dark.full { display: block; width: 70%; margin: 0 auto 22px; }
 .basketball-top-three { margin: 0; padding: 10px; border: 1px solid var(--border-soft); border-radius: 9px; background: #10110f; text-align: left; }
 .basketball-top-three-title { margin-bottom: 7px; color: var(--lime); font-size: 9px; font-weight: 900; letter-spacing: .12em; }
 .basketball-top-three-row { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; gap: 7px; min-height: 25px; color: var(--text-light); font-size: 11px; }
