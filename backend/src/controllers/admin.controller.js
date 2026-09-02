@@ -62,6 +62,7 @@ async function changeParticipantAccess(req, res, next, { block }) {
     });
     if (!participant) throw new AppError(404, 'PARTICIPANT_NOT_FOUND', '사용자를 찾을 수 없습니다.');
     const now = new Date();
+    const wasActive = !participant.kickedAt && !participant.blockedAt;
     const wasHost = participant.isHost;
     await participant.update({
       kickedAt: now,
@@ -69,6 +70,9 @@ async function changeParticipantAccess(req, res, next, { block }) {
       ...(block ? { blockedAt: now, blockedReason: req.body.reason?.trim() || '관리자 강제 퇴장' } : {}),
       isHost: false,
     }, { transaction });
+    if (wasActive && participant.gender) {
+      await participant.session.increment(participant.gender === 'MALE' ? { maleCount: -1 } : { femaleCount: -1 }, { transaction });
+    }
     if (wasHost) {
       const nextHost = await Participant.findOne({
         where: { tableSessionId: participant.tableSessionId, id: { [Op.ne]: participant.id }, kickedAt: null, blockedAt: null },
