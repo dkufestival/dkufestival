@@ -97,3 +97,13 @@ npm test         # 테스트 실행
 - [Frontend README](frontend/README.md)
 - [REST API](backend/docs/REST_API.md)
 - [Socket.IO API](backend/docs/SOCKET_API.md)
+
+## MONITOR MODE 접속
+
+운영 환경의 `backend/.env`에 충분히 긴 랜덤 값으로 `MONITOR_TOKEN`을 설정합니다. 실제 토큰은 저장소나 문서에 기록하지 마세요.
+
+```text
+https://dkufestival-app-production.up.railway.app/index.html?monitor=<MONITOR_TOKEN>
+```
+
+위 URL을 QR 코드로 만들어 모니터링 기기에서 스캔하면 닉네임·인원 입력 없이 MONITOR MODE로 접속합니다. 이 접속은 테이블, 참가자, 채팅, 좋아요, 게임 점수 및 운영 통계에 포함되지 않습니다.
