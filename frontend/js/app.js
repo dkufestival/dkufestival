@@ -175,11 +175,11 @@ function showScreen(id) {
 }
 
 function openModal(id) {
-  $(id).classList.add('active');
+  $(id)?.classList.add('active');
 }
 
 function closeModal(id) {
-  $(id).classList.remove('active');
+  $(id)?.classList.remove('active');
 }
 
 // 화면/게임 전환 시 이전 화면에 종속된 일시적 모달을 일괄 정리한다.
@@ -187,34 +187,16 @@ function closeAllTransientModals() {
   document.querySelectorAll('.modal-backdrop.active').forEach((modal) => modal.classList.remove('active'));
 }
 
-function showInlineContent(modalId) {
-  const backdrop = $(modalId);
-  const card = backdrop?.querySelector('.modal-card');
-  const host = $('map-viewport');
-  if (!card || !host) return;
-  restoreInlineContent();
-  document.querySelectorAll('.modal-backdrop').forEach((node) => node.classList.remove('active'));
-  const content = document.createElement('div');
-  content.className = 'inline-content';
-  content.dataset.inlineOwner = modalId;
-  [...card.children].forEach((child) => {
-    if (!child.classList.contains('modal-close')) content.appendChild(child);
-  });
-  host.appendChild(content);
-  backdrop.classList.remove('active');
-  $('map-view').hidden = true;
-  $('global-chat-panel').hidden = true;
-  $('map-viewport').classList.add('inline-content-mode');
-}
-
-function restoreInlineContent() {
-  document.querySelectorAll('.inline-content').forEach((content) => {
-    const owner = $(content.dataset.inlineOwner);
-    const card = owner?.querySelector('.modal-card');
-    if (card) [...content.children].forEach((child) => card.appendChild(child));
-    content.remove();
-  });
-  $('map-viewport').classList.remove('inline-content-mode');
+function setMainContent(type) {
+  const panels = { map: 'map-view', chat: 'global-chat-panel', notice: 'notice-panel', board: 'board-panel', game: 'game-panel-host' };
+  Object.entries(panels).forEach(([key, id]) => { const node = $(id); if (node) node.hidden = key !== type; });
+  state.activeMenu = type;
+  state.seatViewMode = type;
+  $('map-viewport').classList.toggle('global-chat-mode', type === 'chat');
+  renderBottomMenuState();
+  if (type === 'chat') renderGlobalChat({ forceBottom: true });
+  if (type === 'notice') renderNotices();
+  if (type === 'game') renderGame();
 }
 
 function setCounts(male, female) {
@@ -1247,10 +1229,7 @@ function mergeGlobalChatMessages(messages) {
 
 function renderSeatView() {
   const globalChatOpen = state.activeMenu === 'chat';
-  if (state.activeMenu === 'map' || state.activeMenu === 'chat') restoreInlineContent();
-  $('map-view').hidden = globalChatOpen;
-  $('global-chat-panel').hidden = !globalChatOpen;
-  $('map-viewport').classList.toggle('global-chat-mode', globalChatOpen);
+  setMainContent(state.activeMenu || 'map');
   mapZoom?.setEnabled(!globalChatOpen);
   $('global-chat-btn').textContent = '전체채팅';
   document.querySelectorAll('.bottombar .pill-btn').forEach((node) => node.classList.toggle('active', node.id === `${state.activeMenu === 'chat' ? 'global-chat' : state.activeMenu}-btn`));
@@ -2041,7 +2020,7 @@ function bindEvents() {
   });
   $('notice-btn').addEventListener('click', () => {
     state.activeMenu = 'notice';
-    showInlineContent('modal-notices');
+    setMainContent('notice');
     localStorage.setItem(STORAGE_KEYS.seenNoticeCount, String(state.notices.length));
     renderNotices();
     renderBottomMenuState();
@@ -2049,8 +2028,8 @@ function bindEvents() {
     renderNotices();
   });
   $('notice-detail-back').addEventListener('click', showNoticeList);
-  $('board-btn').addEventListener('click', () => { state.activeMenu = 'board'; showInlineContent('modal-board'); renderBottomMenuState(); openBoard().catch((error) => showToast(error.message)); });
-  $('game-btn').addEventListener('click', () => { state.activeMenu = 'game'; showInlineContent('modal-game'); renderBottomMenuState(); renderGame(); });
+  $('board-btn').addEventListener('click', () => { setMainContent('board'); openBoard().catch((error) => showToast(error.message)); });
+  $('game-btn').addEventListener('click', () => setMainContent('game'));
   $('board-profile-save-btn').addEventListener('click', () => saveBoardProfile().catch((error) => showToast(error.message)));
   $('board-write-btn').addEventListener('click', showBoardWrite);
   $('board-history-btn').addEventListener('click', () => showBoardViews().catch((error) => showToast(error.message)));
