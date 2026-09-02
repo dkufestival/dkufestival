@@ -315,7 +315,7 @@ const ONBOARDING_SLIDES = [
   },
   {
     eyebrow: 'SOLO GAME', title: '기다리는 동안 개인 게임 한 판!',
-    body: '농구게임과 시간 맞추기는 언제든 자유롭게 즐길 수 있어요. 농구 최고 기록은 참가자 순위에도 반영돼요.',
+    body: '농구게임과 시간 맞추기는 언제든 자유롭게 플레이할 수 있어요. 농구 최고 기록은 참가자 순위에도 반영돼요.',
     image: 'assets/onboarding/05-personal-games.png', alt: '실제 개인 게임 선택 화면', badge: '농구게임 · 시간 맞추기'
   },
   {
