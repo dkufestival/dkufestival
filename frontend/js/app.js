@@ -1384,7 +1384,7 @@ function renderNotices() {
   if (!state.notices.length) {
     list.appendChild(text('div', 'history-empty', '공지 없음'));
   } else {
-    state.notices.slice(0, 5).forEach((notice) => {
+    state.notices.forEach((notice) => {
       const item = document.createElement('div');
       item.className = 'history-item';
       const info = document.createElement('div');

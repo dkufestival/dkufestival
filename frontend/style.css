@@ -570,6 +570,7 @@ body {
 #game-panel-host .basketball-entry { width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; }
 #notice-panel, #board-panel { padding: 16px 18px; }
 #notice-panel > [id$="-view"], #board-panel > [id$="-view"] { width: 100%; height: 100%; min-height: 0; overflow-y: auto; box-sizing: border-box; }
+#notice-panel #notice-list { max-height: none; overflow-y: visible; }
 
 .map-canvas {
   position: absolute;
