@@ -1043,6 +1043,7 @@ function updateSendLikeButton(table) {
   const liked = state.givenLikes.has(sessionId);
   $('send-like-btn').classList.toggle('liked', liked);
   $('send-like-text').textContent = liked ? '좋아요 취소' : '테이블 좋아요 누르기';
+  $('send-like-count-value').textContent = table?.activeSession?.receivedLikeCount || 0;
 }
 
 async function toggleTableLike(table) {
@@ -1056,7 +1057,11 @@ async function toggleTableLike(table) {
     if (result.liked) state.givenLikes.add(sessionId);
     else state.givenLikes.delete(sessionId);
     renderTables();
-    if (state.pendingTargetTable?.id === table.id) updateSendLikeButton(table);
+    if (state.pendingTargetTable?.id === table.id) {
+      const current = state.pendingTargetTable.activeSession?.receivedLikeCount || 0;
+      state.pendingTargetTable.activeSession.receivedLikeCount = Math.max(0, current + (result.liked ? 1 : -1));
+      updateSendLikeButton(state.pendingTargetTable);
+    }
   } catch (error) {
     showToast(error.message);
   }

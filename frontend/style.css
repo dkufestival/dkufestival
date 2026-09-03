@@ -1176,8 +1176,23 @@ input, select, textarea { font-size: 16px; }
 .btn-dark.full.danger:active {
   background: rgba(255, 92, 77, 0.12);
 }
-.btn-dark.full.like {
+.like-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
   margin-top: 10px;
+}
+.like-row .btn-dark.full.like {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+  margin-top: 0;
+  padding: 10px 10px;
+  font-size: 12px;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+.btn-dark.full.like {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1194,6 +1209,24 @@ input, select, textarea { font-size: 16px; }
   background: rgba(255, 59, 92, 0.16);
   border-color: #ff3b5c;
   color: #ff3b5c;
+}
+.like-count-badge {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 16px;
+  border-radius: 8px;
+  background: #f6373f;
+  box-shadow: 0 4px 10px rgba(246, 55, 63, 0.3);
+}
+.like-count-badge svg { flex-shrink: 0; fill: #fff; }
+.like-count-badge span {
+  font-size: 12px;
+  font-weight: 900;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
 }
 .modal-backdrop.active .modal-card {
   transform: translateY(0) scale(1);
