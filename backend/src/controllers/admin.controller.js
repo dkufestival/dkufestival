@@ -230,6 +230,16 @@ async function resetAllData(req, res, next) {
     const has = (name) => tables.includes(name.toLowerCase());
     if (has('global_chat_messages')) await GlobalChatMessage.destroy({ where: {}, transaction });
     if (has('game_sessions')) await GameSession.destroy({ where: {}, transaction });
+    if (has('board_profile_views') || has('board_posts') || has('board_profiles')) {
+      await boardService.clearAllBoardData({
+        transaction,
+        tables: {
+          profileViews: has('board_profile_views'),
+          posts: has('board_posts'),
+          profiles: has('board_profiles'),
+        },
+      });
+    }
     // 구버전 DB에서 선택 기능 테이블/컬럼이 아직 없더라도 전체 리셋은 계속 수행한다.
     try { if (has('basketball_scores')) await BasketballScore.destroy({ where: {}, transaction }); } catch (error) {
       if (!['ER_NO_SUCH_TABLE', 'ER_BAD_FIELD_ERROR'].includes(error.original?.code)) throw error;

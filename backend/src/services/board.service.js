@@ -273,6 +273,14 @@ async function cleanupSessionBoardData(sessionId, options = {}) {
   return cleanupParticipantBoardData(participants.map((participant) => participant.id), options);
 }
 
+async function clearAllBoardData(options = {}) {
+  const transaction = options.transaction;
+  const tables = options.tables || { profileViews: true, posts: true, profiles: true };
+  if (tables.profileViews) await BoardProfileView.destroy({ where: {}, transaction });
+  if (tables.posts) await BoardPost.destroy({ where: {}, transaction });
+  if (tables.profiles) await BoardProfile.destroy({ where: {}, transaction });
+}
+
 module.exports = {
   normalizeInstagramId,
   assertInstagramId,
@@ -286,4 +294,5 @@ module.exports = {
   listProfileViews,
   cleanupParticipantBoardData,
   cleanupSessionBoardData,
+  clearAllBoardData,
 };

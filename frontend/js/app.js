@@ -729,6 +729,9 @@ function bindSocket() {
   socket.on('admin:data-reset', () => {
     closeAllTransientModals();
     state.activeGame = null;
+    state.boardPosts = [];
+    state.boardLoaded = false;
+    state.board = { profile: null, posts: [], currentPost: null, revealedProfile: null, views: [] };
     state.participationDecisions.clear();
     $('pinball-viewer-frame').src = 'about:blank';
     renderGame();

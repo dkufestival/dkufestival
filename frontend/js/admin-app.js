@@ -109,8 +109,8 @@ function bindSocket() {
   });
   socket.on('globalChat:cleared', () => { state.globalChatMessages = []; renderGlobalChat(); });
   socket.on('admin:data-reset', () => {
-    state.globalChatMessages = []; state.gameHistory = []; state.gameHistoryById = {}; state.basketballLeaderboard = [];
-    renderGlobalChat(); renderGameRankList(); renderBasketballLeaderboard();
+    state.globalChatMessages = []; state.gameHistory = []; state.gameHistoryById = {}; state.basketballLeaderboard = []; state.boardPosts = [];
+    renderGlobalChat(); renderGameRankList(); renderBasketballLeaderboard(); renderBoard();
   });
   socket.on('board:created', (post) => {
     state.boardPosts.unshift(post);
@@ -1100,9 +1100,9 @@ async function clearGlobalChatMessages() {
 }
 
 async function resetAllData() {
-  if (!window.confirm('게임 기록과 점수, 전체채팅을 모두 초기화하시겠습니까?')) return;
+  if (!window.confirm('게임 기록과 점수, 전체채팅, 게시판 글·프로필을 모두 초기화하시겠습니까?')) return;
   await adminApi.resetAllData();
-  state.activeGame = null; state.globalChatMessages = []; state.gameHistory = []; state.gameHistoryById = {}; state.basketballLeaderboard = [];
+  state.activeGame = null; state.globalChatMessages = []; state.gameHistory = []; state.gameHistoryById = {}; state.basketballLeaderboard = []; state.boardPosts = [];
   renderAll();
   showToast('전체 데이터가 초기화되었습니다.');
 }
