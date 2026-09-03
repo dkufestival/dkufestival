@@ -590,6 +590,9 @@ function scheduleTableRefresh() {
         .then(() => {
           renderStats();
           renderTables();
+          if (state.activeMenu === 'board' && !$('board-views-view')?.hidden) {
+            showBoardViews().catch(() => {});
+          }
         })
         .finally(() => {
           state.tableRefreshPromise = null;
