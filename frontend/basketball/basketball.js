@@ -139,6 +139,16 @@ function connectCompetitionSocket() {
     transports: ['websocket', 'polling'],
   });
   socket.on('basketball:leaderboard', (payload = {}) => renderLeaderboard(payload.leaderboard || []));
+  // 농구 자유 플레이 중에도 관리자가 전체 게임을 시작하면
+  // 메인 앱으로 돌아가 전체 게임 화면을 우선 표시한다.
+  const returnToAppForGlobalGame = () => {
+    const query = window.location.search;
+    window.location.replace(`/${query}`);
+  };
+  socket.on('game:global:started', returnToAppForGlobalGame);
+  socket.on('game:global:current', (game) => {
+    if (game?.state?.lifecyclePhase === 'STARTED') returnToAppForGlobalGame();
+  });
 }
 
 function freshBall() {

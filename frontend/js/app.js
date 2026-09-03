@@ -87,7 +87,15 @@ function isParticipating(gameId) {
 }
 
 function requestGameParticipation(game) {
-  if (!game || state.participationDecisions.has(Number(game.id))) return;
+  if (!game) return;
+  // 전체 게임은 개인 게임(농구/스톱워치 포함)보다 항상 우선한다.
+  // 이미 다른 화면에 있더라도 참여 상태를 강제로 갱신하고 즉시 전체 게임 화면을 연다.
+  if (game.type === 'TIME_MATCH' || game.type === 'BASKETBALL') {
+    state.participationDecisions.set(Number(game.id), true);
+    showGlobalGameScreen();
+    return;
+  }
+  if (state.participationDecisions.has(Number(game.id))) return;
   if (state.isMonitor) {
     state.participationDecisions.set(Number(game.id), true);
     if (game.type === 'PINBALL') showPinballScreen(game);
@@ -98,15 +106,6 @@ function requestGameParticipation(game) {
     state.participationDecisions.set(Number(game.id), true);
     showToast('핀볼 게임이 시작되었습니다.');
     showPinballScreen(game);
-    return;
-  }
-  if (game.type === 'TIME_MATCH') {
-    showToast('스톱워치 게임이 시작되었습니다. 게임 메뉴에서 입장할 수 있습니다.');
-    return;
-  }
-  if (game.type === 'BASKETBALL') {
-    state.participationDecisions.set(Number(game.id), true);
-    showToast('농구게임이 시작되었습니다. 게임 메뉴에서 입장할 수 있습니다.');
     return;
   }
   state.participationDecisions.set(Number(game.id), true);
@@ -702,7 +701,7 @@ function bindSocket() {
     state.activeGame = game;
     if (game?.state?.lifecyclePhase === 'ANNOUNCED') showGameAnnouncement(game);
     else if (game?.state?.lifecyclePhase === 'RESULTS') showFinalScores(game);
-    else if (state.isMonitor || game?.type !== 'TIME_MATCH') requestGameParticipation(game);
+    else requestGameParticipation(game);
     renderGame();
   });
   socket.on('game:global:ended', (game) => {
