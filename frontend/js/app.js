@@ -431,13 +431,8 @@ async function refreshTables() {
 
 async function refreshChatRoom() {
   state.chatRoom = await chatApi.active().catch(() => null);
-  if (!state.chatRoom) {
-    const [sent, received] = await Promise.all([
-      chatApi.listRequests({ direction: 'sent', status: 'PENDING' }).catch(() => []),
-      chatApi.listRequests({ direction: 'received', status: 'PENDING' }).catch(() => []),
-    ]);
-    state.chatRoom = received[0] || sent[0] || null;
-  }
+  const received = await chatApi.listRequests({ direction: 'received', status: 'PENDING' }).catch(() => []);
+  state.receivedRequestsLog = received.map(receivedRequestEntry);
   if (state.chatRoom?.status === 'ACTIVE') {
     await loadMessages(state.chatRoom.roomId);
     joinChatRoom(state.chatRoom.roomId);
@@ -589,15 +584,8 @@ function bindSocket() {
     showScreen('screen-landing');
   });
   socket.on('chat:request-received', (room) => {
-    state.chatRoom = room;
     if (room.direction === 'received') {
-      state.receivedRequestsLog.unshift({
-        roomId: room.roomId,
-        tableNumber: room.peerTableNumber,
-        maleCount: room.peerMaleCount,
-        femaleCount: room.peerFemaleCount,
-        createdAt: new Date().toISOString(),
-      });
+      upsertReceivedRequest(room);
     }
     renderChatRequest();
     refreshReceivedRequestsIfOpen();
@@ -926,6 +914,21 @@ function removeReceivedRequest(roomId) {
   if (index !== -1) state.receivedRequestsLog.splice(index, 1);
 }
 
+function receivedRequestEntry(room) {
+  return {
+    roomId: room.roomId,
+    tableNumber: room.peerTableNumber,
+    maleCount: room.peerMaleCount,
+    femaleCount: room.peerFemaleCount,
+    createdAt: room.createdAt || new Date().toISOString(),
+  };
+}
+
+function upsertReceivedRequest(room) {
+  if (state.receivedRequestsLog.some((entry) => entry.roomId === room.roomId)) return;
+  state.receivedRequestsLog.unshift(receivedRequestEntry(room));
+}
+
 function refreshReceivedRequestsIfOpen() {
   if ($('modal-received-requests').classList.contains('active')) renderReceivedRequests();
 }
@@ -1150,9 +1153,7 @@ function showRequestPopup() {
 }
 
 function renderChatRequest() {
-  const room = state.chatRoom;
-  const pending = room?.status === 'PENDING' && room.direction === 'received';
-  if (pending && state.participant?.isHost) showRequestPopup();
+  if (state.receivedRequestsLog.length && state.participant?.isHost) showRequestPopup();
   renderStats();
 }
 
@@ -1173,7 +1174,7 @@ function openJoinModal(table) {
     showToast('처음 로그인한 대표자만 채팅 요청이 가능합니다.');
     return;
   }
-  if (state.chatRoom) {
+  if (state.chatRoom?.status === 'ACTIVE') {
     showToast('이미 진행 중인 채팅 요청이 있습니다.');
     return;
   }
@@ -1254,7 +1255,6 @@ async function sendJoinRequest() {
     if (error.code === 'CHAT_REQUEST_REJECTED') closeModal('modal-send');
     throw error;
   }
-  state.chatRoom = room;
   closeModal('modal-send');
   showToast('채팅 요청을 보냈습니다. 상대방의 응답을 기다려 주세요.');
 }

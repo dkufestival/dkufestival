@@ -83,3 +83,52 @@ test('reverse direction is not blocked by an opposite directional block', async 
     assert.equal(room.targetSessionId, 2);
   });
 });
+
+test('pending requests do not make a session busy and session locks use a stable order', async () => {
+  const lockedSessionIds = [];
+  let createCalled = false;
+
+  await withPatchedMethods([
+    [sequelize, 'transaction', async (callback) => callback({ LOCK: { UPDATE: 'UPDATE' } })],
+    [ChatRoom, 'findAll', async () => []],
+    [ChatRoom, 'findOne', async () => null],
+    [ChatRoom, 'create', async (body) => {
+      createCalled = true;
+      return { id: 51, ...body, setDataValue() {} };
+    }],
+    [TableSession, 'findOne', async ({ where }) => {
+      lockedSessionIds.push(Number(where.id));
+      return activeSession(where.id);
+    }],
+    [Participant, 'findOne', async () => ({ id: 10, isHost: true })],
+    [TableRequestBlock, 'findOne', async () => null],
+  ], async () => {
+    await chatService.createRequest({ sessionId: 3, participantId: 10 }, { targetSessionId: 1 });
+  });
+
+  assert.equal(createCalled, true);
+  assert.deepEqual(lockedSessionIds.slice(0, 2), [1, 3]);
+});
+
+test('a duplicate pending request in the same direction is rejected', async () => {
+  let createCalled = false;
+
+  await withPatchedMethods([
+    [sequelize, 'transaction', async (callback) => callback({ LOCK: { UPDATE: 'UPDATE' } })],
+    [ChatRoom, 'findAll', async () => []],
+    [ChatRoom, 'findOne', async ({ where }) => (
+      where.requesterSessionId === 1 && where.targetSessionId === 2 && where.status === 'PENDING' ? { id: 99 } : null
+    )],
+    [ChatRoom, 'create', async () => { createCalled = true; }],
+    [TableSession, 'findOne', async ({ where }) => activeSession(where.id)],
+    [Participant, 'findOne', async () => ({ id: 10, isHost: true })],
+    [TableRequestBlock, 'findOne', async () => null],
+  ], async () => {
+    await assert.rejects(
+      () => chatService.createRequest({ sessionId: 1, participantId: 10 }, { targetSessionId: 2 }),
+      (error) => error.status === 409 && error.code === 'CHAT_REQUEST_ALREADY_PENDING'
+    );
+  });
+
+  assert.equal(createCalled, false);
+});

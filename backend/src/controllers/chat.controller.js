@@ -77,7 +77,7 @@ async function unblockSession(req, res, next) {
 
 async function acceptRequest(req, res, next) {
   try {
-    const { room: accepted, autoRejected } = await chatService.acceptRequest(req.params.roomId, req.user);
+    const accepted = await chatService.acceptRequest(req.params.roomId, req.user);
     const room = await chatService.decorateRoom(accepted, req.user.sessionId);
     const requesterView = await chatService.decorateRoom(accepted, accepted.requesterSessionId);
     const targetView = await chatService.decorateRoom(accepted, accepted.targetSessionId);
@@ -94,10 +94,6 @@ async function acceptRequest(req, res, next) {
         message: '채팅이 시작되었습니다.',
       });
       emitPublicTableUpdate(io, { tableIds: roomTableIds(room), reason: 'chat:started' });
-      for (const rejectedRoom of autoRejected) {
-        const rejectedView = await chatService.decorateRoom(rejectedRoom, rejectedRoom.requesterSessionId);
-        emitToRoomParties(io, rejectedView, 'chat:request-rejected', rejectedView);
-      }
     }
     notificationService.notifySessions([room.requesterSessionId, room.targetSessionId], {
       title: '채팅 시작',
