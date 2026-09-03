@@ -748,7 +748,7 @@ input, select, textarea { font-size: 16px; }
 .participant-ended-tag { padding:3px 6px; border-radius:999px; background:rgba(255,255,255,.08); color:var(--text-muted); font-size:9px; font-weight:800; }
 .participant-admin-meta, .participant-admin-reason { overflow:hidden; color:var(--text-muted); font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
 .participant-admin-reason { color:#ff8a80; }
-.participant-action { padding:8px 11px; border-radius:8px; background:transparent; font:700 11px inherit; cursor:pointer; }
+.participant-action { padding:8px 11px; border:1px solid rgba(255,255,255,.22); border-radius:8px; color:#fff; background:transparent; font:700 11px inherit; cursor:pointer; }
 .participant-action.kick { border:1px solid rgba(255,92,77,.5); color:#ff7468; }
 .participant-action.end-access { border:1px solid rgba(255,255,255,.22); color:var(--text-light); }
 .participant-action.restore { border:1px solid rgba(200,241,63,.45); color:var(--lime); }
