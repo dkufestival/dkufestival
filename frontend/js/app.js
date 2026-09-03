@@ -441,6 +441,18 @@ async function refreshTables() {
     state.session = mine.activeSession;
     setCounts(state.session.maleCount, state.session.femaleCount);
   }
+  syncPendingTargetTable();
+}
+
+function syncPendingTargetTable() {
+  const current = state.pendingTargetTable;
+  if (!current?.id) return;
+  const latest = state.tables.find((table) => Number(table.id) === Number(current.id));
+  if (!latest) return;
+  state.pendingTargetTable = latest;
+  const count = Number(latest.activeSession?.receivedLikeCount || 0);
+  $('send-seat-label').textContent = `TABLE ${latest.tableNumber}에 채팅 요청 · 좋아요 ${count}개`;
+  if ($('modal-send')?.classList.contains('active')) updateSendLikeButton(latest);
 }
 
 async function refreshChatRoom() {
@@ -1279,7 +1291,7 @@ function openJoinModal(table) {
     return;
   }
   state.pendingTargetTable = table;
-  $('send-seat-label').textContent = `TABLE ${table.tableNumber}에 채팅 요청`;
+  $('send-seat-label').textContent = `TABLE ${table.tableNumber}에 채팅 요청 · 좋아요 ${Number(table.activeSession?.receivedLikeCount || 0)}개`;
   const inChat = !!table.activeSession?.inChat;
   const pending = [...state.pendingRequestPeers.values()].some((id) => Number(id) === Number(table.activeSession.id));
   const sendBtn = $('send-request-btn');
