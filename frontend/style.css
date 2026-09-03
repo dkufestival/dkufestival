@@ -25,6 +25,7 @@
   --font-body: 'Pretendard', -apple-system, 'Malgun Gothic', sans-serif;
 }
 
+html, body { overflow-x: hidden; }
 body {
   margin: 0;
   background: #e5e5e5;
@@ -914,6 +915,7 @@ input, select, textarea { font-size: 16px; }
   max-width: 320px;
   max-height: 100%;
   overflow-y: auto;
+  overflow-x: hidden;
   scrollbar-width: none;
   -ms-overflow-style: none;
   background: var(--card-dark);
@@ -1108,6 +1110,8 @@ input, select, textarea { font-size: 16px; }
   color: #fff;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  overflow-wrap: break-word;
+  word-break: break-all;
 }
 #board-detail-content::-webkit-scrollbar { display: none; }
 .board-detail-meta {
@@ -1222,6 +1226,8 @@ input, select, textarea { font-size: 16px; }
   margin-bottom: 14px;
   line-height: 1.6;
   color: var(--text-light);
+  overflow-wrap: break-word;
+  word-break: break-all;
 }
 .modal-detail {
   font-size: 13px;
