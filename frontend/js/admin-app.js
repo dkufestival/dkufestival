@@ -959,17 +959,8 @@ function recordGameResponse(game, response) {
   const participant = state.participants.find((item) => Number(item.id) === Number(response.participantId));
   const tableNumber = participant ? participantTableNumber(participant) : tableNumberForSession(response.sessionId);
   if (!tableNumber) return;
-  const isTimeMatch = record.type === 'TIME_MATCH';
-  // 시간 맞추기는 테이블 단위가 아니라 참가자 단위로 기록한다.
-  const resultKey = isTimeMatch
-    ? (response.participantId ? `participant:${response.participantId}` : `session:${response.sessionId}`)
-    : tableNumber;
-  const entry = record.results[resultKey] || {
-    tableNumber,
-    ...(isTimeMatch ? { participantId: response.participantId || null, nickname: participant?.nickname || null } : {}),
-    rounds: {},
-  };
-  if (isTimeMatch && participant?.nickname) entry.nickname = participant.nickname;
+  const entry = record.results[tableNumber] || { tableNumber, rounds: {} };
+  if (record.type === 'TIME_MATCH' && participant?.nickname) entry.nickname = participant.nickname;
   if (record.type === 'TIME_MATCH') {
     const diffMs = Math.abs(Number(response.state?.differenceMs));
     if (Number.isFinite(diffMs) && (entry.bestDiffMs === undefined || diffMs < entry.bestDiffMs)) {
@@ -979,7 +970,7 @@ function recordGameResponse(game, response) {
     const roundIndex = Number(response.state?.roundIndex ?? game.state?.currentRound ?? 0);
     entry.rounds[roundIndex] = record.type === 'RPS' ? response.state?.outcome : Boolean(response.state?.success);
   }
-  record.results[resultKey] = entry;
+  record.results[tableNumber] = entry;
 }
 
 function seedGameRecordFromResponses(game) {
@@ -1065,7 +1056,7 @@ function renderGameRankList() {
         rowEl.className = 'rank-row';
         rowEl.appendChild(text('span', 'rank-pos', `${row.rank}위`));
         const identity = record.type === 'TIME_MATCH' && row.nickname
-          ? `${row.nickname} · TABLE ${row.tableNumber}`
+          ? row.nickname
           : `TABLE ${row.tableNumber}`;
         rowEl.appendChild(text('span', 'rank-table-num', identity));
         rowEl.appendChild(text('span', 'rank-score', row.scoreLabel));
