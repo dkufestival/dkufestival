@@ -112,6 +112,6 @@ test('board profile view history hides deleted source post titles', async () => 
   ], async () => {
     const views = await boardService.listProfileViews({ participantId: 1 });
     assert.equal(views[0].sourcePostTitle, '삭제된 게시글');
-    assert.equal(views[0].viewer.instagramId, 'viewer_id');
+    assert.equal(views[0].peer.instagramId, 'viewer_id');
   });
 });
