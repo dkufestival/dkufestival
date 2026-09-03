@@ -10,6 +10,17 @@ async function create(req, res, next) {
   }
 }
 
+async function cancel(req, res, next) {
+  try {
+    const call = await staffCallService.cancelCall(req.user.sessionId);
+    const io = req.app.get('io');
+    io?.to('admins').emit('staffCall:resolved', { id: call.id });
+    res.json({ data: { id: call.id } });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function myStatus(req, res, next) {
   try {
     res.json({ data: await staffCallService.getMyStatus(req.user.sessionId) });
@@ -38,4 +49,4 @@ async function adminResolve(req, res, next) {
   }
 }
 
-module.exports = { create, myStatus, adminList, adminResolve };
+module.exports = { create, cancel, myStatus, adminList, adminResolve };

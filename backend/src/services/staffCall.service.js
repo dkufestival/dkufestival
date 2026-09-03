@@ -48,6 +48,13 @@ async function getPendingCalls() {
   }));
 }
 
+async function cancelCall(sessionId) {
+  const call = await StaffCall.findOne({ where: { tableSessionId: sessionId, status: 'PENDING' } });
+  if (!call) throw new AppError(404, 'STAFF_CALL_NOT_FOUND', 'Staff call not found.');
+  await call.destroy();
+  return call;
+}
+
 async function resolveCall(id) {
   const call = await StaffCall.findByPk(id);
   if (!call) throw new AppError(404, 'STAFF_CALL_NOT_FOUND', 'Staff call not found.');
@@ -55,4 +62,4 @@ async function resolveCall(id) {
   return call;
 }
 
-module.exports = { createCall, getMyStatus, getPendingCalls, resolveCall };
+module.exports = { createCall, getMyStatus, getPendingCalls, cancelCall, resolveCall };

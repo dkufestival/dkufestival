@@ -11,5 +11,5 @@ export const boardApi = {
   post: (id, role = 'PARTICIPANT') => api.get(`/api/board/${id}`, { auth: true, role }),
   removePost: (id) => api.delete(`/api/board/${id}`, { auth: true }),
   revealProfile: (id) => api.post(`/api/board/${id}/reveal`, {}, { auth: true }),
-  profileViews: () => api.get('/api/board/profile-views', { auth: true }),
+  profileViews: (direction = 'received') => api.get(`/api/board/profile-views?direction=${direction}`, { auth: true }),
 };

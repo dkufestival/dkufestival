@@ -28,5 +28,6 @@ router.get('/likes/mine', auth, requireRole('PARTICIPANT'), tableLikeController.
 router.post('/:tableId/like', auth, requireRole('PARTICIPANT'), tableLikeController.toggle);
 router.get('/me/staff-call', auth, requireRole('PARTICIPANT'), staffCallController.myStatus);
 router.post('/me/staff-call', auth, requireRole('PARTICIPANT'), staffCallController.create);
+router.delete('/me/staff-call', auth, requireRole('PARTICIPANT'), staffCallController.cancel);
 
 module.exports = router;

@@ -194,8 +194,10 @@ async function revealProfile(user, postId) {
   });
 }
 
-function serializeView(view) {
+function serializeView(view, targetAlias = 'viewer') {
   const json = view.toJSON ? view.toJSON() : view;
+  const target = json[targetAlias];
+  const targetParticipantId = targetAlias === 'viewer' ? json.viewerParticipantId : json.viewedParticipantId;
   return {
     id: json.id,
     createdAt: json.createdAt,
@@ -203,24 +205,28 @@ function serializeView(view) {
     sourcePostTitle: json.sourcePostId && json.sourcePost
       ? (json.sourcePost.title || json.sourcePostTitle)
       : '삭제된 게시글',
-    viewer: {
-      id: json.viewerParticipantId,
-      nickname: json.viewer?.nickname || null,
-      tableNumber: json.viewer?.session?.table?.tableNumber || null,
-      gender: json.viewer?.boardProfile?.gender || null,
-      instagramId: json.viewer?.boardProfile?.instagramId || null,
+    peer: {
+      id: targetParticipantId,
+      nickname: target?.nickname || null,
+      tableNumber: target?.session?.table?.tableNumber || null,
+      gender: target?.boardProfile?.gender || null,
+      instagramId: target?.boardProfile?.instagramId || null,
     },
   };
 }
 
-async function listProfileViews(user) {
+async function listProfileViews(user, direction = 'received') {
   await requireProfile(user.participantId);
+  const isGiven = direction === 'given';
+  const targetAlias = isGiven ? 'viewed' : 'viewer';
   const views = await BoardProfileView.findAll({
-    where: { viewedParticipantId: user.participantId },
+    where: isGiven
+      ? { viewerParticipantId: user.participantId }
+      : { viewedParticipantId: user.participantId },
     include: [
       {
         model: Participant,
-        as: 'viewer',
+        as: targetAlias,
         attributes: ['id', 'nickname', 'tableSessionId'],
         include: [
           { model: BoardProfile, as: 'boardProfile', attributes: ['gender', 'instagramId'] },
@@ -236,7 +242,7 @@ async function listProfileViews(user) {
     ],
     order: [['createdAt', 'DESC']],
   });
-  return views.map(serializeView);
+  return views.map((view) => serializeView(view, targetAlias));
 }
 
 async function cleanupParticipantBoardData(participantIds, options = {}) {

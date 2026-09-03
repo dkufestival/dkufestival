@@ -74,7 +74,8 @@ async function revealProfile(req, res, next) {
 
 async function profileViews(req, res, next) {
   try {
-    res.json({ data: await boardService.listProfileViews(req.user) });
+    const direction = req.query.direction === 'given' ? 'given' : 'received';
+    res.json({ data: await boardService.listProfileViews(req.user, direction) });
   } catch (error) {
     next(error);
   }
