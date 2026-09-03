@@ -1,4 +1,5 @@
 const sequelize = require('../config/db');
+const { Op } = require('sequelize');
 const { BoardProfile, BoardPost, BoardProfileView, Participant, TableSession, Table } = require('../models');
 const AppError = require('../errors/AppError');
 
@@ -238,6 +239,40 @@ async function listProfileViews(user) {
   return views.map(serializeView);
 }
 
+async function cleanupParticipantBoardData(participantIds, options = {}) {
+  const ids = [...new Set((participantIds || []).map(Number).filter(Number.isInteger))];
+  if (!ids.length) return { deletedPostIds: [] };
+  const transaction = options.transaction;
+  const posts = await BoardPost.findAll({
+    where: { authorParticipantId: { [Op.in]: ids } },
+    attributes: ['id'],
+    transaction,
+  });
+  const deletedPostIds = posts.map((post) => Number(post.id));
+  await BoardProfileView.destroy({
+    where: {
+      [Op.or]: [
+        { viewerParticipantId: { [Op.in]: ids } },
+        { viewedParticipantId: { [Op.in]: ids } },
+        ...(deletedPostIds.length ? [{ sourcePostId: { [Op.in]: deletedPostIds } }] : []),
+      ],
+    },
+    transaction,
+  });
+  await BoardPost.destroy({ where: { authorParticipantId: { [Op.in]: ids } }, transaction });
+  await BoardProfile.destroy({ where: { participantId: { [Op.in]: ids } }, transaction });
+  return { deletedPostIds };
+}
+
+async function cleanupSessionBoardData(sessionId, options = {}) {
+  const participants = await Participant.findAll({
+    where: { tableSessionId: Number(sessionId) },
+    attributes: ['id'],
+    transaction: options.transaction,
+  });
+  return cleanupParticipantBoardData(participants.map((participant) => participant.id), options);
+}
+
 module.exports = {
   normalizeInstagramId,
   assertInstagramId,
@@ -249,4 +284,6 @@ module.exports = {
   deletePost,
   revealProfile,
   listProfileViews,
+  cleanupParticipantBoardData,
+  cleanupSessionBoardData,
 };

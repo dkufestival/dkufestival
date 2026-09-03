@@ -5,6 +5,7 @@ const { Table, TableSession, Participant, ChatRoom, TableLike } = require('../mo
 const AppError = require('../errors/AppError');
 const { defaultExpiresAt } = require('./session.service');
 const lifecycleService = require('./lifecycle.service');
+const boardService = require('./board.service');
 
 async function getTables(options = {}) {
   const tables = await Table.findAll({
@@ -127,7 +128,8 @@ async function checkoutTable(tableId) {
       endedAt: new Date(),
     }, { transaction });
     const chats = await lifecycleService.closeSessionChats(session.id, 'SESSION_CHECKED_OUT', { transaction });
-    return { session, ...chats };
+    const boardCleanup = await boardService.cleanupSessionBoardData(session.id, { transaction });
+    return { session, ...chats, ...boardCleanup };
   });
 }
 

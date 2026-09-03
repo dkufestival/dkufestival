@@ -109,8 +109,8 @@ function bindSocket() {
   });
   socket.on('globalChat:cleared', () => { state.globalChatMessages = []; renderGlobalChat(); });
   socket.on('admin:data-reset', () => {
-    state.globalChatMessages = []; state.gameHistory = []; state.gameHistoryById = {};
-    renderGlobalChat(); renderGameRankList();
+    state.globalChatMessages = []; state.gameHistory = []; state.gameHistoryById = {}; state.basketballLeaderboard = [];
+    renderGlobalChat(); renderGameRankList(); renderBasketballLeaderboard();
   });
   socket.on('board:created', (post) => {
     state.boardPosts.unshift(post);
@@ -138,7 +138,10 @@ function bindSocket() {
     if (latest) recordGameResponse(game, latest);
     if (game.type === 'TIME_MATCH' && latest?.state) {
       const diff = Number(latest.state.differenceMs || 0);
-      addGameLog(latest.state.success ? '시간 맞추기 성공 · 정확히 일치' : `시간 맞추기 응답 · ${(Math.abs(diff) / 1000).toFixed(2)}초 ${diff < 0 ? '빠름' : '늦음'}`);
+      const participantLabel = gameResponseParticipantLabel(latest);
+      addGameLog(latest.state.success
+        ? `${participantLabel} · 시간 맞추기 성공 · 정확히 일치`
+        : `${participantLabel} · 시간 맞추기 응답 · ${(Math.abs(diff) / 1000).toFixed(2)}초 ${diff < 0 ? '빠름' : '늦음'}`);
     } else if (latest?.state) {
       addGameLog(`${game.type} 참가 응답 수신`);
     } else {
@@ -264,6 +267,15 @@ function renderAll() {
 
 function participantTableNumber(participant) {
   return participant.session?.table?.tableNumber ?? '-';
+}
+
+function gameResponseParticipantLabel(response) {
+  const participant = state.participants.find((item) => Number(item.id) === Number(response?.participantId));
+  const nickname = participant?.nickname || '참가자';
+  const tableNumber = participant
+    ? participantTableNumber(participant)
+    : (tableNumberForSession(response?.sessionId) ?? '-');
+  return `${nickname}(table ${tableNumber})`;
 }
 
 function renderParticipantsAdmin() {
@@ -1090,7 +1102,7 @@ async function clearGlobalChatMessages() {
 async function resetAllData() {
   if (!window.confirm('게임 기록과 점수, 전체채팅을 모두 초기화하시겠습니까?')) return;
   await adminApi.resetAllData();
-  state.activeGame = null; state.globalChatMessages = []; state.gameHistory = []; state.gameHistoryById = {};
+  state.activeGame = null; state.globalChatMessages = []; state.gameHistory = []; state.gameHistoryById = {}; state.basketballLeaderboard = [];
   renderAll();
   showToast('전체 데이터가 초기화되었습니다.');
 }

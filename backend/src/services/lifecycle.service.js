@@ -3,6 +3,7 @@ const sequelize = require('../config/db');
 const { TableSession } = require('../models');
 const chatService = require('./chat.service');
 const notificationService = require('./notification.service');
+const boardService = require('./board.service');
 const { emitPublicTableUpdate, roomTableIds, sessionTableId } = require('../socket/table-updates');
 
 async function closeSessionChats(sessionId, reason, options = {}) {
@@ -29,7 +30,8 @@ async function expireSessions(options = {}) {
     for (const session of sessions) {
       await session.update({ status: 'CLOSED', endedAt: at }, { transaction });
       const chats = await closeSessionChats(session.id, 'SESSION_EXPIRED', { transaction });
-      results.push({ session, ...chats });
+      const boardCleanup = await boardService.cleanupSessionBoardData(session.id, { transaction });
+      results.push({ session, ...chats, ...boardCleanup });
     }
     await chatService.expirePendingRooms({ transaction, now: at });
     return results;
@@ -54,6 +56,9 @@ function emitLifecycle(io, result) {
   }
   for (const room of result.cancelledRooms || []) {
     io.to(`session:${room.requesterSessionId}`).to(`session:${room.targetSessionId}`).emit('chat:request-cancelled', room);
+  }
+  for (const id of result.deletedPostIds || []) {
+    io.to('participants').to('monitors').to('admins').emit('board:deleted', { id });
   }
   emitPublicTableUpdate(io, { tableIds: publicTableIds, reason: 'table:lifecycle-ended' });
 }

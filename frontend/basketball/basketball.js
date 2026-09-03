@@ -97,7 +97,8 @@ async function refreshCompetitionState() {
   }
   const data = await fetchJson('/api/basketball/state');
   confirmedBest = Number(data.personalBest || 0);
-  best = Math.max(best, confirmedBest);
+  best = confirmedBest;
+  pendingBest = confirmedBest;
   bestNode.textContent = String(best);
   localStorage.setItem('festival-basketball-best', String(best));
   setFreePlayMode();
@@ -148,6 +149,16 @@ function connectCompetitionSocket() {
   socket.on('game:global:started', returnToAppForGlobalGame);
   socket.on('game:global:current', (game) => {
     if (game?.state?.lifecyclePhase === 'STARTED') returnToAppForGlobalGame();
+  });
+  socket.on('admin:data-reset', () => {
+    score = 0;
+    best = 0;
+    confirmedBest = 0;
+    pendingBest = 0;
+    scoreNode.textContent = '0';
+    bestNode.textContent = '0';
+    localStorage.removeItem('festival-basketball-best');
+    renderLeaderboard([]);
   });
 }
 

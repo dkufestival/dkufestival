@@ -10,6 +10,7 @@ const { Op } = require('sequelize');
 const { GameSession, GlobalChatMessage, BasketballScore, TableSession, Participant, Table } = require('../models');
 const sequelize = require('../config/db');
 const globalChatService = require('../services/globalChat.service');
+const boardService = require('../services/board.service');
 
 async function login(req, res, next) {
   try {
@@ -81,6 +82,7 @@ async function changeParticipantAccess(req, res, next, { block }) {
       });
       if (nextHost) await nextHost.update({ isHost: true }, { transaction });
     }
+    const boardCleanup = await boardService.cleanupParticipantBoardData([participant.id], { transaction });
     await transaction.commit();
     const io = req.app.get('io');
     const latestSession = await TableSession.findByPk(participant.tableSessionId);
@@ -93,6 +95,9 @@ async function changeParticipantAccess(req, res, next, { block }) {
       message: block ? '관리자에 의해 강제 퇴장되었습니다.' : '관리자에 의해 이용이 종료되었습니다.',
     });
     io?.to('admins').emit('admin:participants-updated');
+    for (const id of boardCleanup.deletedPostIds) {
+      io?.to('participants').to('monitors').to('admins').emit('board:deleted', { id });
+    }
     emitPublicTableUpdate(io, { tableIds: [participant.session?.tableId], reason: block ? 'participant:blocked' : 'participant:ended' });
     if (autoCheckoutResult) lifecycleService.emitLifecycle(io, autoCheckoutResult);
     res.json({ data: participant });
