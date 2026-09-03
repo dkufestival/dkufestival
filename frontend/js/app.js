@@ -40,6 +40,9 @@ const state = {
   entryContext: null,
   counts: { male: 0, female: 0 },
   timer: null,
+  liveContentTimer: null,
+  liveContentRefreshPending: false,
+  liveContentReady: false,
   pendingTargetTable: null,
   timeMatch: { phase: 'ready', startedAt: 0, elapsedMs: 0, frame: null },
   gameAnswer: null,
@@ -63,6 +66,8 @@ const state = {
   receivedRequestsLog: [],
   pendingRequestPeers: new Map(),
   staffCallPending: false,
+  unreadNoticeCount: 0,
+  unreadGlobalChatCount: 0,
   board: { profile: null, posts: [], currentPost: null, revealedProfile: null, views: [] },
 };
 
@@ -197,8 +202,16 @@ function setMainContent(type) {
   viewport?.classList.toggle('global-chat-mode', type === 'chat');
   mapZoom?.setEnabled(type === 'map');
   renderBottomMenuState();
-  if (type === 'chat') renderGlobalChat({ forceBottom: true });
-  if (type === 'notice') renderNotices();
+  if (type === 'chat') {
+    state.unreadGlobalChatCount = 0;
+    updateGlobalChatBadge();
+    renderGlobalChat({ forceBottom: true });
+  }
+  if (type === 'notice') {
+    state.unreadNoticeCount = 0;
+    updateNoticeBadge();
+    renderNotices();
+  }
   if (type === 'game') renderGame();
 }
 
@@ -499,6 +512,45 @@ async function refreshGlobalChat() {
   state.globalChatLoaded = true;
 }
 
+async function refreshLiveContent() {
+  if (state.liveContentRefreshPending || (!state.token && !state.isMonitor)) return;
+  state.liveContentRefreshPending = true;
+  try {
+    const [noticesResult, chatResult, boardResult] = await Promise.allSettled([
+      noticesApi.list(state.isMonitor ? 'MONITOR' : 'PARTICIPANT'),
+      globalChatApi.list(state.isMonitor ? 'MONITOR' : 'PARTICIPANT'),
+      boardApi.posts(state.isMonitor ? 'MONITOR' : 'PARTICIPANT'),
+    ]);
+    if (noticesResult.status === 'fulfilled') {
+      const previousIds = new Set(state.notices.map((item) => String(item.id)));
+      const incoming = noticesResult.value.filter((item) => !previousIds.has(String(item.id)));
+      state.notices = noticesResult.value;
+      if (state.liveContentReady && state.activeMenu !== 'notice') state.unreadNoticeCount += incoming.length;
+      if (state.activeMenu === 'notice' || incoming.length) renderNotices();
+    }
+    if (chatResult.status === 'fulfilled') {
+      const previousIds = new Set(state.globalChatMessages.map((item) => String(item.id)));
+      const incoming = chatResult.value.filter((item) => !previousIds.has(String(item.id)));
+      mergeGlobalChatMessages(chatResult.value);
+      state.globalChatLoaded = true;
+      if (state.liveContentReady && state.activeMenu !== 'chat') {
+        state.unreadGlobalChatCount += incoming.filter((message) => (
+          Number(message.senderParticipantId) !== Number(state.participant?.id)
+        )).length;
+      }
+      updateGlobalChatBadge();
+      if (state.activeMenu === 'chat') renderGlobalChat();
+    }
+    if (boardResult.status === 'fulfilled') {
+      state.board.posts = boardResult.value;
+      if (state.activeMenu === 'board' && !$('board-list-view').hidden) renderBoardList();
+    }
+    state.liveContentReady = true;
+  } finally {
+    state.liveContentRefreshPending = false;
+  }
+}
+
 async function syncMonitorState(options = {}) {
   if (state.syncPromise) return state.syncPromise;
   state.syncPromise = Promise.allSettled([
@@ -653,7 +705,8 @@ function bindSocket() {
     }
   });
   socket.on('notice:created', (notice) => {
-    state.notices.unshift(notice);
+    if (!state.notices.some((item) => item.id === notice.id)) state.notices.unshift(notice);
+    if (state.activeMenu !== 'notice') state.unreadNoticeCount += 1;
     renderNotices();
     showNoticePopup(notice);
   });
@@ -663,16 +716,21 @@ function bindSocket() {
   });
   socket.on('globalChat:message', (message) => {
     mergeGlobalChatMessages([message]);
+    const mine = Number(message.senderParticipantId) === Number(state.participant?.id);
     if (state.activeMenu === 'chat') renderGlobalChat();
+    else if (!mine) {
+      state.unreadGlobalChatCount += 1;
+      updateGlobalChatBadge();
+    }
   });
   socket.on('board:created', (post) => {
     if (!state.board.posts.some((item) => item.id === post.id)) state.board.posts.unshift(post);
-    if ($('modal-board').classList.contains('active') && !$('board-list-view').hidden) renderBoardList();
+    if (state.activeMenu === 'board' && !$('board-list-view').hidden) renderBoardList();
   });
   socket.on('board:deleted', ({ id }) => {
     state.board.posts = state.board.posts.filter((post) => post.id !== id);
     if (state.board.currentPost?.id === id) showBoardList();
-    if ($('modal-board').classList.contains('active') && !$('board-list-view').hidden) renderBoardList();
+    if (state.activeMenu === 'board' && !$('board-list-view').hidden) renderBoardList();
   });
   socket.on('board:profile-viewed', async (view = {}) => {
     if (!$('board-views-view').hidden) await showBoardViews();
@@ -1542,11 +1600,15 @@ function showLikePopup(fromTableNumber) {
 }
 
 function updateNoticeBadge() {
-  const seen = Number(localStorage.getItem(STORAGE_KEYS.seenNoticeCount) || 0);
-  const unread = Math.max(0, state.notices.length - seen);
   const badge = $('notice-badge');
-  badge.textContent = unread > 99 ? '99+' : unread;
-  badge.hidden = unread === 0;
+  badge.textContent = state.unreadNoticeCount > 99 ? '99+' : state.unreadNoticeCount;
+  badge.hidden = state.unreadNoticeCount === 0;
+}
+
+function updateGlobalChatBadge() {
+  const badge = $('global-chat-badge');
+  badge.textContent = state.unreadGlobalChatCount > 99 ? '99+' : state.unreadGlobalChatCount;
+  badge.hidden = state.unreadGlobalChatCount === 0;
 }
 
 function showBoardView(viewId) {
@@ -2114,10 +2176,14 @@ function renderPushPrompt() {
 }
 function startTimer() {
   if (state.timer) clearInterval(state.timer);
+  if (state.liveContentTimer) clearInterval(state.liveContentTimer);
   state.timer = setInterval(() => {
     renderStats();
     renderTables();
   }, 1000);
+  state.liveContentTimer = setInterval(() => {
+    refreshLiveContent().catch(() => {});
+  }, 3000);
 }
 
 function bindEvents() {
@@ -2172,7 +2238,6 @@ function bindEvents() {
   });
   $('notice-btn').addEventListener('click', () => {
     setMainContent('notice');
-    localStorage.setItem(STORAGE_KEYS.seenNoticeCount, String(state.notices.length));
     showNoticeList();
   });
   $('notice-detail-back').addEventListener('click', showNoticeList);
