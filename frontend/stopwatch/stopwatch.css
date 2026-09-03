@@ -202,14 +202,10 @@ body {
 }
 
 .attempts-list {
-  flex: 1;
-  min-height: 0;
+  flex-shrink: 0;
   margin-top: 24px;
-  display: flex;
-  flex-direction: column;
 }
 .attempts-head {
-  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -221,17 +217,9 @@ body {
   border-bottom: 1px solid var(--line);
 }
 .attempts-rows {
-  flex: 1;
-  min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
 }
-.attempts-rows::-webkit-scrollbar { display: none; }
 .attempt-row {
   display: flex;
   align-items: baseline;
