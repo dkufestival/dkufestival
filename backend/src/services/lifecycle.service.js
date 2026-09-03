@@ -1,6 +1,6 @@
 const { Op } = require('sequelize');
 const sequelize = require('../config/db');
-const { TableSession } = require('../models');
+const { TableSession, TableLike } = require('../models');
 const chatService = require('./chat.service');
 const notificationService = require('./notification.service');
 const boardService = require('./board.service');
@@ -31,6 +31,10 @@ async function expireSessions(options = {}) {
       await session.update({ status: 'CLOSED', endedAt: at }, { transaction });
       const chats = await closeSessionChats(session.id, 'SESSION_EXPIRED', { transaction });
       const boardCleanup = await boardService.cleanupSessionBoardData(session.id, { transaction });
+      await TableLike.destroy({
+        where: { toSessionId: session.id },
+        transaction,
+      });
       results.push({ session, ...chats, ...boardCleanup });
     }
     await chatService.expirePendingRooms({ transaction, now: at });

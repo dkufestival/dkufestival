@@ -6,7 +6,7 @@ export const boardApi = {
   remove: (id, role = 'PARTICIPANT') => api.delete(`/api/board/${id}`, { auth: true, role }),
   profile: () => api.get('/api/board/profile', { auth: true }),
   saveProfile: (body) => api.put('/api/board/profile', body, { auth: true }),
-  posts: (role = 'PARTICIPANT') => api.get('/api/board', { auth: true, role }),
+  posts: (role = 'PARTICIPANT', options = {}) => api.get('/api/board', { auth: true, role, ...options }),
   createPost: (body) => api.post('/api/board', body, { auth: true }),
   post: (id, role = 'PARTICIPANT') => api.get(`/api/board/${id}`, { auth: true, role }),
   removePost: (id) => api.delete(`/api/board/${id}`, { auth: true }),

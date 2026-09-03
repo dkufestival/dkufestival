@@ -514,13 +514,13 @@ async function refreshGlobalChat() {
 }
 
 async function refreshLiveContent() {
-  if (state.liveContentRefreshPending || (!state.token && !state.isMonitor)) return;
+  if (state.liveContentRefreshPending || (!state.isMonitor && !getParticipantAuth()?.token)) return;
   state.liveContentRefreshPending = true;
   try {
     const [noticesResult, chatResult, boardResult] = await Promise.allSettled([
-      noticesApi.list(state.isMonitor ? 'MONITOR' : 'PARTICIPANT'),
-      globalChatApi.list(state.isMonitor ? 'MONITOR' : 'PARTICIPANT'),
-      boardApi.posts(state.isMonitor ? 'MONITOR' : 'PARTICIPANT'),
+      noticesApi.list(state.isMonitor ? 'MONITOR' : 'PARTICIPANT', { toast: false }),
+      globalChatApi.list(state.isMonitor ? 'MONITOR' : 'PARTICIPANT', { toast: false }),
+      boardApi.posts(state.isMonitor ? 'MONITOR' : 'PARTICIPANT', { toast: false }),
     ]);
     if (noticesResult.status === 'fulfilled') {
       const previousIds = new Set(state.notices.map((item) => String(item.id)));
@@ -623,7 +623,9 @@ function bindSocket() {
   });
   socket.on('participant:kicked', (payload = {}) => {
     clearParticipantAuth();
+    state.token = null;
     if (state.timer) clearInterval(state.timer);
+    if (state.liveContentTimer) clearInterval(state.liveContentTimer);
     $('kicked-message').textContent = payload.message || '관리자에 의해 강제 퇴장되었습니다.';
     showScreen('screen-kicked');
     socket.disconnect();
@@ -637,8 +639,11 @@ function bindSocket() {
   socket.on('table:checked-out', () => {
     showToast('퇴실 처리되었습니다.');
     clearParticipantAuth();
+    state.token = null;
+    if (state.liveContentTimer) clearInterval(state.liveContentTimer);
     setLandingStatus('세션이 종료되었습니다. 관리자에게 문의해 주세요.');
     showScreen('screen-landing');
+    socket.disconnect();
   });
   socket.on('chat:request-received', (room) => {
     if (room.direction === 'received') {

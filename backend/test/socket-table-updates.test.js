@@ -106,10 +106,11 @@ test('QR entry emits participant join to the session and public table update to 
     await entryController.enter(mockReq(io), mockRes(), assert.fail);
   });
 
-  assert.deepEqual(calls.map((call) => call.event), ['participant:joined', 'table:updated']);
+  assert.deepEqual(calls.map((call) => call.event), ['participant:joined', 'admin:participants-updated', 'table:updated']);
   assert.deepEqual(calls[0].rooms, ['session:70']);
-  assert.deepEqual(calls[1].rooms, ['participants', 'monitors', 'admins']);
-  assert.deepEqual(calls[1].payload, { tableIds: [7], reason: 'entry:joined' });
+  assert.deepEqual(calls[1].rooms, ['admins']);
+  assert.deepEqual(calls[2].rooms, ['participants', 'monitors', 'admins']);
+  assert.deepEqual(calls[2].payload, { tableIds: [7], reason: 'entry:joined' });
 });
 
 test('admin extend keeps table:extended on the target session and emits public refresh separately', async () => {

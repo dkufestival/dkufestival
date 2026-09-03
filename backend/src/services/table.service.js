@@ -129,6 +129,10 @@ async function checkoutTable(tableId) {
     }, { transaction });
     const chats = await lifecycleService.closeSessionChats(session.id, 'SESSION_CHECKED_OUT', { transaction });
     const boardCleanup = await boardService.cleanupSessionBoardData(session.id, { transaction });
+    await TableLike.destroy({
+      where: { toSessionId: session.id },
+      transaction,
+    });
     return { session, ...chats, ...boardCleanup };
   });
 }

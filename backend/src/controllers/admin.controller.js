@@ -11,6 +11,7 @@ const { GameSession, GlobalChatMessage, BasketballScore, TableSession, Participa
 const sequelize = require('../config/db');
 const globalChatService = require('../services/globalChat.service');
 const boardService = require('../services/board.service');
+const chatService = require('../services/chat.service');
 
 async function login(req, res, next) {
   try {
@@ -83,6 +84,7 @@ async function changeParticipantAccess(req, res, next, { block }) {
       if (nextHost) await nextHost.update({ isHost: true }, { transaction });
     }
     const boardCleanup = await boardService.cleanupParticipantBoardData([participant.id], { transaction });
+    const deletedRequests = await chatService.deletePendingRequestsFromSession(participant.tableSessionId, { transaction });
     await transaction.commit();
     const io = req.app.get('io');
     const latestSession = await TableSession.findByPk(participant.tableSessionId);
@@ -97,6 +99,9 @@ async function changeParticipantAccess(req, res, next, { block }) {
     io?.to('admins').emit('admin:participants-updated');
     for (const id of boardCleanup.deletedPostIds) {
       io?.to('participants').to('monitors').to('admins').emit('board:deleted', { id });
+    }
+    for (const room of deletedRequests) {
+      io?.to(`session:${room.requesterSessionId}`).to(`session:${room.targetSessionId}`).emit('chat:request-cancelled', room);
     }
     emitPublicTableUpdate(io, { tableIds: [participant.session?.tableId], reason: block ? 'participant:blocked' : 'participant:ended' });
     if (autoCheckoutResult) lifecycleService.emitLifecycle(io, autoCheckoutResult);

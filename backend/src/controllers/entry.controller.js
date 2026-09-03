@@ -18,6 +18,7 @@ async function enter(req, res, next) {
         sessionId: result.session.id,
         participant: result.participant,
       });
+      io.to('admins').emit('admin:participants-updated');
       emitPublicTableUpdate(io, {
         tableIds: [result.table.id],
         reason: result.restored ? 'entry:restored' : 'entry:joined',

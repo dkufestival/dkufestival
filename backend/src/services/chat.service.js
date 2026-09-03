@@ -406,8 +406,26 @@ async function cancelPendingForSession(sessionId, options = {}) {
     transaction: options.transaction,
     lock: options.transaction?.LOCK.UPDATE,
   });
-  for (const room of rooms) {
-    await room.update({ status: 'CANCELLED', cancelledAt: now() }, { transaction: options.transaction });
+  if (rooms.length) {
+    await ChatRoom.destroy({
+      where: { id: { [Op.in]: rooms.map((room) => room.id) } },
+      transaction: options.transaction,
+    });
+  }
+  return rooms;
+}
+
+async function deletePendingRequestsFromSession(sessionId, options = {}) {
+  const rooms = await ChatRoom.findAll({
+    where: { requesterSessionId: Number(sessionId), status: 'PENDING' },
+    transaction: options.transaction,
+    lock: options.transaction?.LOCK.UPDATE,
+  });
+  if (rooms.length) {
+    await ChatRoom.destroy({
+      where: { id: { [Op.in]: rooms.map((room) => room.id) } },
+      transaction: options.transaction,
+    });
   }
   return rooms;
 }
@@ -451,6 +469,7 @@ module.exports = {
   expirePendingRooms,
   closeRoomsForSession,
   cancelPendingForSession,
+  deletePendingRequestsFromSession,
   adminListRooms,
   adminEndRoom,
   decorateRoom,
