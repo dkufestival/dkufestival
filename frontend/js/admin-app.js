@@ -956,9 +956,20 @@ function recordGameResponse(game, response) {
   if (!response?.sessionId) return;
   const record = ensureGameRecord(game);
   if (!record || !RANKED_GAME_TYPES.includes(record.type)) return;
-  const tableNumber = tableNumberForSession(response.sessionId);
+  const participant = state.participants.find((item) => Number(item.id) === Number(response.participantId));
+  const tableNumber = participant ? participantTableNumber(participant) : tableNumberForSession(response.sessionId);
   if (!tableNumber) return;
-  const entry = record.results[tableNumber] || { tableNumber, rounds: {} };
+  const isTimeMatch = record.type === 'TIME_MATCH';
+  // 시간 맞추기는 테이블 단위가 아니라 참가자 단위로 기록한다.
+  const resultKey = isTimeMatch
+    ? (response.participantId ? `participant:${response.participantId}` : `session:${response.sessionId}`)
+    : tableNumber;
+  const entry = record.results[resultKey] || {
+    tableNumber,
+    ...(isTimeMatch ? { participantId: response.participantId || null, nickname: participant?.nickname || null } : {}),
+    rounds: {},
+  };
+  if (isTimeMatch && participant?.nickname) entry.nickname = participant.nickname;
   if (record.type === 'TIME_MATCH') {
     const diffMs = Math.abs(Number(response.state?.differenceMs));
     if (Number.isFinite(diffMs) && (entry.bestDiffMs === undefined || diffMs < entry.bestDiffMs)) {
@@ -968,7 +979,7 @@ function recordGameResponse(game, response) {
     const roundIndex = Number(response.state?.roundIndex ?? game.state?.currentRound ?? 0);
     entry.rounds[roundIndex] = record.type === 'RPS' ? response.state?.outcome : Boolean(response.state?.success);
   }
-  record.results[tableNumber] = entry;
+  record.results[resultKey] = entry;
 }
 
 function seedGameRecordFromResponses(game) {
@@ -1053,12 +1064,17 @@ function renderGameRankList() {
         const rowEl = document.createElement('div');
         rowEl.className = 'rank-row';
         rowEl.appendChild(text('span', 'rank-pos', `${row.rank}위`));
-        rowEl.appendChild(text('span', 'rank-table-num', `TABLE ${row.tableNumber}`));
+        const identity = record.type === 'TIME_MATCH' && row.nickname
+          ? `${row.nickname} · TABLE ${row.tableNumber}`
+          : `TABLE ${row.tableNumber}`;
+        rowEl.appendChild(text('span', 'rank-table-num', identity));
         rowEl.appendChild(text('span', 'rank-score', row.scoreLabel));
         body.appendChild(rowEl);
       });
     }
-    const participated = new Set(Object.keys(record.results).map(Number));
+    const participated = record.type === 'TIME_MATCH'
+      ? new Set(Object.values(record.results).map((row) => Number(row.tableNumber)))
+      : new Set(Object.keys(record.results).map(Number));
     const missing = (record.eligibleTeams || []).filter((team) => !participated.has(Number(team.tableNumber)));
     body.appendChild(text('div', 'rank-empty', `미참여 ${missing.length}팀${missing.length ? ` · ${missing.map((team) => `TABLE ${team.tableNumber ?? '-'}`).join(', ')}` : ''}`));
     details.appendChild(body);
