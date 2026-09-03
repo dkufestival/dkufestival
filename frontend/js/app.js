@@ -1016,24 +1016,39 @@ function renderReceivedRequests() {
   state.receivedRequestsLog.forEach((entry) => {
     const card = document.createElement('div');
     card.className = 'request-card';
-    card.appendChild(text('div', 'request-card-icon', '💬'));
+
+    const row = document.createElement('div');
+    row.className = 'request-card-row';
+    row.appendChild(text('div', 'request-card-icon', '❤️'));
 
     const body = document.createElement('div');
     body.className = 'request-card-body';
     const top = document.createElement('div');
     top.className = 'request-card-top';
-    top.appendChild(text('div', 'request-card-title', `TABLE ${entry.tableNumber} 채팅 요청`));
+
+    const titleWrap = document.createElement('div');
+    titleWrap.className = 'request-card-title-wrap';
+    titleWrap.appendChild(text('div', 'request-card-title', `TABLE ${entry.tableNumber}`));
+    const likeCount = (state.tables || []).find((t) => t.tableNumber === entry.tableNumber)?.activeSession?.receivedLikeCount || 0;
+    const likeBadge = document.createElement('div');
+    likeBadge.className = 'request-card-like';
+    likeBadge.innerHTML = '<svg viewBox="0 0 24 24" width="11" height="11"><path d="M12 21s-6.7-4.35-9.33-8.2C.86 10.1 1.1 6.9 3.6 5.1c2.02-1.45 4.6-.98 6.1.86L12 8.5l2.3-2.54c1.5-1.84 4.08-2.31 6.1-.86 2.5 1.8 2.74 5 .93 7.7C18.7 16.65 12 21 12 21z"/></svg>';
+    likeBadge.appendChild(text('span', '', String(likeCount)));
+    titleWrap.appendChild(likeBadge);
+    top.appendChild(titleWrap);
+
     top.appendChild(text('div', 'request-card-time', '지금'));
     body.appendChild(top);
     body.appendChild(text('div', 'request-card-sub', formatComposition({ maleCount: entry.maleCount, femaleCount: entry.femaleCount })));
+    row.appendChild(body);
+    card.appendChild(row);
 
     const actions = document.createElement('div');
     actions.className = 'request-card-actions';
     actions.appendChild(button('request-action reject', '거절', () => rejectReceivedRequest(entry.roomId)));
     actions.appendChild(button('request-action accept', '수락', () => acceptReceivedRequest(entry.roomId)));
-    body.appendChild(actions);
+    card.appendChild(actions);
 
-    card.appendChild(body);
     list.appendChild(card);
   });
 }
