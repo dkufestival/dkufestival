@@ -1440,7 +1440,6 @@ function mergeGlobalChatMessages(messages) {
 function renderSeatView() {
   const globalChatOpen = state.activeMenu === 'chat';
   setMainContent(state.activeMenu || 'map');
-  $('global-chat-btn').textContent = '전체채팅';
   document.querySelectorAll('.bottombar .pill-btn').forEach((node) => node.classList.toggle('active', node.id === `${state.activeMenu === 'chat' ? 'global-chat' : state.activeMenu}-btn`));
   if (globalChatOpen) renderGlobalChat({ forceBottom: true });
 }
