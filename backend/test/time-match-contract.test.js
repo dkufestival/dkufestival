@@ -9,10 +9,12 @@ test('time match game is registered in the model and central controls', () => {
   const adminSource = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-app.js'), 'utf8');
   const socketSource = fs.readFileSync(path.join(__dirname, '../src/socket/game.socket.js'), 'utf8');
   const participantSource = fs.readFileSync(path.join(__dirname, '../../frontend/js/app.js'), 'utf8');
+  const stopwatchSource = fs.readFileSync(path.join(__dirname, '../../frontend/stopwatch/stopwatch.js'), 'utf8');
 
   assert.match(modelSource, /'TIME_MATCH'/);
   assert.match(serviceSource, /differenceMs = elapsedMs - targetMs/);
   assert.match(adminSource, /state\.selectedGame === 'TIME_MATCH'/);
   assert.match(socketSource, /\['TIME_MATCH', 'PINBALL', 'BASKETBALL'\]\.includes\(game\.type\)/);
   assert.match(participantSource, /if \(game\.type !== 'TIME_MATCH'\) showGlobalGameScreen\(\)/);
+  assert.match(stopwatchSource, /game:global:ended[\s\S]*location\.replace/);
 });

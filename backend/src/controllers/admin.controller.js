@@ -56,6 +56,25 @@ async function getParticipants(req, res, next) {
   } catch (error) { next(error); }
 }
 
+async function messageParticipant(req, res, next) {
+  try {
+    const participant = await Participant.findByPk(req.params.participantId, {
+      include: [{ model: TableSession, as: 'session' }],
+    });
+    const content = req.body.content.trim();
+    if (!participant || participant.kickedAt || participant.blockedAt
+      || participant.session?.status !== 'ACTIVE' || new Date(participant.session.expiresAt) <= new Date()) {
+      throw new AppError(409, 'PARTICIPANT_NOT_ACTIVE', '현재 접속 중인 사용자가 아닙니다.');
+    }
+    req.app.get('io')?.to(`participant:${participant.id}`).emit('admin:message', {
+      participantId: participant.id,
+      content,
+      sentAt: new Date().toISOString(),
+    });
+    res.json({ data: { sent: true } });
+  } catch (error) { next(error); }
+}
+
 async function changeParticipantAccess(req, res, next, { block }) {
   const transaction = await sequelize.transaction();
   let autoCheckoutResult = null;
@@ -265,6 +284,7 @@ module.exports = {
   login,
   getTables,
   getParticipants,
+  messageParticipant,
   endParticipantAccess,
   kickParticipant,
   restoreParticipant,

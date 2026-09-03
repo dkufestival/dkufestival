@@ -15,6 +15,9 @@ router.post('/login', validateBody({
 }), adminController.login);
 router.get('/tables', auth, requireRole('ADMIN'), adminController.getTables);
 router.get('/participants', auth, requireRole('ADMIN'), adminController.getParticipants);
+router.post('/participants/:participantId/message', auth, requireRole('ADMIN'), validateBody({
+  content: { required: true, type: 'string', maxLength: 500 },
+}), adminController.messageParticipant);
 router.post('/participants/:participantId/end-access', auth, requireRole('ADMIN'), validateBody({
   reason: { type: 'string', maxLength: 255 },
 }), adminController.endParticipantAccess);

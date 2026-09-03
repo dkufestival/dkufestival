@@ -642,6 +642,10 @@ function bindSocket() {
     showScreen('screen-kicked');
     socket.disconnect();
   });
+  socket.on('admin:message', (payload = {}) => {
+    $('admin-message-content').textContent = payload.content || '관리자가 연락을 보냈습니다.';
+    openModal('modal-admin-message');
+  });
   socket.on('table:updated', scheduleTableRefresh);
   socket.on('table:extended', ({ session }) => {
     state.session = session;
@@ -666,8 +670,9 @@ function bindSocket() {
     refreshReceivedRequestsIfOpen();
   });
   socket.on('chat:request-cancelled', (room) => {
-    if (state.chatRoom?.roomId === room.roomId) state.chatRoom = null;
-    removeReceivedRequest(room.roomId);
+    const roomId = room.roomId ?? room.id;
+    if (state.chatRoom?.roomId === roomId) state.chatRoom = null;
+    removeReceivedRequest(roomId);
     renderStats();
     refreshReceivedRequestsIfOpen();
     renderTables();
@@ -740,6 +745,13 @@ function bindSocket() {
       state.unreadGlobalChatCount += 1;
       updateGlobalChatBadge();
     }
+  });
+  socket.on('globalChat:cleared', () => {
+    state.globalChatMessages = [];
+    state.globalChatLoaded = true;
+    state.unreadGlobalChatCount = 0;
+    updateGlobalChatBadge();
+    renderGlobalChat({ forceBottom: true });
   });
   socket.on('board:created', (post) => {
     if (!state.board.posts.some((item) => item.id === post.id)) state.board.posts.unshift(post);
@@ -2251,6 +2263,7 @@ function bindEvents() {
   $('leave-cancel-btn').addEventListener('click', () => closeModal('modal-leave-confirm'));
   $('leave-confirm-btn').addEventListener('click', confirmLeaveChat);
   $('chat-ended-confirm-btn').addEventListener('click', () => closeModal('modal-chat-ended'));
+  $('admin-message-confirm').addEventListener('click', () => closeModal('modal-admin-message'));
   $('nickname-confirm-btn').addEventListener('click', async () => {
     const nickname = $('nickname-edit-input').value.trim();
     if (!nickname) return showToast('닉네임을 입력해 주세요.');

@@ -30,6 +30,10 @@ test('basketball is an always-available single-server game with a persistent top
   assert.match(participant, /appendBasketballLeaderboard/);
   assert.match(participant, /언제든 자유롭게 플레이/);
   assert.match(game, /basketball:leaderboard/);
+  assert.match(game, /game:global:announced/);
+  assert.match(game, /game:global:started/);
+  assert.match(game, /global-game-notice/);
+  assert.match(game, /window\.location\.replace/);
   assert.match(game, /\/api\/basketball\/scores/);
   assert.match(game, /JSON\.stringify\(\{ score: target \}\)/);
   assert.doesNotMatch(routes, /gameId/);

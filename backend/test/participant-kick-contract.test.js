@@ -13,6 +13,7 @@ test('admin can list, kick and restore individual participants', () => {
   assert.match(routes, /participants\/:participantId\/kick/);
   assert.match(routes, /participants\/:participantId\/end-access/);
   assert.match(routes, /participants\/:participantId\/restore/);
+  assert.match(routes, /participants\/:participantId\/message/);
   assert.match(controller, /participant:kicked/);
   assert.match(controller, /admin:participants-updated/);
   assert.match(controller, /maleCount.*femaleCount/);
@@ -45,4 +46,6 @@ test('admin UI exposes an individual participant management tab', () => {
   assert.match(app, /이용 종료/);
   assert.match(app, /재접속 가능/);
   assert.match(app, /정말 강제 퇴장하시겠습니까/);
+  assert.match(app, /개별 연락/);
+  assert.match(read('frontend/js/app.js'), /socket\.on\('admin:message'/);
 });

@@ -38,6 +38,7 @@ let lastTime = performance.now();
 let confirmedBest = 0;
 let pendingBest = 0;
 let submittingBest = false;
+let globalGameRedirectTimer = null;
 
 bestNode.textContent = String(best);
 
@@ -140,6 +141,19 @@ function connectCompetitionSocket() {
     transports: ['websocket', 'polling'],
   });
   socket.on('basketball:leaderboard', (payload = {}) => renderLeaderboard(payload.leaderboard || []));
+  const returnToGlobalGame = (game, { announce = false } = {}) => {
+    if (!game || game.type === 'BASKETBALL') return;
+    clearTimeout(globalGameRedirectTimer);
+    const navigate = () => window.location.replace(`/${window.location.search}`);
+    if (!announce) return navigate();
+    document.getElementById('global-game-notice').hidden = false;
+    globalGameRedirectTimer = setTimeout(navigate, 900);
+  };
+  socket.on('game:global:announced', (game) => returnToGlobalGame(game, { announce: true }));
+  socket.on('game:global:started', (game) => returnToGlobalGame(game));
+  socket.on('game:global:current', (game) => returnToGlobalGame(game, {
+    announce: game?.state?.lifecyclePhase === 'ANNOUNCED',
+  }));
   socket.on('admin:data-reset', () => {
     score = 0;
     best = 0;

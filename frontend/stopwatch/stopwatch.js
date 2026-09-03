@@ -233,7 +233,10 @@ function bindSocket() {
   socket.on('disconnect', () => setStatus('서버 연결 대기'));
   socket.on('game:global:current', renderGame);
   socket.on('game:global:started', renderGame);
-  socket.on('game:global:ended', () => renderGame(null));
+  socket.on('game:global:ended', () => {
+    renderGame(null);
+    location.replace(`/${location.search}`);
+  });
   socket.on('game:global:attempts-granted', ({ gameId } = {}) => {
     if (state.game && gameId === state.game.id) syncMyAttempts(gameId);
   });

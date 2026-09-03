@@ -40,6 +40,10 @@ canvas:active { cursor: grabbing; }
 .swipe-guide i::before { content: ''; position: absolute; top: 0; left: -4px; width: 9px; height: 9px; border-top: 2px solid #1596d2; border-left: 2px solid #1596d2; transform: rotate(45deg); }
 .swipe-guide span { font-size: 8px; font-weight: 800; letter-spacing: .18em; }
 footer { z-index: 4; min-height: 37px; display: grid; place-items: center; padding: 8px 14px max(8px, env(safe-area-inset-bottom)); color: #aaa; background: #f7f7f7; border-top: 1px solid #f0f0f0; font-size: 10px; }
+.global-game-notice { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; color: #fff; text-align: center; background: rgba(0,0,0,.88); }
+.global-game-notice[hidden] { display: none; }
+.global-game-notice strong { font-size: 25px; }
+.global-game-notice span { font-size: 15px; opacity: .82; }
 @keyframes swipe { 0%,100% { transform: translate(-50%,10px); opacity: .25; } 50% { transform: translate(-50%,-15px); opacity: .8; } }
 @keyframes pop { 0% { transform: translateX(-50%) scale(.75); } 65% { transform: translateX(-50%) scale(1.14); } 100% { transform: translateX(-50%) scale(1); } }
 @media (min-width: 431px) { .game-card { height: min(880px, calc(100svh - 30px)); border: 1px solid #ddd; } }

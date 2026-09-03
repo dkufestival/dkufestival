@@ -278,6 +278,15 @@ function gameResponseParticipantLabel(response) {
   return `${nickname}(table ${tableNumber})`;
 }
 
+async function sendParticipantMessage(participant) {
+  const content = window.prompt(`${participant.nickname}님에게 보낼 내용을 입력해주세요.`, '');
+  if (content === null) return;
+  const message = content.trim();
+  if (!message) return showToast('보낼 내용을 입력해주세요.');
+  await adminApi.messageParticipant(participant.id, message);
+  showToast(`${participant.nickname}님에게 연락을 보냈습니다.`);
+}
+
 function renderParticipantsAdmin() {
   const currentList = $('participant-current-list');
   const pastList = $('participant-past-list');
@@ -338,6 +347,9 @@ function renderParticipantsAdmin() {
     } else {
       action = document.createElement('div');
       action.className = 'participant-action-group';
+      action.appendChild(button('participant-action', '개별 연락', () => {
+        sendParticipantMessage(participant).catch((error) => showToast(error.message));
+      }));
       action.appendChild(button('participant-action end-access', '이용 종료', async () => {
         if (!window.confirm(`TABLE ${participantTableNumber(participant)} · ${participant.nickname} 사용자의 이용을 종료하시겠습니까?\n사용자는 다시 접속할 수 있습니다.`)) return;
         await adminApi.endParticipantAccess(participant.id, { reason: '관리자 이용 종료' });
@@ -1133,6 +1145,7 @@ function renderBoard() {
     info.appendChild(text('div', 'notice-item-meta', `${who} · ${formatDateTime(post.createdAt)}`));
     item.appendChild(info);
     item.appendChild(button('notice-delete-btn', '삭제', async () => {
+      if (!window.confirm(`"${post.title}" 게시글을 삭제하시겠습니까?`)) return;
       await boardApi.remove(post.id, 'ADMIN');
       state.boardPosts = state.boardPosts.filter((entry) => entry.id !== post.id);
       renderBoard();
