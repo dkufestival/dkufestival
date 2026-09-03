@@ -1072,7 +1072,7 @@ function renderGameRankList() {
         rowEl.className = 'rank-row';
         rowEl.appendChild(text('span', 'rank-pos', `${row.rank}위`));
         const identity = record.type === 'TIME_MATCH' && row.nickname
-          ? row.nickname
+          ? `${row.nickname}(table ${row.tableNumber})`
           : `TABLE ${row.tableNumber}`;
         rowEl.appendChild(text('span', 'rank-table-num', identity));
         rowEl.appendChild(text('span', 'rank-score', row.scoreLabel));
