@@ -3,7 +3,9 @@ const sequelize = require('../config/db');
 const { ChatRoom, ChatMessage, TableSession, Participant, Table, TableRequestBlock } = require('../models');
 const AppError = require('../errors/AppError');
 
-const REQUEST_MS = 60 * 1000;
+// 요청은 상대방이 수락하거나 거절할 때까지 유지한다.
+// 짧은 자동 만료는 재접속 시 받은 요청이 사라지는 원인이 되므로 사용하지 않는다.
+const REQUEST_MS = null;
 
 function sessionPair(a, b) {
   return [Number(a), Number(b)].sort((left, right) => left - right);
@@ -133,9 +135,13 @@ async function createRequest(user, data) {
       where: { requesterSessionId, targetSessionId, status: 'PENDING' },
       transaction,
       lock: transaction.LOCK.UPDATE,
+    }) || await ChatRoom.findOne({
+      where: { requesterSessionId: targetSessionId, targetSessionId: requesterSessionId, status: 'PENDING' },
+      transaction,
+      lock: transaction.LOCK.UPDATE,
     });
     if (existingPending) {
-      throw new AppError(409, 'CHAT_REQUEST_ALREADY_PENDING', '이미 요청을 보냈습니다.');
+      throw new AppError(409, 'CHAT_REQUEST_ALREADY_PENDING', '이 테이블과 처리 대기 중인 채팅 요청이 있습니다.');
     }
 
     const [sessionAId, sessionBId] = sessionPair(requesterSessionId, targetSessionId);
@@ -145,7 +151,7 @@ async function createRequest(user, data) {
       requestedByParticipantId: user.participantId,
       requestMessage: data.message || null,
       status: 'PENDING',
-      requestExpiresAt: new Date(now().getTime() + REQUEST_MS),
+      requestExpiresAt: REQUEST_MS ? new Date(now().getTime() + REQUEST_MS) : null,
       sessionAId,
       sessionBId,
     }, { transaction });
@@ -220,6 +226,7 @@ async function decorateRoom(room, sessionId) {
     ...json,
     roomId: json.id,
     direction,
+    peerSessionId: peer?.id || null,
     peerTableId: peer?.table?.id || null,
     peerTableNumber: peer?.table?.tableNumber || null,
     peerMaleCount: peer?.maleCount || 0,

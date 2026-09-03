@@ -61,6 +61,7 @@ const state = {
   givenLikes: new Set(),
   receivedLikes: [],
   receivedRequestsLog: [],
+  pendingRequestPeers: new Map(),
   staffCallPending: false,
   board: { profile: null, posts: [], currentPost: null, revealedProfile: null, views: [] },
 };
@@ -430,8 +431,12 @@ async function refreshTables() {
 
 async function refreshChatRoom() {
   state.chatRoom = await chatApi.active().catch(() => null);
-  const received = await chatApi.listRequests({ direction: 'received', status: 'PENDING' }).catch(() => []);
+  const [received, sent] = await Promise.all([
+    chatApi.listRequests({ direction: 'received', status: 'PENDING' }).catch(() => []),
+    chatApi.listRequests({ direction: 'sent', status: 'PENDING' }).catch(() => []),
+  ]);
   state.receivedRequestsLog = received.map(receivedRequestEntry);
+  state.pendingRequestPeers = new Map([...received, ...sent].map((room) => [Number(room.roomId), Number(room.peerSessionId)]));
   if (state.chatRoom?.status === 'ACTIVE') {
     await loadMessages(state.chatRoom.roomId);
     joinChatRoom(state.chatRoom.roomId);
@@ -587,6 +592,7 @@ function bindSocket() {
       upsertReceivedRequest(room);
     }
     renderChatRequest();
+    renderTables();
     refreshReceivedRequestsIfOpen();
   });
   socket.on('chat:request-cancelled', (room) => {
@@ -594,6 +600,7 @@ function bindSocket() {
     removeReceivedRequest(room.roomId);
     renderStats();
     refreshReceivedRequestsIfOpen();
+    renderTables();
     showToast('상대방이 채팅 요청을 취소했습니다.');
   });
   socket.on('chat:request-rejected', (room) => {
@@ -601,6 +608,7 @@ function bindSocket() {
     removeReceivedRequest(room.roomId);
     renderStats();
     refreshReceivedRequestsIfOpen();
+    renderTables();
     showToast('채팅 요청이 거절되었습니다.');
   });
   socket.on('chat:request-expired', (room) => {
@@ -608,6 +616,7 @@ function bindSocket() {
     removeReceivedRequest(room.roomId);
     renderStats();
     refreshReceivedRequestsIfOpen();
+    renderTables();
     showToast('채팅 요청 시간이 만료되었습니다.');
   });
   socket.on('chat:started', async (room) => {
@@ -909,6 +918,7 @@ function renderReceivedLikes() {
 }
 
 function removeReceivedRequest(roomId) {
+  state.pendingRequestPeers.delete(Number(roomId));
   const index = state.receivedRequestsLog.findIndex((item) => item.roomId === roomId);
   if (index !== -1) state.receivedRequestsLog.splice(index, 1);
 }
@@ -916,6 +926,7 @@ function removeReceivedRequest(roomId) {
 function receivedRequestEntry(room) {
   return {
     roomId: room.roomId,
+    peerSessionId: room.peerSessionId,
     tableNumber: room.peerTableNumber,
     maleCount: room.peerMaleCount,
     femaleCount: room.peerFemaleCount,
@@ -924,6 +935,7 @@ function receivedRequestEntry(room) {
 }
 
 function upsertReceivedRequest(room) {
+  state.pendingRequestPeers.set(Number(room.roomId), Number(room.peerSessionId));
   if (state.receivedRequestsLog.some((entry) => entry.roomId === room.roomId)) return;
   state.receivedRequestsLog.unshift(receivedRequestEntry(room));
 }
@@ -1125,6 +1137,7 @@ async function acceptReceivedRequest(roomId) {
     removeReceivedRequest(roomId);
     closeModal('modal-received-requests');
     renderStats();
+    renderTables();
     await loadMessages(accepted.roomId);
     openChat(accepted.roomId);
   } catch (error) {
@@ -1138,6 +1151,7 @@ async function rejectReceivedRequest(roomId) {
     if (state.chatRoom?.roomId === roomId) state.chatRoom = null;
     removeReceivedRequest(roomId);
     renderStats();
+    renderTables();
     renderReceivedRequests();
   } catch (error) {
     showToast(error.message);
@@ -1180,9 +1194,10 @@ function openJoinModal(table) {
   state.pendingTargetTable = table;
   $('send-seat-label').textContent = `TABLE ${table.tableNumber}에 채팅 요청`;
   const inChat = !!table.activeSession?.inChat;
+  const pending = [...state.pendingRequestPeers.values()].some((id) => Number(id) === Number(table.activeSession.id));
   const sendBtn = $('send-request-btn');
-  sendBtn.disabled = inChat;
-  sendBtn.textContent = inChat ? '이미 채팅 중인 테이블입니다' : '요청 보내기';
+  sendBtn.disabled = inChat || pending;
+  sendBtn.textContent = inChat ? '이미 채팅 중인 테이블입니다' : pending ? '처리 대기 중인 요청이 있습니다' : '요청 보내기';
   updateSendLikeButton(table);
   openModal('modal-send');
   loadRequestBlockState(table);
