@@ -483,6 +483,7 @@ input, select, textarea { font-size: 16px; }
 .basketball-ranking-head h3 { margin: 3px 0 0; color: var(--text-light); font-size: 15px; }
 .basketball-ranking-kicker { color: var(--lime); font-size: 9px; font-weight: 900; letter-spacing: .16em; }
 .basketball-ranking-rule { color: var(--text-muted); font-size: 10px; white-space: nowrap; }
+.basketball-ranking-actions { display:flex; align-items:flex-end; flex-direction:column; gap:7px; }
 .basketball-ranking-list { display: flex; flex-direction: column; gap: 7px; }
 .basketball-ranking-row { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; background: rgba(0, 0, 0, .42); }
 .basketball-ranking-position { color: var(--lime); font-size: 13px; font-weight: 900; }

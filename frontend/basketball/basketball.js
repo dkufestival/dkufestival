@@ -154,7 +154,7 @@ function connectCompetitionSocket() {
   socket.on('game:global:current', (game) => returnToGlobalGame(game, {
     announce: game?.state?.lifecyclePhase === 'ANNOUNCED',
   }));
-  socket.on('admin:data-reset', () => {
+  const resetBasketballState = () => {
     score = 0;
     best = 0;
     confirmedBest = 0;
@@ -163,7 +163,9 @@ function connectCompetitionSocket() {
     bestNode.textContent = '0';
     localStorage.removeItem('festival-basketball-best');
     renderLeaderboard([]);
-  });
+  };
+  socket.on('basketball:reset', resetBasketballState);
+  socket.on('admin:data-reset', resetBasketballState);
 }
 
 function freshBall() {
@@ -184,11 +186,12 @@ function updateScore(nextScore) {
     bestNode.textContent = String(best);
     localStorage.setItem('festival-basketball-best', String(best));
   }
-  queueScoreSubmission(score);
 }
 
 function resetBall(missed = false) {
   if (missed && score > 0) {
+    const finalScore = score;
+    queueScoreSubmission(finalScore);
     updateScore(0);
     setMessage('놓쳤어요 — 다시 시작!');
   } else {

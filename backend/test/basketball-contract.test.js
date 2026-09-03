@@ -13,6 +13,9 @@ test('basketball is an always-available single-server game with a persistent top
   const participant = fs.readFileSync(path.join(__dirname, '../../frontend/js/app.js'), 'utf8');
   const game = fs.readFileSync(path.join(__dirname, '../../frontend/basketball/basketball.js'), 'utf8');
   const routes = fs.readFileSync(path.join(__dirname, '../src/routes/basketball.routes.js'), 'utf8');
+  const adminRoutes = fs.readFileSync(path.join(__dirname, '../src/routes/admin.routes.js'), 'utf8');
+  const adminController = fs.readFileSync(path.join(__dirname, '../src/controllers/admin.controller.js'), 'utf8');
+  const adminHtml = fs.readFileSync(path.join(__dirname, '../../frontend/admin.html'), 'utf8');
   const backendPackage = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf8'));
 
   assert.match(model, /'BASKETBALL'/);
@@ -30,13 +33,22 @@ test('basketball is an always-available single-server game with a persistent top
   assert.match(participant, /appendBasketballLeaderboard/);
   assert.match(participant, /언제든 자유롭게 플레이/);
   assert.match(game, /basketball:leaderboard/);
+  assert.match(game, /basketball:reset/);
   assert.match(game, /game:global:announced/);
   assert.match(game, /game:global:started/);
   assert.match(game, /global-game-notice/);
   assert.match(game, /window\.location\.replace/);
   assert.match(game, /\/api\/basketball\/scores/);
   assert.match(game, /JSON\.stringify\(\{ score: target \}\)/);
+  assert.match(game, /const finalScore = score;[\s\S]*queueScoreSubmission\(finalScore\);[\s\S]*updateScore\(0\)/);
+  assert.doesNotMatch(game, /localStorage\.setItem\('festival-basketball-best'[\s\S]{0,120}queueScoreSubmission\(score\)/);
   assert.doesNotMatch(routes, /gameId/);
+  assert.match(adminRoutes, /basketball\/reset/);
+  assert.match(adminController, /BasketballScore\.destroy\(\{ where: \{\} \}\)/);
+  assert.match(adminController, /emit\('basketball:reset'\)/);
+  assert.match(adminHtml, /id="basketball-ranking-reset-btn"/);
+  assert.match(admin, /resetBasketballLeaderboard/);
+  assert.match(participant, /basketball:reset/);
   assert.match(backendPackage.scripts.start, /npm run migrate/);
 });
 

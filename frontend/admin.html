@@ -110,7 +110,10 @@
               <span class="basketball-ranking-kicker">LIVE LEADERBOARD</span>
               <h3>농구 사용자 최고기록 TOP 3</h3>
             </div>
-            <span class="basketball-ranking-rule">개인 최고점만 반영</span>
+            <div class="basketball-ranking-actions">
+              <span class="basketball-ranking-rule">개인 최고점만 반영</span>
+              <button id="basketball-ranking-reset-btn" class="notice-delete-btn" type="button">순위 초기화</button>
+            </div>
           </div>
           <div id="basketball-admin-ranking-list" class="basketball-ranking-list" aria-live="polite">
             <div class="rank-empty">아직 등록된 농구 기록이 없습니다.</div>
@@ -265,6 +268,6 @@
 </div>
 
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-<script type="module" src="js/admin-app.js?v=32"></script>
+<script type="module" src="js/admin-app.js?v=33"></script>
 </body>
 </html>

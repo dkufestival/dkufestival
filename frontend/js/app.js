@@ -852,6 +852,10 @@ function bindSocket() {
     state.basketballLeaderboard = Array.isArray(payload.leaderboard) ? payload.leaderboard.slice(0, 3) : [];
     renderGame();
   });
+  socket.on('basketball:reset', () => {
+    state.basketballLeaderboard = [];
+    renderGame();
+  });
   socket.on('game:global:round', (payload) => {
     closeAllTransientModals();
     if (!state.activeGame || Number(payload.gameId) !== Number(state.activeGame.id)) return;

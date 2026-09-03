@@ -178,6 +178,10 @@ function bindSocket() {
     state.basketballLeaderboard = Array.isArray(payload.leaderboard) ? payload.leaderboard.slice(0, 3) : [];
     renderBasketballLeaderboard();
   });
+  socket.on('basketball:reset', () => {
+    state.basketballLeaderboard = [];
+    renderBasketballLeaderboard();
+  });
   $('roulette-result-close')?.addEventListener('click', () => $('modal-roulette-result')?.classList.remove('active'));
 }
 
@@ -1118,6 +1122,14 @@ async function clearGlobalChatMessages() {
   showToast('전체채팅을 삭제했습니다.');
 }
 
+async function resetBasketballLeaderboard() {
+  if (!window.confirm('모든 농구 최고점과 TOP 3 순위를 초기화하시겠습니까?')) return;
+  await adminApi.resetBasketballLeaderboard();
+  state.basketballLeaderboard = [];
+  renderBasketballLeaderboard();
+  showToast('농구 순위를 초기화했습니다.');
+}
+
 async function resetAllData() {
   if (!window.confirm('게임 기록과 점수, 전체채팅, 게시판 글·프로필을 모두 초기화하시겠습니까?')) return;
   await adminApi.resetAllData();
@@ -1230,6 +1242,7 @@ function bindEvents() {
     showLogin();
   });
   $('global-chat-clear-btn').addEventListener('click', () => clearGlobalChatMessages().catch((error) => showToast(error.message)));
+  $('basketball-ranking-reset-btn').addEventListener('click', () => resetBasketballLeaderboard().catch((error) => showToast(error.message)));
   $('all-data-reset-btn').addEventListener('click', () => resetAllData().catch((error) => showToast(error.message)));
   $('participant-search').addEventListener('input', renderParticipantsAdmin);
   document.querySelectorAll('.nav-btn').forEach((btn) => {

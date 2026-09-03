@@ -247,6 +247,16 @@ async function clearGlobalChat(req, res, next) {
   } catch (error) { next(error); }
 }
 
+async function resetBasketballLeaderboard(req, res, next) {
+  try {
+    const deleted = await BasketballScore.destroy({ where: {} });
+    const io = req.app.get('io');
+    io?.to('participants').to('monitors').to('admins').emit('basketball:leaderboard', { leaderboard: [] });
+    io?.to('participants').to('monitors').to('admins').emit('basketball:reset');
+    res.json({ data: { deleted } });
+  } catch (error) { next(error); }
+}
+
 async function resetAllData(req, res, next) {
   const transaction = await sequelize.transaction();
   try {
@@ -297,5 +307,6 @@ module.exports = {
   enableQr,
   disableQr,
   clearGlobalChat,
+  resetBasketballLeaderboard,
   resetAllData,
 };
