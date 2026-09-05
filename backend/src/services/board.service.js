@@ -5,6 +5,85 @@ const AppError = require('../errors/AppError');
 
 const INSTAGRAM_PATTERN = /^[A-Za-z0-9._]{1,30}$/;
 
+const FACE_TYPES = ['강아지상', '고양이상', '여우상', '토끼상', '곰상', '사슴상'];
+const MBTI_TYPES = [
+  'ISTJ', 'ISFJ', 'INFJ', 'INTJ',
+  'ISTP', 'ISFP', 'INFP', 'INTP',
+  'ESTP', 'ESFP', 'ENFP', 'ENTP',
+  'ESTJ', 'ESFJ', 'ENFJ', 'ENTJ',
+];
+const DRINK_STYLES = ['안 마셔요', '소주 반병', '소주 한 병', '소주 두 병 이상', '술고래'];
+const TENSION_TYPES = ['차분한 편', '중간', '하이텐션'];
+const AGE_PREFS = ['연상', '동갑', '연하', '상관없음'];
+const BALANCE_QUESTIONS = [
+  { id: 'dogcat', question: '강아지상 vs 고양이상', optionA: '강아지상', optionB: '고양이상' },
+  { id: 'season', question: '여름 vs 겨울', optionA: '여름', optionB: '겨울' },
+  { id: 'homebody', question: '집순이 vs 인싸', optionA: '집순이', optionB: '인싸' },
+  { id: 'daytype', question: '아침형 vs 밤형', optionA: '아침형', optionB: '밤형' },
+  { id: 'sweet', question: '단짠단 vs 짠단짠', optionA: '단짠단', optionB: '짠단짠' },
+];
+
+function assertOneOf(value, list, field) {
+  if (!list.includes(value)) throw new AppError(400, 'INVALID_POST', `${field} 값이 올바르지 않습니다.`);
+  return value;
+}
+
+function assertSubsetOf(values, list, field) {
+  const arr = Array.isArray(values) ? values : [];
+  if (arr.length && arr.some((value) => !list.includes(value))) {
+    throw new AppError(400, 'INVALID_POST', `${field} 값이 올바르지 않습니다.`);
+  }
+  return arr;
+}
+
+function assertIntInRange(value, min, max, field) {
+  const num = Number(value);
+  if (!Number.isInteger(num) || num < min || num > max) {
+    throw new AppError(400, 'INVALID_POST', `${field}는 ${min}~${max} 사이의 숫자여야 합니다.`);
+  }
+  return num;
+}
+
+function buildPostDetails(data) {
+  const balanceQuestion = BALANCE_QUESTIONS.find((question) => question.id === data.balanceQuestionId);
+  if (!balanceQuestion) throw new AppError(400, 'INVALID_POST', 'balanceQuestionId 값이 올바르지 않습니다.');
+  const balanceChoice = assertOneOf(data.balanceChoice, ['A', 'B'], 'balanceChoice');
+  const charmPoint = String(data.charmPoint || '').trim();
+  if (!charmPoint || charmPoint.length > 40) throw new AppError(400, 'INVALID_POST', '매력포인트는 1~40자여야 합니다.');
+  const idealCeleb = String(data.idealCeleb || '').trim().slice(0, 30);
+
+  return {
+    age: assertIntInRange(data.age, 18, 60, '나이'),
+    height: assertIntInRange(data.height, 130, 210, '키'),
+    faceType: assertOneOf(data.faceType, FACE_TYPES, '얼굴상'),
+    mbti: assertOneOf(data.mbti, MBTI_TYPES, 'MBTI'),
+    drinkStyle: assertOneOf(data.drinkStyle, DRINK_STYLES, '주량'),
+    tension: assertOneOf(data.tension, TENSION_TYPES, '텐션'),
+    balanceQuestionId: balanceQuestion.id,
+    balanceChoice,
+    balanceAnswer: balanceChoice === 'A' ? balanceQuestion.optionA : balanceQuestion.optionB,
+    charmPoint,
+    idealCeleb: idealCeleb || null,
+    idealHeight: data.idealHeight ? assertIntInRange(data.idealHeight, 130, 210, '이상형 키') : null,
+    idealFaceTypes: assertSubsetOf(data.idealFaceTypes, FACE_TYPES, '이상형 얼굴상'),
+    idealMbti: assertSubsetOf(data.idealMbti, MBTI_TYPES, '이상형 MBTI'),
+    idealAgePref: assertOneOf(data.idealAgePref, AGE_PREFS, '이상형 나이대'),
+  };
+}
+
+function summarizePost(details) {
+  const balanceQuestion = BALANCE_QUESTIONS.find((question) => question.id === details.balanceQuestionId);
+  const title = `${details.age}세 · ${details.height}cm · ${details.faceType}`;
+  const content = [
+    `MBTI ${details.mbti} · 주량 ${details.drinkStyle} · 텐션 ${details.tension}`,
+    `매력포인트: ${details.charmPoint}`,
+    details.idealCeleb ? `이상형 연예인: ${details.idealCeleb}` : null,
+    balanceQuestion ? `밸런스 게임(${balanceQuestion.question}): ${details.balanceAnswer}` : null,
+    `이상형: ${details.idealHeight ? `${details.idealHeight}cm 이상` : '키 상관없음'} · ${details.idealFaceTypes.length ? details.idealFaceTypes.join('/') : '얼굴상 상관없음'} · ${details.idealMbti.length ? details.idealMbti.join('/') : 'MBTI 상관없음'} · ${details.idealAgePref}`,
+  ].filter(Boolean).join('\n');
+  return { title, content };
+}
+
 function normalizeInstagramId(value) {
   return String(value || '').trim().replace(/^@+/, '');
 }
@@ -53,6 +132,7 @@ function serializePost(post, viewerParticipantId, options = {}) {
     id: json.id,
     authorParticipantId: json.authorParticipantId,
     title: json.title,
+    details: json.details || null,
     ...(options.includeContent ? { content: json.content } : {}),
     createdAt: json.createdAt,
     isMine: Number(json.authorParticipantId) === Number(viewerParticipantId),
@@ -127,25 +207,35 @@ async function getPosts(user = {}) {
   return posts.map((post) => serializePost(post, user.participantId));
 }
 
-async function createPost(sessionId, participantId, { title, content }) {
+async function createPost(sessionId, participantId, data) {
   await requireProfile(participantId);
-  if (!title?.trim() || !content?.trim()) throw new AppError(400, 'INVALID_POST', 'Title and content are required.');
   const participant = await Participant.findOne({ where: { id: participantId, tableSessionId: sessionId } });
   if (!participant) throw new AppError(403, 'PARTICIPANT_FORBIDDEN', 'Participant not found for this session.');
 
+  const details = buildPostDetails(data || {});
+  const { title, content } = summarizePost(details);
+
   const post = await BoardPost.create({
     authorParticipantId: participantId,
-    title: title.trim(),
-    content: content.trim(),
+    title,
+    content,
+    details,
   });
   return getPost({ participantId }, post.id);
 }
 
 async function getPost(user, postId) {
   if (user.role === 'PARTICIPANT') await requireProfile(user.participantId);
-  const post = await BoardPost.findByPk(postId, { include: postIncludes() });
+  const post = await BoardPost.findByPk(postId, { include: postIncludes(['gender', 'instagramId']) });
   if (!post) throw new AppError(404, 'POST_NOT_FOUND', 'Post not found.');
-  return serializePost(post, user.participantId, { includeContent: true });
+  const serialized = serializePost(post, user.participantId, { includeContent: true });
+  if (!serialized.isMine && post.authorProfile) {
+    const view = await BoardProfileView.findOne({
+      where: { viewerParticipantId: user.participantId, viewedParticipantId: post.authorParticipantId },
+    });
+    if (view) serialized.revealedProfile = serializeRevealedProfile(post.authorProfile, post);
+  }
+  return serialized;
 }
 
 async function deletePost(id, user) {
@@ -287,6 +377,17 @@ async function clearAllBoardData(options = {}) {
   if (tables.profiles) await BoardProfile.destroy({ where: {}, transaction });
 }
 
+function getPostOptions() {
+  return {
+    faceTypes: FACE_TYPES,
+    mbtiTypes: MBTI_TYPES,
+    drinkStyles: DRINK_STYLES,
+    tensionTypes: TENSION_TYPES,
+    agePrefs: AGE_PREFS,
+    balanceQuestions: BALANCE_QUESTIONS,
+  };
+}
+
 module.exports = {
   normalizeInstagramId,
   assertInstagramId,
@@ -298,6 +399,7 @@ module.exports = {
   deletePost,
   revealProfile,
   listProfileViews,
+  getPostOptions,
   cleanupParticipantBoardData,
   cleanupSessionBoardData,
   clearAllBoardData,

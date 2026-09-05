@@ -24,6 +24,14 @@ async function saveProfile(req, res, next) {
   }
 }
 
+async function options(req, res, next) {
+  try {
+    res.json({ data: boardService.getPostOptions() });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function create(req, res, next) {
   try {
     const post = await boardService.createPost(req.user.sessionId, req.user.participantId, req.body);
@@ -81,4 +89,4 @@ async function profileViews(req, res, next) {
   }
 }
 
-module.exports = { list, getProfile, saveProfile, create, get, remove, revealProfile, profileViews };
+module.exports = { list, getProfile, saveProfile, options, create, get, remove, revealProfile, profileViews };

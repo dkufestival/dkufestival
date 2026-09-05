@@ -6,7 +6,7 @@
 <title>PIU:M</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="style.css?v=105">
+<link rel="stylesheet" href="style.css?v=112">
 <style>
 #monitor-banner { position:fixed; z-index:100; top:10px; left:50%; transform:translateX(-50%); display:flex; gap:9px; align-items:center; padding:7px 10px; border:1px solid #d7ff38; border-radius:999px; background:rgba(16,17,12,.94); color:#f5f5f0; font-size:11px; white-space:nowrap; }
 #monitor-banner strong { color:#d7ff38; letter-spacing:.06em; } #monitor-connection-status { color:#a8f7b0; } .monitor-mode .topbar { padding-top:54px; } .monitor-mode #staff-call-btn { margin-left:auto; }
@@ -117,10 +117,23 @@
       <section id="board-panel" class="main-content-panel" hidden>
         <div id="board-profile-view" hidden><div class="modal-title">게시판 프로필 등록</div><div class="board-profile-guide">프로필을 등록하면 다른 참가자의 게시글과 프로필을 확인할 수 있어요. 게시판을 이용하려면 먼저 프로필을 등록해 주세요.</div><div class="board-gender-row"><label><input type="radio" name="board-gender" value="MALE"> 남성</label><label><input type="radio" name="board-gender" value="FEMALE"> 여성</label></div><input id="board-instagram-input" class="modal-input" maxlength="50" placeholder="인스타그램 아이디"><button id="board-profile-save-btn" class="btn-dark full">등록하기</button></div>
         <div id="board-list-view" hidden><div class="board-list-header"><div id="board-gender-filter" class="board-filter-tabs"><button type="button" class="board-filter-tab active" data-gender="ALL">전체</button><button type="button" class="board-filter-tab" data-gender="FEMALE">여자</button><button type="button" class="board-filter-tab" data-gender="MALE">남자</button></div><div class="board-header-actions"><button id="board-history-btn" type="button" class="board-icon-btn" aria-label="열람 기록"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7-10.5-7-10.5-7z"/><circle cx="12" cy="12" r="3"/></svg></button><button id="board-write-btn" type="button" class="board-icon-btn accent" aria-label="글쓰기"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></div></div><div id="board-post-list" class="history-list"></div></div>
-        <div id="board-write-view" hidden><button type="button" id="board-write-back" class="notice-detail-back">‹ 목록으로</button><div class="modal-title">글쓰기</div><input id="board-title-input" class="modal-input" maxlength="150" placeholder="제목"><textarea id="board-content-input" class="modal-textarea board-textarea" maxlength="3000" placeholder="내용"></textarea><button id="board-submit-btn" class="btn-dark full">등록하기</button></div>
-        <div id="board-detail-view" hidden><div class="notice-detail-header"><button type="button" id="board-detail-back" class="notice-detail-back">‹ 목록으로</button><div id="board-detail-title" class="modal-title"></div></div><div id="board-detail-meta" class="board-detail-meta"></div><div id="board-detail-content" class="board-detail-content"></div><div id="board-revealed-profile" class="board-revealed-profile" hidden></div><button id="board-reveal-btn" class="btn-dark full">정보 열람하기</button><button id="board-delete-btn" class="btn-dark full danger" hidden>삭제하기</button></div>
-        <div id="board-confirm-view" hidden><div class="modal-title">정보 열람하기</div><div class="modal-detail">상대정보를 열람하면 상대방도 자신의 정보를 열람할 수 있습니다.</div><div class="modal-detail">열람한 이후에는 상대방의 열람 기록에 회원님의 정보가 표시됩니다.</div><div class="modal-row"><button id="board-reveal-cancel-btn" class="btn-half reject">취소</button><button id="board-reveal-confirm-btn" class="btn-half accept">동의하고 열람하기</button></div></div>
-        <div id="board-views-view" hidden><button type="button" id="board-views-back" class="notice-detail-back">‹ 목록으로</button><div class="modal-title">열람 기록</div><div id="board-views-tabs" class="board-filter-tabs"><button type="button" class="board-filter-tab active" data-direction="received">내 정보를 열람한 테이블</button><button type="button" class="board-filter-tab" data-direction="given">내가 열람한 정보</button></div><div id="board-view-list" class="history-list"></div></div>
+        <div id="board-write-view" hidden><button type="button" id="board-write-back" class="notice-detail-back">‹ 목록으로</button><div class="modal-title">글쓰기</div><div class="board-form-scroll">
+          <div class="board-form-row"><div class="board-form-section"><div class="board-form-label">나이</div><input id="bw-age" class="modal-input" type="number" min="18" max="60" placeholder="예: 24"></div><div class="board-form-section"><div class="board-form-label">키(cm)</div><input id="bw-height" class="modal-input" type="number" min="130" max="210" placeholder="예: 175"></div></div>
+          <div class="board-form-row"><div class="board-form-section"><div class="board-form-label">얼굴상</div><select id="bw-faceType" class="modal-input"></select></div><div class="board-form-section"><div class="board-form-label">MBTI</div><select id="bw-mbti" class="modal-input"></select></div></div>
+          <div class="board-form-section"><div class="board-form-label">주량</div><select id="bw-drinkStyle" class="modal-input"></select></div>
+          <div class="board-form-section"><div class="board-form-label">텐션</div><div id="bw-tension" class="board-chip-row"></div></div>
+          <div class="board-form-section"><div class="board-form-label">매력포인트</div><input id="bw-charmPoint" class="modal-input" maxlength="40" placeholder="예: 단국대 박효신"></div>
+          <div class="board-form-section"><div class="board-form-label">이상형 연예인 (선택)</div><input id="bw-idealCeleb" class="modal-input" maxlength="30" placeholder="예: 카리나"></div>
+          <div class="board-form-section"><div class="board-form-label">밸런스 게임</div><select id="bw-balanceQuestion" class="modal-input"></select><div id="bw-balanceChoice" class="board-chip-row"></div></div>
+          <div class="board-form-divider">이상형 조건</div>
+          <div class="board-form-section"><div class="board-form-label">이상형 키 (cm 이상, 선택)</div><input id="bw-idealHeight" class="modal-input" type="number" min="130" max="210" placeholder="상관없음"></div>
+          <div class="board-form-section"><div class="board-form-label">이상형 얼굴상</div><div id="bw-idealFaceTypes" class="board-chip-row multi"></div></div>
+          <div class="board-form-section"><div class="board-form-label">이상형 MBTI</div><div id="bw-idealMbti" class="board-chip-row multi"></div></div>
+          <div class="board-form-section"><div class="board-form-label">이상형 나이대</div><div id="bw-idealAgePref" class="board-chip-row"></div></div>
+        </div><button id="board-submit-btn" class="btn-dark full">등록하기</button></div>
+        <div id="board-detail-view" hidden><div class="notice-detail-header"><button type="button" id="board-detail-back" class="notice-detail-back">‹ 목록으로</button><div id="board-detail-title" class="modal-title"></div></div><div id="board-revealed-profile" class="board-revealed-profile" hidden></div><div id="board-detail-meta" class="board-detail-meta"></div><div id="board-detail-content" class="board-detail-content"></div><button id="board-reveal-btn" class="btn-dark full">정보 열람하기</button><button id="board-delete-btn" class="btn-dark full danger" hidden>삭제하기</button></div>
+        <div id="board-confirm-view" hidden><div class="modal-title">정보 열람하기</div><div class="modal-detail">정보를 열람하시면 상대방의 테이블 번호, 닉네임, 인스타그램 아이디를 알 수 있습니다.</div><div class="modal-detail">정보는 상호공개되어 정보 열람 시 상대방도 열람 기록을 통하여 회원님의 테이블번호, 닉네임, 인스타그램 아이디를 확인할 수 있습니다.</div><div class="modal-row"><button id="board-reveal-cancel-btn" class="btn-half reject">취소</button><button id="board-reveal-confirm-btn" class="btn-half accept">동의하고 열람하기</button></div></div>
+        <div id="board-views-view" hidden><button type="button" id="board-views-back" class="notice-detail-back">‹ 목록으로</button><div class="modal-title">열람 기록</div><div id="board-views-tabs" class="board-filter-tabs"><button type="button" class="board-filter-tab active" data-direction="received">내 정보를 열람한 테이블</button><button type="button" class="board-filter-tab" data-direction="given">내가 열람한 정보</button><button type="button" class="board-filter-tab" data-direction="mine">내 게시물</button></div><div id="board-view-list" class="history-list"></div></div>
       </section>
       <section id="game-panel-host" class="main-content-panel" hidden><div id="game-panel" class="history-list"></div></section>
     </div>
@@ -390,6 +403,6 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-<script type="module" src="js/app.js?v=85"></script>
+<script type="module" src="js/app.js?v=89"></script>
 </body>
 </html>

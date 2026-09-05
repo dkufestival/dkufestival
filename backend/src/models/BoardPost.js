@@ -17,6 +17,10 @@ const BoardPost = sequelize.define(
       type: DataTypes.TEXT,
       allowNull: false,
     },
+    details: {
+      type: DataTypes.JSON,
+      allowNull: true,
+    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,

@@ -1120,8 +1120,65 @@ input, select, textarea { font-size: 16px; }
   text-align: center;
   margin-bottom: 12px;
 }
+.board-detail-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 13px;
+}
+.board-detail-row-label { color: var(--text-muted); font-weight: 700; flex-shrink: 0; }
+.board-detail-row-value { color: var(--text-light); text-align: right; }
+.board-detail-divider {
+  margin: 16px 0 4px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--lime);
+}
 .board-action-row {
   margin-bottom: 12px;
+}
+.board-form-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.board-form-scroll::-webkit-scrollbar { display: none; }
+.board-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.board-form-section { margin-bottom: 14px; }
+.board-form-label {
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.board-form-divider {
+  margin: 18px 0 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-soft);
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--lime);
+  letter-spacing: 0.4px;
+}
+.board-chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.board-chip {
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-soft);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.board-chip.active {
+  border-color: var(--lime);
+  background: var(--lime);
+  color: var(--lime-deep);
 }
 .board-list-header {
   flex-shrink: 0;
@@ -1133,6 +1190,9 @@ input, select, textarea { font-size: 16px; }
 }
 .board-list-header .modal-title { margin-bottom: 0; }
 .board-list-header .board-filter-tabs { margin-bottom: 0; }
+.history-item.board-post-item { padding: 7px 6px; }
+.board-post-item .history-preview { font-size: 11px; line-height: 1.4; }
+#board-post-list { max-height: 400px; }
 .board-header-actions { flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
 .board-icon-btn {
   flex-shrink: 0;
@@ -1220,11 +1280,12 @@ input, select, textarea { font-size: 16px; }
   border: 1px solid var(--border-soft);
   border-radius: 8px;
   background: var(--card-dark-2);
-  padding: 12px;
-  margin-bottom: 12px;
+  padding: 10px 12px;
+  margin: -6px 0 14px;
   color: var(--text-light);
   font-size: 13px;
   line-height: 1.6;
+  text-align: center;
 }
 .board-profile-link {
   color: var(--lime);

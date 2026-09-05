@@ -12,4 +12,5 @@ export const boardApi = {
   removePost: (id) => api.delete(`/api/board/${id}`, { auth: true }),
   revealProfile: (id) => api.post(`/api/board/${id}/reveal`, {}, { auth: true }),
   profileViews: (direction = 'received') => api.get(`/api/board/profile-views?direction=${direction}`, { auth: true }),
+  options: () => api.get('/api/board/options', { auth: true }),
 };

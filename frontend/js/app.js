@@ -7,7 +7,7 @@ import { tablesApi } from './tables.js?v=5';
 import { participantsApi } from './participants.js';
 import { chatApi } from './chat.js';
 import { globalChatApi } from './globalChat.js';
-import { boardApi } from './board.js?v=2';
+import { boardApi } from './board.js?v=3';
 import { noticesApi } from './notices.js?v=2';
 import { STORAGE_KEYS } from './config.js';
 import { initMapZoom } from './mapzoom.js?v=3';
@@ -68,7 +68,7 @@ const state = {
   staffCallPending: false,
   unreadNoticeCount: 0,
   unreadGlobalChatCount: 0,
-  board: { profile: null, posts: [], currentPost: null, revealedProfile: null, views: [], genderFilter: 'ALL', viewsDirection: 'received' },
+  board: { profile: null, posts: [], currentPost: null, revealedProfile: null, views: [], genderFilter: 'ALL', viewsDirection: 'received', postOptions: null, formState: null },
 };
 
 const gameNames = { OX_QUIZ: 'OX 퀴즈', RPS: '가위바위보', WORD_GUESS: '제시어 게임', IMAGE_GAME: '이미지 게임', TIME_MATCH: '스톱워치', PINBALL: '핀볼', BASKETBALL: '농구', ROULETTE: '룰렛' };
@@ -1720,9 +1720,11 @@ function renderBoardList() {
     const info = document.createElement('div');
     info.className = 'history-info';
     const genderClass = post.author?.gender === 'FEMALE' ? 'female' : post.author?.gender === 'MALE' ? 'male' : '';
-    const title = text('div', `history-seat-name board-title ${genderClass}`.trim(), post.title);
-    info.appendChild(title);
-    info.appendChild(text('div', 'history-preview', formatBoardDate(post.createdAt)));
+    const d = post.details;
+    const headline = d ? `${d.age}세 · ${d.height}cm · ${d.faceType}` : post.title;
+    info.appendChild(text('div', `history-seat-name board-title ${genderClass}`.trim(), headline));
+    const summary = d ? `MBTI ${d.mbti} · ${d.tension} · ${d.charmPoint} · ${formatBoardDate(post.createdAt)}` : formatBoardDate(post.createdAt);
+    info.appendChild(text('div', 'history-preview', summary));
     item.appendChild(info);
     item.addEventListener('click', () => showBoardDetail(post.id).catch((error) => showToast(error.message)));
     list.appendChild(item);
@@ -1732,13 +1734,106 @@ function renderBoardList() {
 function showBoardList() {
   state.board.currentPost = null;
   state.board.revealedProfile = null;
-  renderBoardList();
   showBoardView('board-list-view');
+  renderBoardList();
 }
 
-function showBoardWrite() {
-  $('board-title-input').value = '';
-  $('board-content-input').value = '';
+function fillSelect(select, values, placeholder) {
+  clear(select);
+  if (placeholder) select.appendChild(new Option(placeholder, '', true, true));
+  values.forEach((value) => select.appendChild(new Option(value, value)));
+}
+
+function renderChipGroup(containerId, values, isActive, onPick) {
+  const container = $(containerId);
+  clear(container);
+  values.forEach((value) => {
+    const chip = button(`board-chip${isActive(value) ? ' active' : ''}`, value, () => onPick(value));
+    container.appendChild(chip);
+  });
+}
+
+function renderTensionChips() {
+  const form = state.board.formState;
+  renderChipGroup('bw-tension', state.board.postOptions.tensionTypes, (value) => form.tension === value, (value) => {
+    form.tension = value;
+    renderTensionChips();
+  });
+}
+
+function renderBalanceChoiceChips() {
+  const form = state.board.formState;
+  const question = state.board.postOptions.balanceQuestions.find((item) => item.id === form.balanceQuestionId);
+  const container = $('bw-balanceChoice');
+  clear(container);
+  if (!question) return;
+  [['A', question.optionA], ['B', question.optionB]].forEach(([value, label]) => {
+    const chip = button(`board-chip${form.balanceChoice === value ? ' active' : ''}`, label, () => {
+      form.balanceChoice = value;
+      renderBalanceChoiceChips();
+    });
+    container.appendChild(chip);
+  });
+}
+
+function renderIdealFaceTypeChips() {
+  const form = state.board.formState;
+  renderChipGroup('bw-idealFaceTypes', state.board.postOptions.faceTypes, (value) => form.idealFaceTypes.has(value), (value) => {
+    if (form.idealFaceTypes.has(value)) form.idealFaceTypes.delete(value); else form.idealFaceTypes.add(value);
+    renderIdealFaceTypeChips();
+  });
+}
+
+function renderIdealMbtiChips() {
+  const form = state.board.formState;
+  renderChipGroup('bw-idealMbti', state.board.postOptions.mbtiTypes, (value) => form.idealMbti.has(value), (value) => {
+    if (form.idealMbti.has(value)) form.idealMbti.delete(value); else form.idealMbti.add(value);
+    renderIdealMbtiChips();
+  });
+}
+
+function renderIdealAgePrefChips() {
+  const form = state.board.formState;
+  renderChipGroup('bw-idealAgePref', state.board.postOptions.agePrefs, (value) => form.idealAgePref === value, (value) => {
+    form.idealAgePref = value;
+    renderIdealAgePrefChips();
+  });
+}
+
+function renderBoardForm() {
+  const options = state.board.postOptions;
+  const form = state.board.formState;
+
+  fillSelect($('bw-faceType'), options.faceTypes, '얼굴상 선택');
+  fillSelect($('bw-mbti'), options.mbtiTypes, 'MBTI 선택');
+  fillSelect($('bw-drinkStyle'), options.drinkStyles, '주량 선택');
+  fillSelect($('bw-balanceQuestion'), options.balanceQuestions.map((question) => question.question), null);
+  $('bw-balanceQuestion').value = options.balanceQuestions.find((question) => question.id === form.balanceQuestionId)?.question || '';
+
+  renderTensionChips();
+  renderBalanceChoiceChips();
+  renderIdealFaceTypeChips();
+  renderIdealMbtiChips();
+  renderIdealAgePrefChips();
+}
+
+async function showBoardWrite() {
+  if (!state.board.postOptions) state.board.postOptions = await boardApi.options();
+  const options = state.board.postOptions;
+  state.board.formState = {
+    tension: null,
+    balanceQuestionId: options.balanceQuestions[0]?.id || null,
+    balanceChoice: null,
+    idealFaceTypes: new Set(),
+    idealMbti: new Set(),
+    idealAgePref: null,
+  };
+  $('bw-age').value = '';
+  $('bw-height').value = '';
+  $('bw-charmPoint').value = '';
+  $('bw-idealCeleb').value = '';
+  $('bw-idealHeight').value = '';
+  renderBoardForm();
   showBoardView('board-write-view');
 }
 
@@ -1751,9 +1846,53 @@ async function saveBoardProfile() {
 }
 
 async function createBoardPost() {
-  const title = $('board-title-input').value.trim();
-  const content = $('board-content-input').value.trim();
-  const post = await boardApi.createPost({ title, content });
+  const form = state.board.formState;
+  const age = Number($('bw-age').value);
+  const height = Number($('bw-height').value);
+  const faceType = $('bw-faceType').value;
+  const mbti = $('bw-mbti').value;
+  const drinkStyle = $('bw-drinkStyle').value;
+  const charmPoint = $('bw-charmPoint').value.trim();
+  const idealCeleb = $('bw-idealCeleb').value.trim();
+  const idealHeightRaw = $('bw-idealHeight').value;
+
+  if (!age || !height || !faceType || !mbti || !drinkStyle || !form.tension) {
+    showToast('나이/키/얼굴상/MBTI/주량/텐션을 모두 입력해 주세요.');
+    return;
+  }
+  if (!form.balanceChoice) {
+    showToast('밸런스 게임 답을 선택해 주세요.');
+    return;
+  }
+  if (!charmPoint) {
+    showToast('매력포인트를 입력해 주세요.');
+    return;
+  }
+  if (!form.idealFaceTypes.size) {
+    showToast('이상형 얼굴상을 하나 이상 선택해 주세요.');
+    return;
+  }
+  if (!form.idealAgePref) {
+    showToast('이상형 나이대를 선택해 주세요.');
+    return;
+  }
+
+  const post = await boardApi.createPost({
+    age,
+    height,
+    faceType,
+    mbti,
+    drinkStyle,
+    tension: form.tension,
+    balanceQuestionId: form.balanceQuestionId,
+    balanceChoice: form.balanceChoice,
+    charmPoint,
+    idealCeleb: idealCeleb || undefined,
+    idealHeight: idealHeightRaw ? Number(idealHeightRaw) : undefined,
+    idealFaceTypes: [...form.idealFaceTypes],
+    idealMbti: [...form.idealMbti],
+    idealAgePref: form.idealAgePref,
+  });
   if (!state.board.posts.some((item) => item.id === post.id)) state.board.posts.unshift(post);
   showBoardList();
 }
@@ -1777,16 +1916,47 @@ function renderRevealedProfile(profile) {
   box.appendChild(link);
 }
 
+function renderBoardDetailContent(post) {
+  const box = $('board-detail-content');
+  clear(box);
+  const d = post.details;
+  if (!d) {
+    box.textContent = post.content;
+    return;
+  }
+  const row = (label, value) => {
+    const line = document.createElement('div');
+    line.className = 'board-detail-row';
+    line.appendChild(text('span', 'board-detail-row-label', label));
+    line.appendChild(text('span', 'board-detail-row-value', value));
+    box.appendChild(line);
+  };
+  row('나이', `${d.age}세`);
+  row('키', `${d.height}cm`);
+  row('얼굴상', d.faceType);
+  row('MBTI', d.mbti);
+  row('주량', d.drinkStyle);
+  row('텐션', d.tension);
+  row('매력포인트', d.charmPoint);
+  if (d.idealCeleb) row('이상형 연예인', d.idealCeleb);
+  row('밸런스 게임', d.balanceAnswer);
+  box.appendChild(text('div', 'board-detail-divider', '이상형 조건'));
+  row('이상형 키', d.idealHeight ? `${d.idealHeight}cm 이상` : '상관없음');
+  row('이상형 얼굴상', d.idealFaceTypes.length ? d.idealFaceTypes.join(', ') : '상관없음');
+  row('이상형 MBTI', d.idealMbti.length ? d.idealMbti.join(', ') : '상관없음');
+  row('이상형 나이대', d.idealAgePref);
+}
+
 async function showBoardDetail(postId) {
   const post = await boardApi.post(postId, state.isMonitor ? 'MONITOR' : 'PARTICIPANT');
   state.board.currentPost = post;
-  state.board.revealedProfile = null;
+  state.board.revealedProfile = post.revealedProfile || null;
   $('board-detail-title').textContent = post.title;
   $('board-detail-meta').textContent = formatBoardDate(post.createdAt);
-  $('board-detail-content').textContent = post.content;
-  $('board-reveal-btn').hidden = state.isMonitor || !!post.isMine;
+  renderBoardDetailContent(post);
+  $('board-reveal-btn').hidden = state.isMonitor || !!post.isMine || !!post.revealedProfile;
   $('board-delete-btn').hidden = state.isMonitor || !post.isMine;
-  renderRevealedProfile(null);
+  renderRevealedProfile(state.board.revealedProfile);
   showBoardView('board-detail-view');
 }
 
@@ -1813,15 +1983,45 @@ async function deleteBoardPost() {
   showBoardList();
 }
 
+function renderMyBoardPosts(list) {
+  const myPosts = state.board.posts.filter((post) => post.isMine);
+  if (!myPosts.length) {
+    list.appendChild(text('div', 'history-empty', '아직 작성한 게시물이 없습니다.'));
+    return;
+  }
+  myPosts.forEach((post) => {
+    const item = document.createElement('div');
+    item.className = 'history-item history-item-clickable';
+    const info = document.createElement('div');
+    info.className = 'history-info';
+    const d = post.details;
+    const headline = d ? `${d.age}세 · ${d.height}cm · ${d.faceType}` : post.title;
+    info.appendChild(text('div', 'history-seat-name', headline));
+    const summary = d ? `MBTI ${d.mbti} · ${d.tension} · ${d.charmPoint} · ${formatBoardDate(post.createdAt)}` : formatBoardDate(post.createdAt);
+    info.appendChild(text('div', 'history-preview', summary));
+    item.appendChild(info);
+    item.addEventListener('click', () => showBoardDetail(post.id).catch((error) => showToast(error.message)));
+    list.appendChild(item);
+  });
+}
+
 async function showBoardViews(direction = state.board.viewsDirection || 'received') {
   state.board.viewsDirection = direction;
   $('board-views-tabs').querySelectorAll('.board-filter-tab').forEach((node) => node.classList.toggle('active', node.dataset.direction === direction));
+  const list = $('board-view-list');
+
+  if (direction === 'mine') {
+    clear(list);
+    renderMyBoardPosts(list);
+    showBoardView('board-views-view');
+    return;
+  }
+
   const requestId = (state.board.viewsRequestId || 0) + 1;
   state.board.viewsRequestId = requestId;
   const views = await boardApi.profileViews(direction);
   if (state.board.viewsRequestId !== requestId) return;
   state.board.views = views;
-  const list = $('board-view-list');
   clear(list);
   if (!state.board.views.length) {
     const emptyMessage = direction === 'given' ? '아직 열람한 정보가 없습니다.' : '아직 내 정보를 열람한 사람이 없습니다.';
@@ -1836,6 +2036,10 @@ async function showBoardViews(direction = state.board.viewsDirection || 'receive
       info.appendChild(text('div', 'history-seat-name', `${view.peer?.nickname || '참가자'} · ${tableLabel}`));
       info.appendChild(text('div', 'history-preview', `${genderLabel(view.peer?.gender)} · @${view.peer?.instagramId || '-'} · ${view.sourcePostTitle || '삭제된 게시글'} · ${formatBoardDate(view.createdAt)}`));
       item.appendChild(info);
+      if (view.sourcePostId) {
+        item.classList.add('history-item-clickable');
+        item.addEventListener('click', () => showBoardDetail(view.sourcePostId).catch(() => showToast('삭제되었거나 찾을 수 없는 게시글입니다.')));
+      }
       list.appendChild(item);
     });
   }
@@ -2312,7 +2516,13 @@ function bindEvents() {
   $('board-btn').addEventListener('click', () => { setMainContent('board'); openBoard().catch((error) => showToast(error.message)); });
   $('game-btn').addEventListener('click', () => setMainContent('game'));
   $('board-profile-save-btn').addEventListener('click', () => saveBoardProfile().catch((error) => showToast(error.message)));
-  $('board-write-btn').addEventListener('click', showBoardWrite);
+  $('board-write-btn').addEventListener('click', () => showBoardWrite().catch((error) => showToast(error.message)));
+  $('bw-balanceQuestion').addEventListener('change', (event) => {
+    const question = state.board.postOptions.balanceQuestions.find((item) => item.question === event.target.value);
+    state.board.formState.balanceQuestionId = question?.id || null;
+    state.board.formState.balanceChoice = null;
+    renderBalanceChoiceChips();
+  });
   $('board-history-btn').addEventListener('click', () => showBoardViews().catch((error) => showToast(error.message)));
   $('board-gender-filter').addEventListener('click', (event) => {
     const btn = event.target.closest('.board-filter-tab');
