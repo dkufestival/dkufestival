@@ -93,6 +93,25 @@ function notifyTimeMatchOpened(game) {
   }, 3000);
 }
 
+function saveBasketballResume() {
+  sessionStorage.setItem('basketball-resume', JSON.stringify({ score, best, pendingBest }));
+}
+
+function restoreBasketballResume() {
+  const raw = sessionStorage.getItem('basketball-resume');
+  if (!raw) return;
+  sessionStorage.removeItem('basketball-resume');
+  try {
+    const saved = JSON.parse(raw);
+    score = Math.max(0, Number(saved.score) || 0);
+    best = Math.max(best, Number(saved.best) || 0);
+    pendingBest = Math.max(pendingBest, Number(saved.pendingBest) || score);
+    scoreNode.textContent = String(score);
+    bestNode.textContent = String(best);
+    setMessage('게임이 끝난 뒤 기록을 이어서 플레이합니다');
+  } catch { /* ignore malformed resume state */ }
+}
+
 async function fetchJson(path, options = {}) {
   const headers = { ...(options.headers || {}) };
   if (participantAuth?.token) headers.Authorization = `Bearer ${participantAuth.token}`;
@@ -163,7 +182,10 @@ function connectCompetitionSocket() {
   const returnToGlobalGame = (game, { announce = false } = {}) => {
     if (!game || ['BASKETBALL', 'TIME_MATCH'].includes(game.type)) return;
     clearTimeout(globalGameRedirectTimer);
-    const navigate = () => window.location.replace(`/${window.location.search}`);
+    const navigate = () => {
+      saveBasketballResume();
+      window.location.replace(`/${window.location.search}`);
+    };
     if (!announce) return navigate();
     document.getElementById('global-game-notice').hidden = false;
     globalGameRedirectTimer = setTimeout(navigate, 900);
@@ -553,6 +575,7 @@ document.getElementById('back-button').addEventListener('click', () => {
 });
 
 setFreePlayMode();
+restoreBasketballResume();
 refreshLeaderboard().catch(() => {});
 refreshCompetitionState().catch(() => setFreePlayMode());
 connectCompetitionSocket();

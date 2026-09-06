@@ -826,6 +826,10 @@ function bindSocket() {
   });
   socket.on('game:global:ended', (game) => {
     closeAllTransientModals();
+    if (sessionStorage.getItem('basketball-resume')) {
+      window.location.replace(`/basketball/${window.location.search}`);
+      return;
+    }
     resetTimeMatch();
     cancelRoulette();
     state.activeGame = null;
