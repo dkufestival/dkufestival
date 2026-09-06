@@ -58,3 +58,14 @@ test('pinball viewer buffers authoritative snapshots and smooths the camera with
   assert.match(viewerSource, /1 - Math\.exp\(-CAMERA_SPEED \* deltaSeconds\)/);
   assert.doesNotMatch(viewerSource, /cameraY = targetCamera/);
 });
+
+test('pinball viewer caches static map and ball visuals while culling offscreen balls', () => {
+  assert.match(viewerSource, /const staticCanvas = document\.createElement\('canvas'\)/);
+  assert.match(viewerSource, /function rebuildStaticLayer\(\)/);
+  assert.match(viewerSource, /const ballSpriteCache = new Map\(\)/);
+  assert.match(viewerSource, /function ballSprite\(ball\)/);
+  assert.match(viewerSource, /RENDER_MARGIN = 80/);
+  assert.match(viewerSource, /ctx\.drawImage\(staticCanvas/);
+  assert.match(viewerSource, /ctx\.drawImage\(cached\.sprite/);
+  assert.match(viewerSource, /ballSpriteCache\.clear\(\)/);
+});

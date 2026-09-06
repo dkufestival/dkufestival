@@ -125,7 +125,7 @@ async function createRequest(user, data) {
     const targetSession = sessions.get(targetSessionId);
     await requireHost(user.participantId, requesterSessionId, transaction);
     if (!targetSession.acceptingRequests) {
-      throw new AppError(409, 'REQUESTS_DISABLED', '합석 요청이 꺼져있어 합석이 불가능합니다.');
+      throw new AppError(409, 'REQUESTS_DISABLED', '채팅 요청이 꺼져있어 채팅이 불가능합니다.');
     }
     await assertRequestNotBlocked(targetSessionId, requesterSessionId, transaction);
     await assertRequesterAvailable(requesterSessionId, transaction);

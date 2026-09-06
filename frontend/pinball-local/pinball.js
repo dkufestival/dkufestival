@@ -3,6 +3,8 @@ const DEFAULT_MAP = globalThis.PINBALL_MAP;
 
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
+const staticCanvas = document.createElement('canvas');
+const staticCtx = staticCanvas.getContext('2d');
 const statusNode = document.getElementById('status');
 const rankingNode = document.getElementById('ranking');
 const params = new URLSearchParams(location.search);
@@ -29,12 +31,16 @@ let viewportHeight = 700;
 let cameraY = 0;
 let winnerAnnounced = false;
 let lastFrameAt = performance.now();
+let canvasRatio = 1;
+let staticLayerDirty = true;
+const ballSpriteCache = new Map();
 
 const INTERPOLATION_DELAY = 100;
 const MAX_SNAPSHOT_BUFFER = 10;
 const SNAPSHOT_RESET_GAP = 500;
 const POSITION_SNAP_DISTANCE = 100;
 const CAMERA_SPEED = 10;
+const RENDER_MARGIN = 80;
 
 function announceWinner(ball) {
   if (winnerAnnounced) return;
@@ -48,15 +54,17 @@ function resize() {
   // Hidden admin tabs can initially report a zero-sized canvas.
   const displayWidth = Math.max(1, rect.width);
   const displayHeight = Math.max(1, rect.height);
-  const ratio = Math.min(devicePixelRatio || 1, 2);
-  canvas.width = Math.round(displayWidth * ratio);
-  canvas.height = Math.round(displayHeight * ratio);
+  canvasRatio = Math.min(devicePixelRatio || 1, 2);
+  canvas.width = Math.round(displayWidth * canvasRatio);
+  canvas.height = Math.round(displayHeight * canvasRatio);
   renderScale = displayWidth / BOARD_WIDTH;
   viewportHeight = displayHeight / renderScale;
   if (!pegs.length) buildMap();
+  staticLayerDirty = true;
 }
 
 function buildMap() {
+  staticLayerDirty = true;
   pegs = [];
   const gapX = Math.max(42, width / 8);
   const gapY = 62;
@@ -179,6 +187,7 @@ function setupEditor() {
     if (tool === 'bumper') sideBumpers.push({ ...p, radius: 8 });
     if (tool === 'spinner') spinners.push({ ...p, length: 76, speed: 2.2, phase: 0 });
     if (tool === 'rail') rails.push([p.x - 42, p.y, p.x + 42, p.y]);
+    staticLayerDirty = true;
   });
   canvas.addEventListener('pointermove', (event) => {
     if (!dragging || !selected) return;
@@ -190,6 +199,7 @@ function setupEditor() {
     } else {
       selected.item.x = p.x; selected.item.y = p.y;
     }
+    staticLayerDirty = true;
   });
   const endDrag = () => { dragging = false; };
   canvas.addEventListener('pointerup', endDrag);
@@ -200,6 +210,7 @@ function setupEditor() {
     if (!selected) return;
     const collection = selected.type === 'peg' ? pegs : selected.type === 'bumper' ? sideBumpers : selected.type === 'spinner' ? spinners : rails;
     collection.splice(collection.indexOf(selected.item), 1);
+    staticLayerDirty = true;
     selected = null;
     help.textContent = '선택한 장애물을 삭제했습니다.';
   });
@@ -220,58 +231,107 @@ function setupEditor() {
   });
 }
 
+function drawLine(target, x1, y1, x2, y2, color, size) {
+  target.beginPath(); target.moveTo(x1, y1); target.lineTo(x2, y2);
+  target.strokeStyle = color; target.lineWidth = size; target.lineCap = 'round'; target.stroke();
+}
+
 function line(x1, y1, x2, y2, color, size) {
-  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
-  ctx.strokeStyle = color; ctx.lineWidth = size; ctx.lineCap = 'round'; ctx.stroke();
+  drawLine(ctx, x1, y1, x2, y2, color, size);
+}
+
+function rebuildStaticLayer() {
+  staticCanvas.width = Math.ceil(width * canvasRatio);
+  staticCanvas.height = Math.ceil(height * canvasRatio);
+  staticCtx.setTransform(canvasRatio, 0, 0, canvasRatio, 0, 0);
+  staticCtx.clearRect(0, 0, width, height);
+  pegs.forEach((peg) => {
+    staticCtx.beginPath(); staticCtx.arc(peg.x, peg.y, peg.radius, 0, Math.PI * 2);
+    staticCtx.fillStyle = '#edf0ff'; staticCtx.shadowColor = '#7890ff'; staticCtx.shadowBlur = 9; staticCtx.fill(); staticCtx.shadowBlur = 0;
+  });
+  sideBumpers.forEach((bumper) => {
+    staticCtx.beginPath(); staticCtx.arc(bumper.x, bumper.y, bumper.radius, 0, Math.PI * 2);
+    staticCtx.fillStyle = '#70efff'; staticCtx.shadowColor = '#3bc9ff'; staticCtx.shadowBlur = 12; staticCtx.fill(); staticCtx.shadowBlur = 0;
+  });
+  rails.forEach(([x1, y1, x2, y2]) => drawLine(staticCtx, x1, y1, x2, y2, '#7287c7', 8));
+  sideWalls.forEach(([x1, y1, x2, y2]) => drawLine(staticCtx, x1, y1, x2, y2, '#90a6e8', 10));
+  staticLayerDirty = false;
+}
+
+function createBallSprite(ball) {
+  const padding = 14;
+  const size = ball.radius * 2 + padding * 2;
+  const scale = 2;
+  const sprite = document.createElement('canvas');
+  sprite.width = Math.ceil(size * scale);
+  sprite.height = Math.ceil(size * scale);
+  const spriteCtx = sprite.getContext('2d');
+  spriteCtx.setTransform(scale, 0, 0, scale, 0, 0);
+  const center = size / 2;
+  spriteCtx.beginPath(); spriteCtx.arc(center, center, ball.radius, 0, Math.PI * 2);
+  spriteCtx.fillStyle = ball.color; spriteCtx.shadowColor = ball.color; spriteCtx.shadowBlur = 12; spriteCtx.fill(); spriteCtx.shadowBlur = 0;
+  spriteCtx.fillStyle = '#08090d'; spriteCtx.font = `900 ${Math.max(5, ball.radius * .72)}px sans-serif`;
+  spriteCtx.textAlign = 'center'; spriteCtx.textBaseline = 'middle'; spriteCtx.fillText(ball.name, center, center + .5, ball.radius * 1.7);
+  return { key: `${ball.color}|${ball.name}|${ball.radius}`, sprite, size };
+}
+
+function ballSprite(ball) {
+  const key = `${ball.color}|${ball.name}|${ball.radius}`;
+  let cached = ballSpriteCache.get(ball.id);
+  if (!cached || cached.key !== key) {
+    cached = createBallSprite(ball);
+    ballSpriteCache.set(ball.id, cached);
+  }
+  return cached;
 }
 
 function draw() {
-  const ratio = Math.min(devicePixelRatio || 1, 2);
+  if (staticLayerDirty) rebuildStaticLayer();
+  const ratio = canvasRatio;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = '#06070b'; ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.setTransform(renderScale * ratio, 0, 0, renderScale * ratio, 0, -cameraY * renderScale * ratio);
   const gradient = ctx.createLinearGradient(0, cameraY, 0, cameraY + viewportHeight);
   gradient.addColorStop(0, '#171b31'); gradient.addColorStop(1, '#06070b');
   ctx.fillStyle = gradient; ctx.fillRect(0, cameraY, width, viewportHeight + 2);
-  pegs.forEach((peg) => {
-    ctx.beginPath(); ctx.arc(peg.x, peg.y, peg.radius, 0, Math.PI * 2);
-    ctx.fillStyle = '#edf0ff'; ctx.shadowColor = '#7890ff'; ctx.shadowBlur = 9; ctx.fill(); ctx.shadowBlur = 0;
-  });
-  sideBumpers.forEach((bumper) => {
-    ctx.beginPath(); ctx.arc(bumper.x, bumper.y, bumper.radius, 0, Math.PI * 2);
-    ctx.fillStyle = '#70efff'; ctx.shadowColor = '#3bc9ff'; ctx.shadowBlur = 12; ctx.fill(); ctx.shadowBlur = 0;
-  });
+  const sourceY = Math.max(0, Math.floor(cameraY * canvasRatio));
+  const sourceHeight = Math.min(staticCanvas.height - sourceY, Math.ceil(viewportHeight * canvasRatio));
+  if (sourceHeight > 0) ctx.drawImage(staticCanvas, 0, sourceY, staticCanvas.width, sourceHeight, 0, cameraY, width, sourceHeight / canvasRatio);
+  const minY = cameraY - RENDER_MARGIN;
+  const maxY = cameraY + viewportHeight + RENDER_MARGIN;
   spinners.forEach((spinner) => {
+    if (spinner.y + spinner.length / 2 < minY || spinner.y - spinner.length / 2 > maxY) return;
     const angle = spinner.phase + simulationTime * spinner.speed;
     const dx = Math.cos(angle) * spinner.length / 2;
     const dy = Math.sin(angle) * spinner.length / 2;
     line(spinner.x - dx, spinner.y - dy, spinner.x + dx, spinner.y + dy, '#ffdf57', 8);
     ctx.beginPath(); ctx.arc(spinner.x, spinner.y, 7, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
   });
-  rails.forEach(([x1, y1, x2, y2]) => line(x1, y1, x2, y2, '#7287c7', 8));
-  sideWalls.forEach(([x1, y1, x2, y2]) => line(x1, y1, x2, y2, '#90a6e8', 10));
   const bladeAngle = simulationTime * 3;
   const bladeX = width / 2;
   const bladeY = height - 126;
-  for (let arm = 0; arm < 1; arm += 1) {
-    const angle = bladeAngle;
-    const tipX = bladeX + Math.cos(angle) * 46;
-    const tipY = bladeY + Math.sin(angle) * 46;
-    line(bladeX, bladeY, tipX, tipY, '#f1f3ff', 10);
-    line(bladeX + Math.cos(angle) * 28, bladeY + Math.sin(angle) * 28, tipX, tipY, '#ff405d', 3);
+  if (bladeY >= minY && bladeY <= maxY) {
+    for (let arm = 0; arm < 1; arm += 1) {
+      const angle = bladeAngle;
+      const tipX = bladeX + Math.cos(angle) * 46;
+      const tipY = bladeY + Math.sin(angle) * 46;
+      line(bladeX, bladeY, tipX, tipY, '#f1f3ff', 10);
+      line(bladeX + Math.cos(angle) * 28, bladeY + Math.sin(angle) * 28, tipX, tipY, '#ff405d', 3);
+    }
+    ctx.beginPath(); ctx.arc(bladeX, bladeY, 11, 0, Math.PI * 2); ctx.fillStyle = '#ff405d'; ctx.fill();
   }
-  ctx.beginPath(); ctx.arc(bladeX, bladeY, 11, 0, Math.PI * 2); ctx.fillStyle = '#ff405d'; ctx.fill();
   const funnelTop = height - 190;
   const exitHalf = Math.max(24, (balls[0]?.radius || 10) * 2.4);
-  line(5, funnelTop, width / 2 - exitHalf, height - 42, '#90a6e8', 10);
-  line(width - 5, funnelTop, width / 2 + exitHalf, height - 42, '#90a6e8', 10);
-  ctx.fillStyle = '#000'; ctx.beginPath(); ctx.ellipse(width / 2, height - 30, exitHalf, 12, 0, 0, Math.PI * 2); ctx.fill();
-  balls.filter((ball) => !ball.finished && !ball.eliminated).forEach((ball) => {
-    ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-    ctx.fillStyle = ball.color; ctx.shadowColor = ball.color; ctx.shadowBlur = 12; ctx.fill(); ctx.shadowBlur = 0;
-    ctx.fillStyle = '#08090d'; ctx.font = `900 ${Math.max(5, ball.radius * .72)}px sans-serif`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(ball.name, ball.x, ball.y + .5, ball.radius * 1.7);
-  });
+  if (funnelTop <= maxY) {
+    line(5, funnelTop, width / 2 - exitHalf, height - 42, '#90a6e8', 10);
+    line(width - 5, funnelTop, width / 2 + exitHalf, height - 42, '#90a6e8', 10);
+    ctx.fillStyle = '#000'; ctx.beginPath(); ctx.ellipse(width / 2, height - 30, exitHalf, 12, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  for (const ball of balls) {
+    if (ball.finished || ball.eliminated || ball.y + ball.radius < minY || ball.y - ball.radius > maxY) continue;
+    const cached = ballSprite(ball);
+    ctx.drawImage(cached.sprite, ball.x - cached.size / 2, ball.y - cached.size / 2, cached.size, cached.size);
+  }
   if (editMode) {
     ctx.fillStyle = 'rgba(112,239,255,.75)';
     ctx.font = '700 12px sans-serif'; ctx.textAlign = 'left';
@@ -336,15 +396,17 @@ function applySnapshot(snapshot) {
   snapshotBuffer.push({ snapshot, receivedAt });
   if (snapshotBuffer.length > MAX_SNAPSHOT_BUFFER) snapshotBuffer.shift();
   latestSnapshot = snapshot;
+  if (snapshot.status === 'finished' || snapshot.status === 'cancelled') ballSpriteCache.clear();
   lastSnapshotSeq = snapshot.seq;
   simulationSteps = snapshot.step;
   finishOrder = snapshot.result.finishOrder;
   eliminatedOrder = snapshot.result.eliminatedOrder;
   updateRanking(snapshot);
   if (snapshot.result.winner) announceWinner(snapshot.result.winner);
-  statusNode.textContent = snapshot.status === 'finished' ? (finishOrder.length ? '레이스 종료' : '전원 탈락')
+  const statusText = snapshot.status === 'finished' ? (finishOrder.length ? '레이스 종료' : '전원 탈락')
     : snapshot.status === 'cancelled' ? '경기가 중단되었습니다'
     : snapshot.status === 'waiting' ? '곧 시작합니다' : '레이스 진행 중';
+  if (statusNode.textContent !== statusText) statusNode.textContent = statusText;
 }
 addEventListener('message', event => {
   if (event.origin !== location.origin || event.source !== parent || event.data?.type !== 'pinball:state') return;

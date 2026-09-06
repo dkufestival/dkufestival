@@ -1259,12 +1259,12 @@ function renderTables() {
       cell.appendChild(createLikeButton(table));
       cell.appendChild(button('table-cell-btn', '채팅 요청', (event) => {
         event.stopPropagation();
-        if (requestsOff) return showToast('합석 요청이 꺼져있어 합석이 불가능합니다.');
+        if (requestsOff) return showToast('채팅 요청이 꺼져있어 채팅이 불가능합니다.');
         openJoinModal(table);
       }));
       cell.addEventListener('click', () => {
         if (mapZoom?.hasMoved()) return;
-        if (requestsOff) return showToast('합석 요청이 꺼져있어 합석이 불가능합니다.');
+        if (requestsOff) return showToast('채팅 요청이 꺼져있어 채팅이 불가능합니다.');
         openJoinModal(table);
       });
     }
