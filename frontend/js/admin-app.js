@@ -355,7 +355,7 @@ function renderParticipantsAdmin() {
     } else {
       action = document.createElement('div');
       action.className = 'participant-action-group';
-      action.appendChild(button('participant-action', participant.globalChatBlockedAt ? '전체채팅 허용' : '전체채팅 금지', async () => {
+      action.appendChild(button(`participant-action${participant.globalChatBlockedAt ? ' global-chat-blocked' : ''}`, participant.globalChatBlockedAt ? '전체채팅 허용' : '전체채팅 금지', async () => {
         if (participant.globalChatBlockedAt) {
           await adminApi.unblockParticipantGlobalChat(participant.id);
           showToast('전체채팅 이용을 허용했습니다.');

@@ -751,6 +751,7 @@ input, select, textarea { font-size: 16px; }
 .participant-admin-reason { color:#ff8a80; }
 .participant-action { padding:8px 11px; border:1px solid rgba(255,255,255,.22); border-radius:8px; color:#fff; background:transparent; font:700 11px inherit; cursor:pointer; }
 .participant-action.kick { border:1px solid rgba(255,92,77,.5); color:#ff7468; }
+.participant-action.global-chat-blocked { border-color:rgba(255,92,77,.65); color:#ff7468; background:rgba(255,92,77,.12); }
 .participant-action.end-access { border:1px solid rgba(255,255,255,.22); color:var(--text-light); }
 .participant-action.restore { border:1px solid rgba(200,241,63,.45); color:var(--lime); }
 .participant-action-group { display:flex; gap:7px; }
