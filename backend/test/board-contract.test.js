@@ -123,7 +123,10 @@ test('board profile view history hides deleted source post titles', async () => 
 test('board lists omit missing detail fields and received views open the viewer profile', () => {
   assert.match(frontendApp, /function boardPostHeadline\(post\)/);
   assert.match(frontendApp, /function boardPostSummary\(post\)/);
+  assert.match(frontendApp, /function createBoardPostItem\(post\)/);
+  assert.match(frontendApp, /function appendBoardPostItems\(list, posts, emptyMessage\)/);
   assert.match(frontendApp, /Number\.isNaN\(date\.getTime\(\)\)/);
   assert.match(frontendApp, /direction === 'received' && view\.peer\?\.id/);
   assert.match(frontendApp, /showBoardViewerProfile\(view\)/);
+  assert.match(frontendApp, /작성한 게시글/);
 });

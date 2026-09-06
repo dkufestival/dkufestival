@@ -69,7 +69,7 @@ const state = {
   staffCallPending: false,
   unreadNoticeCount: 0,
   unreadGlobalChatCount: 0,
-  board: { profile: null, posts: [], currentPost: null, revealedProfile: null, views: [], genderFilter: 'ALL', viewsDirection: 'received', postOptions: null, formState: null },
+  board: { profile: null, posts: [], currentPost: null, revealedProfile: null, viewerProfile: null, views: [], genderFilter: 'ALL', viewsDirection: 'received', postOptions: null, formState: null },
 };
 
 const gameNames = { OX_QUIZ: 'OX 퀴즈', RPS: '가위바위보', WORD_GUESS: '제시어 게임', IMAGE_GAME: '이미지 게임', TIME_MATCH: '스톱워치', PINBALL: '핀볼', BASKETBALL: '농구', ROULETTE: '룰렛' };
@@ -1805,33 +1805,40 @@ function boardPostSummary(post) {
   return parts.join(' · ') || '-';
 }
 
+function createBoardPostItem(post) {
+  const item = document.createElement('div');
+  item.className = 'history-item board-post-item';
+  const info = document.createElement('div');
+  info.className = 'history-info';
+  const genderClass = post.author?.gender === 'FEMALE' ? 'female' : post.author?.gender === 'MALE' ? 'male' : '';
+  info.appendChild(text('div', `history-seat-name board-title ${genderClass}`.trim(), boardPostHeadline(post)));
+  info.appendChild(text('div', 'history-preview', boardPostSummary(post)));
+  item.appendChild(info);
+  item.addEventListener('click', () => showBoardDetail(post.id).catch((error) => showToast(error.message)));
+  return item;
+}
+
+function appendBoardPostItems(list, posts, emptyMessage) {
+  if (!posts.length) {
+    list.appendChild(text('div', 'history-empty', emptyMessage));
+    return;
+  }
+  posts.forEach((post) => list.appendChild(createBoardPostItem(post)));
+}
+
 function renderBoardList() {
   const list = $('board-post-list');
   if (!list) return;
   clear(list);
   const filter = state.board.genderFilter || 'ALL';
   const posts = filter === 'ALL' ? state.board.posts : state.board.posts.filter((post) => post.author?.gender === filter);
-  if (!posts.length) {
-    list.appendChild(text('div', 'history-empty', state.board.posts.length ? '해당 조건의 게시글이 없습니다.' : '아직 게시글이 없습니다.'));
-    return;
-  }
-  posts.forEach((post) => {
-    const item = document.createElement('div');
-    item.className = 'history-item board-post-item';
-    const info = document.createElement('div');
-    info.className = 'history-info';
-    const genderClass = post.author?.gender === 'FEMALE' ? 'female' : post.author?.gender === 'MALE' ? 'male' : '';
-    info.appendChild(text('div', `history-seat-name board-title ${genderClass}`.trim(), boardPostHeadline(post)));
-    info.appendChild(text('div', 'history-preview', boardPostSummary(post)));
-    item.appendChild(info);
-    item.addEventListener('click', () => showBoardDetail(post.id).catch((error) => showToast(error.message)));
-    list.appendChild(item);
-  });
+  appendBoardPostItems(list, posts, state.board.posts.length ? '해당 조건의 게시글이 없습니다.' : '아직 게시글이 없습니다.');
 }
 
 function showBoardList() {
   state.board.currentPost = null;
   state.board.revealedProfile = null;
+  state.board.viewerProfile = null;
   showBoardView('board-list-view');
   renderBoardList();
 }
@@ -1980,9 +1987,17 @@ function showBoardViewerProfile(view) {
   if (!profile?.id) return;
   state.board.currentPost = null;
   state.board.revealedProfile = profile;
+  state.board.viewerProfile = profile;
   $('board-detail-title').textContent = '프로필';
   $('board-detail-meta').textContent = profile.gender ? genderLabel(profile.gender) : '';
-  clear($('board-detail-content'));
+  const content = $('board-detail-content');
+  clear(content);
+  content.appendChild(text('div', 'board-detail-divider', '작성한 게시글'));
+  const posts = state.board.posts.filter((post) => Number(post.authorParticipantId) === Number(profile.id));
+  const list = document.createElement('div');
+  list.className = 'history-list';
+  appendBoardPostItems(list, posts, '작성한 게시글이 없습니다.');
+  content.appendChild(list);
   $('board-reveal-btn').hidden = true;
   $('board-delete-btn').hidden = true;
   renderRevealedProfile(profile);
@@ -2063,21 +2078,7 @@ async function deleteBoardPost() {
 
 function renderMyBoardPosts(list) {
   const myPosts = state.board.posts.filter((post) => post.isMine);
-  if (!myPosts.length) {
-    list.appendChild(text('div', 'history-empty', '아직 작성한 게시물이 없습니다.'));
-    return;
-  }
-  myPosts.forEach((post) => {
-    const item = document.createElement('div');
-    item.className = 'history-item history-item-clickable';
-    const info = document.createElement('div');
-    info.className = 'history-info';
-    info.appendChild(text('div', 'history-seat-name', boardPostHeadline(post)));
-    info.appendChild(text('div', 'history-preview', boardPostSummary(post)));
-    item.appendChild(info);
-    item.addEventListener('click', () => showBoardDetail(post.id).catch((error) => showToast(error.message)));
-    list.appendChild(item);
-  });
+  appendBoardPostItems(list, myPosts, '아직 작성한 게시물이 없습니다.');
 }
 
 async function showBoardViews(direction = state.board.viewsDirection || 'received') {
@@ -2600,7 +2601,10 @@ function bindEvents() {
     showBoardViews(btn.dataset.direction).catch((error) => showToast(error.message));
   });
   $('board-write-back').addEventListener('click', showBoardList);
-  $('board-detail-back').addEventListener('click', showBoardList);
+  $('board-detail-back').addEventListener('click', () => {
+    if (state.board.viewerProfile) showBoardViewerProfile({ peer: state.board.viewerProfile });
+    else showBoardList();
+  });
   $('board-views-back').addEventListener('click', showBoardList);
   $('board-submit-btn').addEventListener('click', () => createBoardPost().catch((error) => showToast(error.message)));
   $('board-reveal-btn').addEventListener('click', showBoardRevealConfirm);
