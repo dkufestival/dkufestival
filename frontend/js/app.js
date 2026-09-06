@@ -971,19 +971,23 @@ function renderAll() {
 
 function renderStats() {
   if (state.isMonitor) {
-    $('table-tag').textContent = 'MONITOR';
+    $('table-tag-nickname').textContent = 'MONITOR';
     $('table-tag-time').textContent = '운영 데이터 미포함';
     return;
   }
-  $('table-tag').textContent = `TABLE ${state.table?.tableNumber || '-'}`;
-  $('stat-male').textContent = state.session?.maleCount ?? state.counts.male;
-  $('stat-female').textContent = state.session?.femaleCount ?? state.counts.female;
   const left = state.session?.expiresAt ? formatRemaining(state.session.expiresAt) : '00:00';
-  $('stat-time').textContent = left;
   $('table-tag-time').textContent = `${left} 남음`;
   $('stat-requests').textContent = `${state.receivedRequestsLog.length}개`;
+  renderTableTagNickname();
   renderAcceptToggle();
   updateStaffCallButton();
+}
+
+function renderTableTagNickname() {
+  const el = $('table-tag-nickname');
+  const participant = state.participant;
+  if (!participant) { el.textContent = ''; return; }
+  el.textContent = participant.isHost ? `${participant.nickname} (대표)` : participant.nickname;
 }
 
 function renderAcceptToggle() {
@@ -992,14 +996,14 @@ function renderAcceptToggle() {
   banner.hidden = !isHost;
   if (!isHost) return;
   const accepting = state.session?.acceptingRequests !== false;
-  $('accept-toggle-label').textContent = accepting ? '채팅 요청을 받고 있어요.' : '채팅 요청을 받지 않아요.';
+  $('accept-toggle-label').textContent = '채팅 요청';
   $('accept-toggle-btn').classList.toggle('on', accepting);
 }
 
 function updateStaffCallButton() {
   const btn = $('staff-call-btn');
   btn.classList.toggle('calling', !!state.staffCallPending);
-  $('staff-call-text').textContent = state.isMonitor ? '직원호출 테스트' : state.staffCallPending ? '직원 호출 중...' : '직원호출';
+  $('staff-call-text').textContent = state.isMonitor ? '직원호출 테스트' : state.staffCallPending ? '호출 중...' : '직원호출';
 }
 
 async function callStaff() {
@@ -1151,16 +1155,12 @@ async function toggleTableLike(table) {
 function renderParticipants() {
   const box = $('member-chips');
   clear(box);
-  state.participants.forEach((participant) => {
-    const chip = text('span', `chip ${participant.id === state.participant?.id ? 'me' : ''}`, `${participant.nickname}${participant.isHost ? ' 대표' : ''}`);
-    if (participant.id === state.participant?.id) {
-      chip.addEventListener('click', () => {
-        $('nickname-edit-input').value = participant.nickname;
-        openModal('modal-nickname');
-      });
-    }
-    box.appendChild(chip);
-  });
+  state.participants
+    .filter((participant) => participant.id !== state.participant?.id)
+    .forEach((participant) => {
+      const chip = text('span', 'chip', `${participant.nickname}${participant.isHost ? ' 대표' : ''}`);
+      box.appendChild(chip);
+    });
 }
 
 function formatComposition(session) {
@@ -1203,15 +1203,33 @@ function renderTables() {
   const canvas = $('map-canvas');
   clear(canvas);
 
-  const stage = document.createElement('div');
-  stage.className = 'map-stage';
-  stage.appendChild(text('div', 'map-stage-arrows', '↑ ↑ ↑'));
-  stage.appendChild(text('div', 'map-stage-label', '무대'));
-  canvas.appendChild(stage);
+  canvas.appendChild(text('div', 'map-zone map-zone-top', ''));
+  canvas.appendChild(text('div', 'map-zone map-zone-left', ''));
+  const rightZone = document.createElement('div');
+  rightZone.className = 'map-zone map-zone-right';
+  rightZone.appendChild(text('div', 'map-zone-label', '입구'));
+  canvas.appendChild(rightZone);
+  canvas.appendChild(text('div', 'map-zone map-zone-right-2', ''));
 
   const likeHeatMax = computeLikeHeatMaxByCategory(state.tables);
 
+  const hiddenTableNumbers = [78, 79, 80];
+  const blockedColsByTableRow = { 1: [1, 8], 2: [8] };
+  let slotTableRow = 1;
+  let slotCol = 1;
+  const nextTableSlot = () => {
+    while (true) {
+      if (slotCol > 8) { slotTableRow += 1; slotCol = 1; continue; }
+      const blocked = blockedColsByTableRow[slotTableRow] || [];
+      if (blocked.includes(slotCol)) { slotCol += 1; continue; }
+      const slot = { row: slotTableRow + 1, col: slotCol };
+      slotCol += 1;
+      return slot;
+    }
+  };
+
   state.tables.forEach((table) => {
+    if (hiddenTableNumbers.includes(table.tableNumber)) return;
     const session = table.activeSession;
     const isMine = table.id === state.table?.id;
     const requestsOff = !isMine && !!session && session.acceptingRequests === false;
@@ -1223,6 +1241,9 @@ function renderTables() {
     }
     const cell = document.createElement('div');
     cell.className = `table-cell ${isMine ? 'mine' : session ? `taken${genderClass}` : 'available'}${requestsOff ? ' requests-off' : ''}`;
+    const slot = nextTableSlot();
+    cell.style.gridRow = String(slot.row);
+    cell.style.gridColumn = String(slot.col);
     if (category && !requestsOff) {
       const maxForCategory = likeHeatMax[category] || 0;
       const likeCount = session.receivedLikeCount || 0;
@@ -2530,6 +2551,11 @@ function bindEvents() {
   $('notice-btn').addEventListener('click', () => {
     setMainContent('notice');
     showNoticeList();
+  });
+  $('table-tag-nickname').addEventListener('click', () => {
+    if (!state.participant) return;
+    $('nickname-edit-input').value = state.participant.nickname;
+    openModal('modal-nickname');
   });
   $('notice-detail-back').addEventListener('click', showNoticeList);
   $('board-btn').addEventListener('click', () => { setMainContent('board'); openBoard().catch((error) => showToast(error.message)); });

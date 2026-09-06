@@ -467,49 +467,44 @@ input, select, textarea { font-size: 16px; }
   color: var(--lime);
   white-space: nowrap;
 }
+.table-tag-nickname {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--lime);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.table-tag-nickname:empty { display: none; }
 .table-tag-time {
   font-size: 11px;
   color: var(--text-muted);
   white-space: nowrap;
 }
-
-.stats-bar {
+.topbar-actions {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
-  justify-content: space-evenly;
-  padding: 14px 12px;
-  background: #000;
-  border-bottom: 1px solid var(--border-soft);
+  gap: 8px;
+  margin-left: 16px;
 }
-.stat-block.clickable { cursor: pointer; }
-.stat-block {
+.icon-btn {
+  position: relative;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
   display: flex;
-  align-items: baseline;
-  gap: 6px;
-}
-.stat-block.col {
-  flex-direction: column;
   align-items: center;
-  gap: 3px;
-}
-.stat-mini-label {
-  font-size: 11px;
-  color: var(--text-muted);
-  font-weight: 600;
-}
-.stat-mini-num {
-  font-family: var(--font-body);
-  font-size: 15px;
-  font-weight: 700;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.18);
   color: var(--text-light);
+  background: rgba(255, 255, 255, 0.06);
+  cursor: pointer;
 }
-.stat-mini-num.male { color: var(--text-light); }
-.stat-mini-num.female { color: #ff5c7a; }
-.stat-divider {
-  width: 1px;
-  height: 26px;
-  background: var(--border-soft);
-}
+.icon-btn svg { fill: currentColor; }
+
 
 .pill-badge {
   display: inline-flex;
@@ -533,6 +528,7 @@ input, select, textarea { font-size: 16px; }
   padding: 10px 20px 0;
   background: #000;
 }
+.member-chips:empty { display: none; padding: 0; }
 .chip {
   font-size: 11px;
   font-weight: 700;
@@ -590,28 +586,44 @@ input, select, textarea { font-size: 16px; }
   will-change: transform;
 }
 
-.map-stage {
-  grid-column: 1 / -1;
+.map-zone {
+  background: #6b6b6b;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 4px;
-  margin-bottom: 6px;
-  color: var(--text-muted);
+  justify-content: center;
 }
-.map-stage-label {
+.map-zone-top {
+  grid-column: 1 / 8;
+  grid-row: 1;
+  min-height: 80px;
+}
+.map-zone-left {
+  grid-column: 1;
+  grid-row: 2;
+  min-height: 80px;
+}
+.map-zone-right {
+  grid-column: 8;
+  grid-row: 2;
+  min-height: 80px;
+  background: transparent;
+  border: none;
+}
+.map-zone-right-2 {
+  grid-column: 8;
+  grid-row: 3;
+  min-height: 80px;
+}
+.map-zone-label {
   border: 1px solid rgba(255,255,255,0.25);
   border-radius: 8px;
-  padding: 6px 22px;
+  padding: 10px 6px;
   font-family: var(--font-display);
   font-size: 15px;
-  color: var(--text-light);
-}
-.map-stage-arrows {
-  display: flex;
-  gap: 18px;
-  font-size: 14px;
-  color: var(--lime);
+  color: #fff;
+  writing-mode: vertical-rl;
 }
 
 .table-cell {
@@ -1972,23 +1984,27 @@ input, select, textarea { font-size: 16px; }
 .status-row {
   display: flex;
   align-items: stretch;
-  gap: 10px;
+  gap: 8px;
   margin: 14px 18px 12px;
 }
 .status-row .push-prompt {
   flex: 1;
   min-width: 0;
   margin: 0;
+  padding: 8px 14px;
 }
 .status-row .push-prompt[hidden] {
   display: none;
 }
 .staff-call-btn {
   flex-shrink: 0;
+  width: 108px;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 0 14px;
+  padding: 0 8px;
   border-radius: 16px;
   border: 1px solid rgba(255, 176, 32, 0.4);
   background: rgba(10, 12, 18, 0.72);
@@ -1996,6 +2012,27 @@ input, select, textarea { font-size: 16px; }
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
+  white-space: nowrap;
+}
+.staff-call-btn #staff-call-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.staff-call-btn.requests-btn {
+  width: auto;
+  flex: 1;
+  min-width: 0;
+  border-color: rgba(255, 255, 255, 0.28);
+  color: var(--text-light);
+  gap: 6px;
+}
+.requests-btn-label {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.requests-btn-count {
+  color: var(--text-light);
+  font-weight: 800;
 }
 .staff-call-btn svg { fill: currentColor; flex-shrink: 0; }
 .staff-call-btn.calling {
@@ -2168,7 +2205,7 @@ input, select, textarea { font-size: 16px; }
 }
 
 .guide-btn {
-  flex-shrink: 0; margin-left: 16px; width: 32px; height: 32px; border-radius: 50%;
+  flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   border: 1px solid rgba(255,171,3,.48); color: var(--lime); background: rgba(255,171,3,.1);
   font-weight: 900; font-size: 16px; cursor: pointer;
