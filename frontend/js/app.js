@@ -317,11 +317,6 @@ const ONBOARDING_SLIDES = [
     image: 'assets/onboarding/02-chat-request.png', alt: '채팅 요청 수락 화면', badge: '요청 수락 · 채팅 · 나가기'
   },
   {
-    eyebrow: 'LIKE', title: '대화 중인 테이블에는 좋아요를 남겨요',
-    body: '상대가 다른 채팅 중이라 요청할 수 없다면 좋아요로 관심을 표현해 보세요. 내 테이블을 누르면 누가 좋아요를 보냈는지 확인할 수 있어요.',
-    image: 'assets/onboarding/03-likes.png', alt: '받은 좋아요 목록 화면', badge: '간접 관심 표현 · 받은 좋아요 확인'
-  },
-  {
     eyebrow: 'OPEN CHAT', title: '축제 이야기는 전체채팅에서',
     body: '하단의 전체채팅을 누르면 행사장 모든 참가자와 실시간으로 대화할 수 있어요. 서로 배려하는 대화를 부탁드려요.',
     image: 'assets/onboarding/04-global-chat.png', alt: '실제 전체채팅 화면', badge: '모든 테이블과 실시간 대화'
@@ -349,7 +344,7 @@ const ONBOARDING_SLIDES = [
 ];
 
 // 배포 후 브라우저가 이전 가이드 이미지를 계속 보여주지 않도록 버전을 붙인다.
-const ONBOARDING_ASSET_VERSION = '20260906-2';
+const ONBOARDING_ASSET_VERSION = '20260906-3';
 
 let onboardingIndex = 0;
 let onboardingPointerX = null;
