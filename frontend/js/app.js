@@ -1769,8 +1769,35 @@ function genderLabel(gender) {
 function formatBoardDate(value) {
   if (!value) return '-';
   const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
   const pad = (number) => String(number).padStart(2, '0');
   return `${pad(date.getMonth() + 1)}/${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function hasBoardDisplayValue(value) {
+  if (value === null || value === undefined || Number.isNaN(value)) return false;
+  const normalized = String(value).trim();
+  return Boolean(normalized) && !['undefined', 'null', 'nan', 'invalid date'].includes(normalized.toLowerCase());
+}
+
+function boardPostHeadline(post) {
+  const d = post?.details;
+  const parts = [];
+  if (hasBoardDisplayValue(d?.age)) parts.push(`${d.age}세`);
+  if (hasBoardDisplayValue(d?.height)) parts.push(`${d.height}cm`);
+  if (hasBoardDisplayValue(d?.faceType)) parts.push(d.faceType);
+  return parts.length ? parts.join(' · ') : (hasBoardDisplayValue(post?.title) ? post.title : '게시글');
+}
+
+function boardPostSummary(post) {
+  const d = post?.details;
+  const parts = [];
+  if (hasBoardDisplayValue(d?.mbti)) parts.push(`MBTI ${d.mbti}`);
+  if (hasBoardDisplayValue(d?.tension)) parts.push(d.tension);
+  if (hasBoardDisplayValue(d?.charmPoint)) parts.push(d.charmPoint);
+  const createdAt = formatBoardDate(post?.createdAt);
+  if (createdAt !== '-') parts.push(createdAt);
+  return parts.join(' · ') || '-';
 }
 
 function renderBoardList() {
@@ -1789,11 +1816,8 @@ function renderBoardList() {
     const info = document.createElement('div');
     info.className = 'history-info';
     const genderClass = post.author?.gender === 'FEMALE' ? 'female' : post.author?.gender === 'MALE' ? 'male' : '';
-    const d = post.details;
-    const headline = d ? `${d.age}세 · ${d.height}cm · ${d.faceType}` : post.title;
-    info.appendChild(text('div', `history-seat-name board-title ${genderClass}`.trim(), headline));
-    const summary = d ? `MBTI ${d.mbti} · ${d.tension} · ${d.charmPoint} · ${formatBoardDate(post.createdAt)}` : formatBoardDate(post.createdAt);
-    info.appendChild(text('div', 'history-preview', summary));
+    info.appendChild(text('div', `history-seat-name board-title ${genderClass}`.trim(), boardPostHeadline(post)));
+    info.appendChild(text('div', 'history-preview', boardPostSummary(post)));
     item.appendChild(info);
     item.addEventListener('click', () => showBoardDetail(post.id).catch((error) => showToast(error.message)));
     list.appendChild(item);
@@ -1936,6 +1960,7 @@ function renderRevealedProfile(profile) {
   box.hidden = false;
   const tableLabel = profile.tableNumber ? `TABLE ${profile.tableNumber}` : 'TABLE -';
   box.appendChild(text('div', 'board-profile-line', `${profile.nickname || '참가자'} · ${tableLabel}`));
+  if (!hasBoardDisplayValue(profile.instagramId)) return;
   const link = document.createElement('a');
   link.className = 'board-profile-link';
   link.href = `https://www.instagram.com/${profile.instagramId}/`;
@@ -1943,6 +1968,20 @@ function renderRevealedProfile(profile) {
   link.rel = 'noopener noreferrer';
   link.textContent = `@${profile.instagramId}`;
   box.appendChild(link);
+}
+
+function showBoardViewerProfile(view) {
+  const profile = view?.peer;
+  if (!profile?.id) return;
+  state.board.currentPost = null;
+  state.board.revealedProfile = profile;
+  $('board-detail-title').textContent = '프로필';
+  $('board-detail-meta').textContent = profile.gender ? genderLabel(profile.gender) : '';
+  clear($('board-detail-content'));
+  $('board-reveal-btn').hidden = true;
+  $('board-delete-btn').hidden = true;
+  renderRevealedProfile(profile);
+  showBoardView('board-detail-view');
 }
 
 function renderBoardDetailContent(post) {
@@ -2028,11 +2067,8 @@ function renderMyBoardPosts(list) {
     item.className = 'history-item history-item-clickable';
     const info = document.createElement('div');
     info.className = 'history-info';
-    const d = post.details;
-    const headline = d ? `${d.age}세 · ${d.height}cm · ${d.faceType}` : post.title;
-    info.appendChild(text('div', 'history-seat-name', headline));
-    const summary = d ? `MBTI ${d.mbti} · ${d.tension} · ${d.charmPoint} · ${formatBoardDate(post.createdAt)}` : formatBoardDate(post.createdAt);
-    info.appendChild(text('div', 'history-preview', summary));
+    info.appendChild(text('div', 'history-seat-name', boardPostHeadline(post)));
+    info.appendChild(text('div', 'history-preview', boardPostSummary(post)));
     item.appendChild(info);
     item.addEventListener('click', () => showBoardDetail(post.id).catch((error) => showToast(error.message)));
     list.appendChild(item);
@@ -2070,7 +2106,10 @@ async function showBoardViews(direction = state.board.viewsDirection || 'receive
       info.appendChild(text('div', 'history-seat-name', `${view.peer?.nickname || '참가자'} · ${tableLabel}`));
       info.appendChild(text('div', 'history-preview', `${genderLabel(view.peer?.gender)} · @${view.peer?.instagramId || '-'} · ${view.sourcePostTitle || '삭제된 게시글'} · ${formatBoardDate(view.createdAt)}`));
       item.appendChild(info);
-      if (view.sourcePostId) {
+      if (direction === 'received' && view.peer?.id) {
+        item.classList.add('history-item-clickable');
+        item.addEventListener('click', () => showBoardViewerProfile(view));
+      } else if (view.sourcePostId) {
         item.classList.add('history-item-clickable');
         item.addEventListener('click', () => showBoardDetail(view.sourcePostId).catch(() => showToast('삭제되었거나 찾을 수 없는 게시글입니다.')));
       }

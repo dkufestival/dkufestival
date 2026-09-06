@@ -1,8 +1,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const app = require('../src/app');
 const boardService = require('../src/services/board.service');
 const { BoardProfile, BoardPost, BoardProfileView } = require('../src/models');
+
+const frontendApp = fs.readFileSync(path.resolve(__dirname, '..', '..', 'frontend/js/app.js'), 'utf8');
 
 function withPatchedMethods(patches, run) {
   const originals = patches.map(([target, name]) => [target, name, target[name]]);
@@ -114,4 +118,12 @@ test('board profile view history hides deleted source post titles', async () => 
     assert.equal(views[0].sourcePostTitle, '삭제된 게시글');
     assert.equal(views[0].peer.instagramId, 'viewer_id');
   });
+});
+
+test('board lists omit missing detail fields and received views open the viewer profile', () => {
+  assert.match(frontendApp, /function boardPostHeadline\(post\)/);
+  assert.match(frontendApp, /function boardPostSummary\(post\)/);
+  assert.match(frontendApp, /Number\.isNaN\(date\.getTime\(\)\)/);
+  assert.match(frontendApp, /direction === 'received' && view\.peer\?\.id/);
+  assert.match(frontendApp, /showBoardViewerProfile\(view\)/);
 });
