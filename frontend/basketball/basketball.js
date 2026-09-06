@@ -142,7 +142,7 @@ function connectCompetitionSocket() {
   });
   socket.on('basketball:leaderboard', (payload = {}) => renderLeaderboard(payload.leaderboard || []));
   const returnToGlobalGame = (game, { announce = false } = {}) => {
-    if (!game || game.type === 'BASKETBALL') return;
+    if (!game || ['BASKETBALL', 'TIME_MATCH'].includes(game.type)) return;
     clearTimeout(globalGameRedirectTimer);
     const navigate = () => window.location.replace(`/${window.location.search}`);
     if (!announce) return navigate();

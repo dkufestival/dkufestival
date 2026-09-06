@@ -27,6 +27,10 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
+app.get('/api/time', (req, res) => {
+  res.set('Cache-Control', 'no-store').json({ serverTime: Date.now() });
+});
+
 app.get('/pinball-viewer/', async (req, res, next) => {
   try {
     res.type('html').send(await getPinballPage());

@@ -32,7 +32,7 @@ function reply(callback, response) {
 function registerGameSocket(io, socket) {
   gameService.getActiveGlobalGame()
     .then((game) => {
-      if (game) socket.emit('game:global:current', socket.data.user.role === 'ADMIN' ? game : participantGame(game));
+      socket.emit('game:global:current', socket.data.user.role === 'ADMIN' ? game : participantGame(game));
     })
     .catch(() => {});
 

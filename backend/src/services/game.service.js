@@ -531,10 +531,17 @@ async function updateGlobalGame(data) {
     if (game.type !== 'ROULETTE') throw createServiceError('룰렛 게임이 아닙니다.', 'INVALID_GAME_ACTION');
     const options = rounds[currentRound]?.options || [];
     if (options.length < 2) throw createServiceError('룰렛 옵션이 부족합니다.', 'INVALID_GAME_CONFIG');
+    const previous = game.state?.rouletteSpin;
+    if (previous && Date.now() < Number(previous.startAt || previous.spinId) + previous.durationMs) {
+      throw createServiceError('룰렛이 회전 중입니다.', 'ROULETTE_SPINNING');
+    }
     const resultIndex = Math.floor(Math.random() * options.length);
+    const fromRotation = Number(previous?.toRotation || 0);
+    const targetAngle = (360 - (resultIndex + .5) * 360 / options.length) % 360;
+    const startAt = Date.now() + 300;
     game.state = {
       ...(game.state || {}),
-      rouletteSpin: { resultIndex, result: options[resultIndex], spinId: Date.now(), durationMs: 4200 },
+      rouletteSpin: { resultIndex, result: options[resultIndex], spinId: startAt, startAt, durationMs: 4200, fromRotation, toRotation: Math.floor(fromRotation / 360) * 360 + 2520 + targetAngle },
     };
   } else if (data.action === 'NEXT_PROMPT') {
     if (game.type !== 'WORD_GUESS') throw createServiceError('제시어 맞히기 게임이 아닙니다.', 'INVALID_GAME_ACTION');

@@ -1,3 +1,5 @@
+import { animateRoulette, rouletteFrame } from './roulette-sync.js';
+import { serverNow } from './game-clock.js';
 import { setToastHandler } from './api.js';
 import { clearAdminToken, getAdminToken, saveAdminToken } from './auth.js';
 import { connectSocket, getSocket } from './socket.js';
@@ -692,7 +694,9 @@ function renderWordSubmissions() {
   if (!submissions.length) list.appendChild(text('div', 'rank-empty', '아직 제출된 답이 없습니다.'));
 }
 
+let cancelAdminRoulette = () => {};
 function renderAdminRoulette() {
+  cancelAdminRoulette();
   const panel = $('roulette-admin-preview');
   const stage = $('roulette-admin-stage');
   if (!panel || !stage) return;
@@ -703,7 +707,7 @@ function renderAdminRoulette() {
   const round = game.state?.rounds?.[Number(game.state?.currentRound || 0)] || {};
   const options = round.options || [];
   const spin = game.state?.rouletteSpin;
-  if (spin && state.adminRouletteSpinId === spin.spinId && state.rouletteSpinning && stage.querySelector('.roulette-wheel')) return;
+  state.rouletteSpinning = Boolean(spin && !rouletteFrame(spin, options.length, serverNow()).done);
   stage.replaceChildren();
   if (!options.length) return;
   const colors = ['#d7ff38', '#ff6b6b', '#6bc5ff', '#ffd66b', '#b98cff', '#62e6a6', '#ff92d0', '#ff9f5b'];
@@ -722,27 +726,14 @@ function renderAdminRoulette() {
     wheel.appendChild(label);
   });
   wheel.appendChild(text('div', 'roulette-hub', 'PIU:M'));
-  const previousRotation = state.adminRouletteRotation;
-  let shouldAnimate = false;
-  if (spin && state.adminRouletteSpinId !== spin.spinId) {
-    state.adminRouletteSpinId = spin.spinId;
-    const targetAngle = (360 - (Number(spin.resultIndex) * slice + slice / 2)) % 360;
-    state.adminRouletteRotation = Math.floor(state.adminRouletteRotation / 360) * 360 + 360 * 7 + targetAngle;
-    shouldAnimate = true;
-  }
-  wheel.style.transform = `rotate(${shouldAnimate ? previousRotation : state.adminRouletteRotation}deg)`;
   wrap.appendChild(wheel);
   stage.appendChild(wrap);
-  stage.appendChild(text('strong', 'roulette-result', state.rouletteSpinning
-    ? '룰렛이 돌아가는 중...'
-    : spin?.result ? `당첨: ${spin.result}` : '관리자가 룰렛을 돌릴 때까지 기다려 주세요.'));
-  if (shouldAnimate) requestAnimationFrame(() => {
-    wheel.style.transitionDuration = `${Number(spin.durationMs || 4200)}ms`;
-    wheel.style.transform = `rotate(${state.adminRouletteRotation}deg)`;
+  const result = text('strong', 'roulette-result', '관리자가 룰렛을 돌릴 때까지 기다려 주세요.');
+  stage.appendChild(result);
+  if (spin) cancelAdminRoulette = animateRoulette(wheel, result, spin, options.length, () => {
+    state.rouletteSpinning = false;
+    $('reveal-answer-btn').disabled = false;
   });
-  if (shouldAnimate) {
-    clearTimeout(state.adminRouletteWinnerTimer);
-  }
 }
 
 function parsePinballEntries() {
@@ -776,7 +767,7 @@ function pinballViewerUrl(game) {
     viewer: '1',
     names: (game.state?.names || []).join(','),
     seed: String(game.state?.seed || 1),
-    startAt: String(game.state?.startAt || Date.now()),
+    startAt: String(game.state?.startAt || 0),
   });
   return `/pinball-local/?${params}`;
 }
@@ -1522,11 +1513,7 @@ function updateGlobalGame(action) {
         : action === 'NEXT_PROMPT' ? `${Number(response.data.state?.currentPrompt || 0) + 1}번째 제시어 공개`
         : `${Number(response.data.state?.currentRound || 0) + 1} 라운드 시작`;
     addGameLog(message);
-    if (action === 'SPIN') setTimeout(() => {
-      state.rouletteSpinning = false;
-      renderGameControls();
-      showRouletteResult(response.data.state?.rouletteSpin?.result);
-    }, Number(response.data.state?.rouletteSpin?.durationMs || 4200));
+
   });
 }
 

@@ -9,7 +9,8 @@
     "migrate": "node scripts/migrate.js",
     "migrate:down": "node scripts/migrate.js --down",
     "seed": "node scripts/seed-tables.js",
-    "test": "node --test",
+    "test": "node --test test/*.test.js",
+    "test:game-sync": "node scripts/test-game-sync.cjs",
     "check": "node scripts/check-js.js"
   },
   "engines": {
@@ -35,6 +36,7 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
-    "nodemon": "^3.1.11"
+    "nodemon": "^3.1.11",
+    "playwright": "^1.63.0"
   }
 }

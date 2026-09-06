@@ -1,3 +1,4 @@
+import { animateRoulette } from './roulette-sync.js';
 import { setToastHandler } from './api.js';
 import { clearParticipantAuth, getClientId, getParticipantAuth, saveMonitorAuth, saveParticipantAuth } from './auth.js';
 import { connectSocket, getSocket } from './socket.js';
@@ -93,7 +94,14 @@ function isParticipating(gameId) {
 }
 
 function requestGameParticipation(game) {
-  if (!game || state.participationDecisions.has(Number(game.id))) return;
+  if (!game) return;
+  if (state.participationDecisions.has(Number(game.id))) {
+    if (isParticipating(game.id)) {
+      if (game.type === 'PINBALL') showPinballScreen(game);
+      else if (!['TIME_MATCH', 'BASKETBALL'].includes(game.type)) showGlobalGameScreen();
+    }
+    return;
+  }
   if (state.isMonitor) {
     state.participationDecisions.set(Number(game.id), true);
     if (game.type === 'PINBALL') showPinballScreen(game);
@@ -808,6 +816,13 @@ function bindSocket() {
   socket.on('game:global:current', (game) => {
     closeAllTransientModals();
     state.activeGame = game;
+    if (!game) {
+      cancelRoulette();
+      $('pinball-viewer-frame').src = 'about:blank';
+      showScreen(state.activeRoomId ? 'screen-chat' : 'screen-seats');
+      renderGame();
+      return;
+    }
     if (game?.state?.lifecyclePhase === 'ANNOUNCED') showGameAnnouncement(game);
     else if (game?.state?.lifecyclePhase === 'RESULTS') showFinalScores(game);
     else if (state.isMonitor || game?.type !== 'TIME_MATCH') requestGameParticipation(game);
@@ -816,6 +831,7 @@ function bindSocket() {
   socket.on('game:global:ended', (game) => {
     closeAllTransientModals();
     resetTimeMatch();
+    cancelRoulette();
     state.activeGame = null;
     state.participationDecisions.delete(Number(game.id));
     $('pinball-viewer-frame').src = 'about:blank';
@@ -846,6 +862,8 @@ function bindSocket() {
       state.gameAnswer = null;
       if (isParticipating(game.id)) showGlobalGameScreen();
       showToast(`${currentRound + 1}라운드가 시작되었습니다.`);
+    } else if (game.type === 'ROULETTE' && isParticipating(game.id)) {
+      showGlobalGameScreen();
     } else if (game.state?.answerRevealed) {
       if (isParticipating(game.id)) {
         if (!$('screen-game').classList.contains('active')) showGlobalGameScreen();
@@ -2123,7 +2141,7 @@ function pinballViewerUrl(game) {
     viewer: '1',
     names: (game?.state?.names || []).join(','),
     seed: String(game?.state?.seed || 1),
-    startAt: String(game?.state?.startAt || Date.now()),
+    startAt: String(game?.state?.startAt || 0),
   });
   return `/pinball-local/?${params}`;
 }
@@ -2245,6 +2263,7 @@ function showGlobalGameScreen() {
       : submittedAnswer !== undefined ? '제출 완료' : '제출';
   $('game-screen-status').textContent = state.isMonitor ? 'MONITOR MODE에서는 응답과 점수를 제출할 수 없습니다.' : submittedAnswer !== undefined ? '이 라운드의 답을 제출했습니다.' : '응답 대기 중';
   showScreen('screen-game');
+  if (state.activeGame?.type === 'ROULETTE' && state.activeGame.state?.rouletteSpin) spinRoulette(state.activeGame.state.rouletteSpin);
 }
 
 function renderRecreationGame(mission) {
@@ -2315,22 +2334,18 @@ function createRouletteWheel(options) {
   return wrap;
 }
 
+let cancelRoulette = () => {};
 function spinRoulette(payload) {
+  cancelRoulette();
+  const game = state.activeGame;
   const wheel = document.querySelector('.roulette-wheel');
   const result = document.querySelector('.roulette-result');
-  const options = state.activeGame?.state?.rounds?.[Number(payload.roundIndex || 0)]?.options || [];
-  if (!wheel || !options.length) return;
-  const slice = 360 / options.length;
-  const targetAngle = (360 - (Number(payload.resultIndex) * slice + slice / 2)) % 360;
-  const rotation = Math.floor(state.rouletteRotation / 360) * 360 + 360 * 7 + targetAngle;
-  state.rouletteRotation = rotation;
-  wheel.style.transitionDuration = `${Number(payload.durationMs || 4200)}ms`;
-  requestAnimationFrame(() => { wheel.style.transform = `rotate(${rotation}deg)`; });
-  result.textContent = '룰렛이 돌아가는 중...';
-  setTimeout(() => {
-    result.textContent = `당첨: ${payload.result}`;
-    showFinalScores({ type: 'ROULETTE', state: { rouletteSpin: payload } });
-  }, Number(payload.durationMs || 4200));
+  const options = game?.state?.rounds?.[Number(game.state?.currentRound || 0)]?.options || [];
+  if (!wheel || !options.length || !payload) return;
+  cancelRoulette = animateRoulette(wheel, result, payload, options.length, () => {
+    if (state.activeGame?.id === game.id && state.activeGame?.state?.rouletteSpin?.spinId === payload.spinId
+      && $('screen-game').classList.contains('active')) showFinalScores(game);
+  });
 }
 
 function showRoundResult() {

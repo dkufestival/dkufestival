@@ -1,3 +1,4 @@
+import { serverNow } from '../js/game-clock.js';
 import { DEFAULT_MAP } from './map-data.js?v=1';
 
 const canvas = document.getElementById('board');
@@ -7,9 +8,6 @@ const rankingNode = document.getElementById('ranking');
 const params = new URLSearchParams(location.search);
 const editMode = params.get('edit') === '1';
 const MAP_STORAGE_KEY = 'festival-pinball-map-v1';
-document.getElementById('winner-close')?.addEventListener('click', () => {
-  document.getElementById('winner-popup').hidden = true;
-});
 
 function seededRandom(value) {
   let seed = Number(value) >>> 0 || 1;
@@ -43,8 +41,7 @@ let balls = [];
 let finishOrder = [];
 let eliminatedOrder = [];
 let simulationTime = 0;
-let accumulator = 0;
-let lastTime = performance.now();
+let simulationSteps = 0;
 let started = false;
 let renderScale = 1;
 let viewportHeight = 700;
@@ -60,11 +57,14 @@ function announceWinner(ball) {
 
 function resize() {
   const rect = canvas.getBoundingClientRect();
+  // Hidden admin tabs can initially report a zero-sized canvas.
+  const displayWidth = Math.max(1, rect.width);
+  const displayHeight = Math.max(1, rect.height);
   const ratio = Math.min(devicePixelRatio || 1, 2);
-  canvas.width = Math.round(rect.width * ratio);
-  canvas.height = Math.round(rect.height * ratio);
-  renderScale = rect.width / BOARD_WIDTH;
-  viewportHeight = rect.height / renderScale;
+  canvas.width = Math.round(displayWidth * ratio);
+  canvas.height = Math.round(displayHeight * ratio);
+  renderScale = displayWidth / BOARD_WIDTH;
+  viewportHeight = displayHeight / renderScale;
   if (!pegs.length) buildMap();
 }
 
@@ -126,7 +126,7 @@ function buildMap() {
   spinners = builtInMap.spinners;
   rails = builtInMap.rails;
   try {
-    const saved = JSON.parse(localStorage.getItem(MAP_STORAGE_KEY));
+    const saved = editMode ? JSON.parse(localStorage.getItem(MAP_STORAGE_KEY)) : null;
     if (saved) {
       if (Array.isArray(saved.pegs)) pegs = saved.pegs;
       if (Array.isArray(saved.sideBumpers)) sideBumpers = saved.sideBumpers;
@@ -377,7 +377,8 @@ function updateBall(ball) {
 }
 
 function simulate() {
-  simulationTime += STEP;
+  simulationSteps += 1;
+  simulationTime = simulationSteps * STEP;
   balls.forEach(updateBall);
   collideBalls();
 }
@@ -441,23 +442,32 @@ function draw() {
   }
 }
 
-const delay = Math.max(0, Math.min(Number(params.get('startAt')) - Date.now(), 3000));
-if (!editMode) setTimeout(() => { started = true; statusNode.textContent = '전 구슬 동시 출발'; }, delay);
-function frame(now) {
-  accumulator += Math.min((now - lastTime) / 1000, .05);
-  lastTime = now;
-  if (started && !editMode) while (accumulator >= STEP) { simulate(); accumulator -= STEP; }
-  else accumulator = 0;
+const startAt = Number(params.get('startAt')) || 0;
+function frame() {
+  if (!editMode && startAt && serverNow() >= startAt) {
+    if (!started) { started = true; statusNode.textContent = '전 구슬 동시 출발'; }
+    const targetSteps = Math.floor(Math.max(0, serverNow() - startAt) / 1000 / STEP);
+    // Replay the same fixed steps when joining late or resuming a background tab.
+    // Yield in bounded batches without displaying a stale, restarted race.
+    const limit = Math.min(targetSteps, simulationSteps + 2400);
+    while (simulationSteps < limit && finishOrder.length + eliminatedOrder.length < balls.length) simulate();
+    if (simulationSteps < targetSteps && finishOrder.length + eliminatedOrder.length < balls.length) {
+      statusNode.textContent = '현재 경기 위치로 동기화 중...';
+      requestAnimationFrame(frame);
+      return;
+    }
+  }
   const leader = balls.filter((ball) => !ball.finished && !ball.eliminated).reduce((best, ball) => (!best || ball.y > best.y ? ball : best), null);
   const targetCamera = Math.max(0, Math.min(height - viewportHeight, (leader?.y || height) - viewportHeight * .38));
-  if (!editMode) cameraY += (targetCamera - cameraY) * .075;
+  if (!editMode) cameraY = targetCamera;
   draw();
   requestAnimationFrame(frame);
 }
 
 addEventListener('resize', resize);
+new ResizeObserver(resize).observe(canvas);
 resize();
 createBalls();
 setupEditor();
-if (!editMode) statusNode.textContent = balls.length < 2 ? '구슬을 2개 이상 입력해주세요' : '곧 시작합니다';
+if (!editMode) statusNode.textContent = balls.length < 2 ? '구슬을 2개 이상 입력해주세요' : (startAt ? '곧 시작합니다' : '관리자 시작 대기 중');
 requestAnimationFrame(frame);

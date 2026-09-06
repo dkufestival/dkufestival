@@ -116,3 +116,18 @@ npx web-push generate-vapid-keys
 npm run check
 npm test
 ```
+
+게임 동기화 브라우저 테스트는 메모리 기반 데이터와 임시 서버에서 실행합니다.
+룰렛·핀볼의 지연 입장, 새로고침, 재입장, 기기 시계 차이와 농구 화면 유지를 확인합니다.
+`backend` 디렉터리에서 Playwright Chromium을 설치한 뒤 실행하세요.
+
+```bash
+npx playwright install chromium
+npm run test:game-sync
+```
+
+macOS에 설치된 Chrome을 사용하려면 브라우저 다운로드 없이 실행할 수 있습니다.
+
+```bash
+CHROME_PATH='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' npm run test:game-sync
+```
