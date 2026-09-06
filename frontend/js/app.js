@@ -348,6 +348,9 @@ const ONBOARDING_SLIDES = [
   }
 ];
 
+// 배포 후 브라우저가 이전 가이드 이미지를 계속 보여주지 않도록 버전을 붙인다.
+const ONBOARDING_ASSET_VERSION = '20260906';
+
 let onboardingIndex = 0;
 let onboardingPointerX = null;
 
@@ -356,7 +359,7 @@ function renderOnboarding() {
   $('onboarding-progress').style.width = `${((onboardingIndex + 1) / ONBOARDING_SLIDES.length) * 100}%`;
   $('onboarding-slide').innerHTML = `
     <div class="onboarding-image-wrap">
-      <img src="${slide.image}" alt="${slide.alt}" draggable="false">
+      <img src="${slide.image}?v=${ONBOARDING_ASSET_VERSION}" alt="${slide.alt}" draggable="false">
       <span class="onboarding-count">${onboardingIndex + 1} / ${ONBOARDING_SLIDES.length}</span>
     </div>
     <div class="onboarding-copy">
