@@ -78,6 +78,8 @@ function setFreePlayMode() {
 
 function notifyTimeMatchOpened(game) {
   if (game?.type !== 'TIME_MATCH') return;
+  if (notifyTimeMatchOpened.lastGameId === String(game.id)) return;
+  notifyTimeMatchOpened.lastGameId = String(game.id);
   const notice = document.getElementById('global-game-notice');
   notice.querySelector('strong').textContent = '스톱워치 게임 오픈!';
   notice.querySelector('span').textContent = '게임 메뉴에서 스톱워치 게임을 눌러 참여하세요.';
