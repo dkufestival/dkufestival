@@ -39,7 +39,10 @@ const INTERPOLATION_DELAY = 100;
 const MAX_SNAPSHOT_BUFFER = 10;
 const SNAPSHOT_RESET_GAP = 500;
 const POSITION_SNAP_DISTANCE = 100;
-const CAMERA_SPEED = 10;
+const CAMERA_FOLLOW_SPEED = 7;
+const CAMERA_LEADER_HOLD_MS = 180;
+const FINISH_TRANSITION_MS = 350;
+const ELIMINATION_TRANSITION_MS = 350;
 const RENDER_MARGIN = 80;
 
 function announceWinner(ball) {
@@ -285,7 +288,79 @@ function ballSprite(ball) {
   return cached;
 }
 
-function draw() {
+function easeOutCubic(value) {
+  return 1 - Math.pow(1 - value, 3);
+}
+
+function drawBallSprite(ball, opacity = 1, scale = 1, glow = 0) {
+  const cached = ballSprite(ball);
+  if (opacity === 1 && scale === 1 && glow === 0) {
+    ctx.drawImage(cached.sprite, ball.x - cached.size / 2, ball.y - cached.size / 2, cached.size, cached.size);
+    return;
+  }
+  ctx.save();
+  ctx.globalAlpha = opacity;
+  ctx.translate(ball.x, ball.y);
+  ctx.scale(scale, scale);
+  if (glow > 0) {
+    ctx.shadowColor = ball.color;
+    ctx.shadowBlur = glow;
+  }
+  ctx.drawImage(cached.sprite, -cached.size / 2, -cached.size / 2, cached.size, cached.size);
+  ctx.restore();
+}
+
+function terminalState(ball) {
+  if (ball.finished) return 'finished';
+  if (ball.eliminated) return 'eliminated';
+  return null;
+}
+
+function syncBallTransitions(snapshot, receivedAt) {
+  const isInitialSnapshot = !hasReceivedAuthoritativeSnapshot;
+  for (const ball of snapshot.balls) {
+    const nextState = terminalState(ball);
+    const previousState = authoritativeTerminalStates.get(ball.id);
+    if (!isInitialSnapshot && !previousState && nextState) {
+      ballTransitions.set(ball.id, {
+        ball: { ...ball },
+        type: nextState,
+        startedAt: receivedAt,
+        duration: nextState === 'finished' ? FINISH_TRANSITION_MS : ELIMINATION_TRANSITION_MS,
+      });
+      if (cameraLeader?.id === ball.id) {
+        heldCameraLeader = { ...ball };
+        cameraLeaderHoldUntil = receivedAt + CAMERA_LEADER_HOLD_MS;
+      }
+    }
+    authoritativeTerminalStates.set(ball.id, nextState);
+  }
+  hasReceivedAuthoritativeSnapshot = true;
+}
+
+function drawTerminalTransitions(now, minY, maxY) {
+  for (const [id, transition] of ballTransitions) {
+    const progress = Math.min(1, Math.max(0, (now - transition.startedAt) / transition.duration));
+    if (progress >= 1) {
+      ballTransitions.delete(id);
+      continue;
+    }
+    const ball = transition.ball;
+    if (ball.y + ball.radius < minY || ball.y - ball.radius > maxY) continue;
+    const eased = easeOutCubic(progress);
+    const scale = transition.type === 'finished'
+      ? 1 + .08 * Math.sin(progress * Math.PI) - .18 * eased
+      : 1 - .25 * eased;
+    const glow = 10 * Math.sin(progress * Math.PI);
+    drawBallSprite(ball, 1 - eased, scale, glow);
+  }
+  if (clearBallSpriteCacheAfterTransitions && ballTransitions.size === 0) {
+    ballSpriteCache.clear();
+    clearBallSpriteCacheAfterTransitions = false;
+  }
+}
+
+function draw(now) {
   if (staticLayerDirty) rebuildStaticLayer();
   const ratio = canvasRatio;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -329,9 +404,9 @@ function draw() {
   }
   for (const ball of balls) {
     if (ball.finished || ball.eliminated || ball.y + ball.radius < minY || ball.y - ball.radius > maxY) continue;
-    const cached = ballSprite(ball);
-    ctx.drawImage(cached.sprite, ball.x - cached.size / 2, ball.y - cached.size / 2, cached.size, cached.size);
+    drawBallSprite(ball);
   }
+  if (!editMode) drawTerminalTransitions(now, minY, maxY);
   if (editMode) {
     ctx.fillStyle = 'rgba(112,239,255,.75)';
     ctx.font = '700 12px sans-serif'; ctx.textAlign = 'left';
@@ -344,6 +419,13 @@ let lastSnapshotSeq = -1;
 let latestSnapshot = null;
 let snapshotBuffer = [];
 let rankingSignature = '';
+const ballTransitions = new Map();
+const authoritativeTerminalStates = new Map();
+let hasReceivedAuthoritativeSnapshot = false;
+let cameraLeader = null;
+let heldCameraLeader = null;
+let cameraLeaderHoldUntil = 0;
+let clearBallSpriteCacheAfterTransitions = false;
 
 function ballsHaveMatchingIds(before, after) {
   if (before.length !== after.length) return false;
@@ -392,11 +474,19 @@ function updateRanking(snapshot) {
 function applySnapshot(snapshot) {
   if (snapshot?.gameId !== gameId || !Number.isSafeInteger(snapshot.seq) || snapshot.seq <= lastSnapshotSeq) return;
   const receivedAt = performance.now();
+  syncBallTransitions(snapshot, receivedAt);
   if (shouldResetSnapshotBuffer(snapshot)) snapshotBuffer = [];
   snapshotBuffer.push({ snapshot, receivedAt });
   if (snapshotBuffer.length > MAX_SNAPSHOT_BUFFER) snapshotBuffer.shift();
   latestSnapshot = snapshot;
-  if (snapshot.status === 'finished' || snapshot.status === 'cancelled') ballSpriteCache.clear();
+  if (snapshot.status === 'finished') clearBallSpriteCacheAfterTransitions = true;
+  if (snapshot.status === 'cancelled') {
+    ballTransitions.clear();
+    authoritativeTerminalStates.clear();
+    heldCameraLeader = null;
+    cameraLeaderHoldUntil = 0;
+    ballSpriteCache.clear();
+  }
   lastSnapshotSeq = snapshot.seq;
   simulationSteps = snapshot.step;
   finishOrder = snapshot.result.finishOrder;
@@ -452,13 +542,19 @@ function frame(now = performance.now()) {
   const deltaSeconds = Math.min(.1, Math.max(0, (now - lastFrameAt) / 1000));
   lastFrameAt = now;
   if (latestSnapshot) renderSnapshot(now);
-  const leader = balls.filter((ball) => !ball.finished && !ball.eliminated).reduce((best, ball) => (!best || ball.y > best.y ? ball : best), null);
+  let activeLeader = null;
+  for (const ball of balls) {
+    if (!ball.finished && !ball.eliminated && (!activeLeader || ball.y > activeLeader.y)) activeLeader = ball;
+  }
+  const leader = heldCameraLeader && now < cameraLeaderHoldUntil ? heldCameraLeader : activeLeader;
+  if (now >= cameraLeaderHoldUntil) heldCameraLeader = null;
+  if (activeLeader) cameraLeader = activeLeader;
   const targetCamera = Math.max(0, Math.min(height - viewportHeight, (leader?.y || height) - viewportHeight * .38));
   if (!editMode) {
-    const smoothing = 1 - Math.exp(-CAMERA_SPEED * deltaSeconds);
+    const smoothing = 1 - Math.exp(-CAMERA_FOLLOW_SPEED * deltaSeconds);
     cameraY += (targetCamera - cameraY) * smoothing;
   }
-  draw();
+  draw(now);
   requestAnimationFrame(frame);
 }
 

@@ -54,9 +54,21 @@ test('pinball viewer buffers authoritative snapshots and smooths the camera with
   assert.match(viewerSource, /MAX_SNAPSHOT_BUFFER = 10/);
   assert.match(viewerSource, /function getRenderSnapshots\(now\)/);
   assert.match(viewerSource, /new Map\(previous\.balls\.map\(\(ball\) => \[ball\.id, ball\]\)\)/);
-  assert.match(viewerSource, /CAMERA_SPEED = 10/);
-  assert.match(viewerSource, /1 - Math\.exp\(-CAMERA_SPEED \* deltaSeconds\)/);
+  assert.match(viewerSource, /CAMERA_FOLLOW_SPEED = 7/);
+  assert.match(viewerSource, /CAMERA_LEADER_HOLD_MS = 180/);
+  assert.match(viewerSource, /1 - Math\.exp\(-CAMERA_FOLLOW_SPEED \* deltaSeconds\)/);
   assert.doesNotMatch(viewerSource, /cameraY = targetCamera/);
+});
+
+test('pinball viewer animates observed terminal state changes without changing authoritative snapshots', () => {
+  assert.match(viewerSource, /const ballTransitions = new Map\(\)/);
+  assert.match(viewerSource, /FINISH_TRANSITION_MS = 350/);
+  assert.match(viewerSource, /ELIMINATION_TRANSITION_MS = 350/);
+  assert.match(viewerSource, /function syncBallTransitions\(snapshot, receivedAt\)/);
+  assert.match(viewerSource, /!isInitialSnapshot && !previousState && nextState/);
+  assert.match(viewerSource, /function drawTerminalTransitions\(now, minY, maxY\)/);
+  assert.match(viewerSource, /easeOutCubic\(progress\)/);
+  assert.match(viewerSource, /cameraLeaderHoldUntil = receivedAt \+ CAMERA_LEADER_HOLD_MS/);
 });
 
 test('pinball viewer caches static map and ball visuals while culling offscreen balls', () => {
