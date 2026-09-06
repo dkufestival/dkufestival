@@ -44,6 +44,25 @@ footer { z-index: 4; min-height: 37px; display: grid; place-items: center; paddi
 .global-game-notice[hidden] { display: none; }
 .global-game-notice strong { font-size: 25px; }
 .global-game-notice span { font-size: 15px; opacity: .82; }
+.time-match-toast {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  width: calc(100% - 32px);
+  max-width: 340px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(20,20,20,.88);
+  color: #fff;
+  text-align: center;
+  pointer-events: none;
+  box-shadow: 0 8px 24px rgba(0,0,0,.25);
+}
+.time-match-toast[hidden] { display: none; }
+.time-match-toast strong { display: block; font-size: 13px; font-weight: 800; }
+.time-match-toast span { display: block; margin-top: 2px; font-size: 11px; opacity: .85; }
 @keyframes swipe { 0%,100% { transform: translate(-50%,10px); opacity: .25; } 50% { transform: translate(-50%,-15px); opacity: .8; } }
 @keyframes pop { 0% { transform: translateX(-50%) scale(.75); } 65% { transform: translateX(-50%) scale(1.14); } 100% { transform: translateX(-50%) scale(1); } }
 @media (min-width: 431px) { .game-card { height: min(880px, calc(100svh - 30px)); border: 1px solid #ddd; } }

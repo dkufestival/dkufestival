@@ -80,17 +80,12 @@ function notifyTimeMatchOpened(game) {
   if (game?.type !== 'TIME_MATCH') return;
   if (notifyTimeMatchOpened.lastGameId === String(game.id)) return;
   notifyTimeMatchOpened.lastGameId = String(game.id);
-  const notice = document.getElementById('global-game-notice');
-  notice.querySelector('strong').textContent = '스톱워치 게임 오픈!';
-  notice.querySelector('span').textContent = '게임 메뉴에서 스톱워치 게임을 눌러 참여하세요.';
-  notice.hidden = false;
-  setMessage('스톱워치 게임이 열렸어요');
-  footerNode.textContent = '스톱워치 게임 오픈 · 게임 메뉴에서 입장하세요';
+  const toast = document.getElementById('time-match-toast');
+  toast.hidden = false;
   window.clearTimeout(notifyTimeMatchOpened.timer);
   notifyTimeMatchOpened.timer = window.setTimeout(() => {
-    notice.hidden = true;
-    setFreePlayMode();
-  }, 3000);
+    toast.hidden = true;
+  }, 10000);
 }
 
 function saveBasketballResume() {

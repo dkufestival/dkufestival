@@ -1202,9 +1202,10 @@ input, select, textarea { font-size: 16px; }
 .board-list-header {
   flex-shrink: 0;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px 10px;
   margin-bottom: 14px;
 }
 .board-list-header .modal-title { margin-bottom: 0; }
@@ -1212,11 +1213,11 @@ input, select, textarea { font-size: 16px; }
 .history-item.board-post-item { padding: 7px 6px; }
 .board-post-item .history-preview { font-size: 11px; line-height: 1.4; }
 #board-post-list { max-height: 400px; }
-.board-header-actions { flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
+.board-header-actions { flex-shrink: 0; display: flex; align-items: center; gap: 6px; }
 .board-text-btn {
   flex-shrink: 0;
   height: 32px;
-  padding: 0 12px;
+  padding: 0 10px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1247,7 +1248,7 @@ input, select, textarea { font-size: 16px; }
 .board-filter-tabs::-webkit-scrollbar { display: none; }
 .board-filter-tab {
   flex-shrink: 0;
-  padding: 7px 14px;
+  padding: 6px 12px;
   border-radius: 999px;
   border: 1px solid var(--border-soft);
   background: transparent;
