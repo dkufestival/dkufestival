@@ -112,3 +112,18 @@ test('chat inputs use textareas and Enter has no message-send handler', () => {
   assert.match(css, /\.chat-bubble[\s\S]*white-space: pre-wrap/);
   assert.match(css, /\.global-chat-message-content[\s\S]*white-space: pre-wrap/);
 });
+
+test('global chat includes a latest-message button with near-bottom scroll behavior', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const root = path.resolve(__dirname, '..', '..');
+  const html = fs.readFileSync(path.join(root, 'frontend/index.html'), 'utf8');
+  const app = fs.readFileSync(path.join(root, 'frontend/js/app.js'), 'utf8');
+  const css = fs.readFileSync(path.join(root, 'frontend/style.css'), 'utf8');
+  assert.match(html, /id="global-chat-scroll-bottom"[^>]*aria-label="최신 메시지로 이동"/);
+  assert.match(app, /GLOBAL_CHAT_BOTTOM_THRESHOLD = 96/);
+  assert.match(app, /function isGlobalChatNearBottom\(\)/);
+  assert.match(app, /scrollTo\(\{ top: log\.scrollHeight, behavior: smooth \? 'smooth' : 'auto' \}\)/);
+  assert.match(app, /global-chat-log'\)\.addEventListener\('scroll', updateGlobalChatScrollButton/);
+  assert.match(css, /\.global-chat-scroll-bottom\.visible/);
+});

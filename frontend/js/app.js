@@ -1479,11 +1479,31 @@ function sendChatMessage() {
   });
 }
 
+const GLOBAL_CHAT_BOTTOM_THRESHOLD = 96;
+
+function isGlobalChatNearBottom() {
+  const log = $('global-chat-log');
+  if (!log) return true;
+  return log.scrollHeight - log.scrollTop - log.clientHeight <= GLOBAL_CHAT_BOTTOM_THRESHOLD;
+}
+
+function updateGlobalChatScrollButton() {
+  const button = $('global-chat-scroll-bottom');
+  if (!button) return;
+  button.classList.toggle('visible', !isGlobalChatNearBottom());
+}
+
+function scrollGlobalChatToBottom({ smooth = false } = {}) {
+  const log = $('global-chat-log');
+  if (!log) return;
+  log.scrollTo({ top: log.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+  if (!smooth) updateGlobalChatScrollButton();
+}
+
 function renderGlobalChat({ forceBottom = false } = {}) {
   const log = $('global-chat-log');
   const previousScrollTop = log.scrollTop;
-  const distanceFromBottom = log.scrollHeight - log.scrollTop - log.clientHeight;
-  const shouldStickToBottom = forceBottom || distanceFromBottom < 48;
+  const shouldStickToBottom = forceBottom || isGlobalChatNearBottom();
   clear(log);
   state.globalChatMessages.forEach((message) => {
     const isAdmin = message.senderRole === 'ADMIN';
@@ -1512,7 +1532,11 @@ function renderGlobalChat({ forceBottom = false } = {}) {
   });
   updateGlobalChatInputState();
   $('global-chat-empty').hidden = state.globalChatMessages.length > 0;
-  log.scrollTop = shouldStickToBottom ? log.scrollHeight : previousScrollTop;
+  if (shouldStickToBottom) scrollGlobalChatToBottom();
+  else {
+    log.scrollTop = previousScrollTop;
+    updateGlobalChatScrollButton();
+  }
 }
 
 function updateGlobalChatInputState() {
@@ -2501,6 +2525,8 @@ function bindEvents() {
     openModal('modal-received-requests');
   });
   $('global-chat-send-btn').addEventListener('click', sendGlobalChatMessage);
+  $('global-chat-log').addEventListener('scroll', updateGlobalChatScrollButton, { passive: true });
+  $('global-chat-scroll-bottom').addEventListener('click', () => scrollGlobalChatToBottom({ smooth: true }));
   $('notice-btn').addEventListener('click', () => {
     setMainContent('notice');
     showNoticeList();
