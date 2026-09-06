@@ -1352,9 +1352,10 @@ function openJoinModal(table) {
   state.pendingTargetTable = table;
   $('send-seat-label').textContent = `TABLE ${table.tableNumber}에 채팅 요청`;
   const pending = [...state.pendingRequestPeers.values()].some((id) => Number(id) === Number(table.activeSession.id));
+  const alreadyReceived = state.receivedRequestsLog.some((entry) => Number(entry.peerSessionId) === Number(table.activeSession.id));
   const sendBtn = $('send-request-btn');
   sendBtn.disabled = pending;
-  sendBtn.textContent = pending ? '처리 대기 중인 요청이 있습니다' : '요청 보내기';
+  sendBtn.textContent = alreadyReceived ? '이미 받은 요청이 있습니다' : pending ? '이미 보낸 요청이 있습니다' : '요청 보내기';
   updateSendLikeButton(table);
   openModal('modal-send');
   loadRequestBlockState(table);
