@@ -10,6 +10,8 @@ export const adminApi = {
   endParticipantAccess: (participantId, body = {}) => api.post(`/api/admin/participants/${participantId}/end-access`, body, adminOptions),
   kickParticipant: (participantId, body = {}) => api.post(`/api/admin/participants/${participantId}/kick`, body, adminOptions),
   restoreParticipant: (participantId) => api.post(`/api/admin/participants/${participantId}/restore`, {}, adminOptions),
+  blockParticipantGlobalChat: (participantId, body = {}) => api.post(`/api/admin/participants/${participantId}/global-chat-block`, body, adminOptions),
+  unblockParticipantGlobalChat: (participantId) => api.post(`/api/admin/participants/${participantId}/global-chat-unblock`, {}, adminOptions),
   checkin: (tableId, body) => api.post(`/api/admin/tables/${tableId}/checkin`, body, adminOptions),
   extend: (tableId, body) => api.post(`/api/admin/tables/${tableId}/extend`, body, adminOptions),
   resetTime: (tableId) => api.post(`/api/admin/tables/${tableId}/reset-time`, {}, adminOptions),

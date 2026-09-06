@@ -100,7 +100,7 @@
         <div id="global-chat-log" class="global-chat-log"></div>
         <div id="global-chat-empty" class="global-chat-empty">아직 메시지가 없습니다.</div>
         <div class="global-chat-input-row">
-          <input id="global-chat-input" class="modal-input" maxlength="500" placeholder="메시지 입력..." autocomplete="off">
+          <textarea id="global-chat-input" class="modal-input chat-message-input" maxlength="500" placeholder="메시지 입력..." autocomplete="off" rows="1"></textarea>
           <button id="global-chat-send-btn" class="btn-dark" type="button">전송</button>
         </div>
       </section>
@@ -149,7 +149,7 @@
     <div id="chat-log" class="chat-log"></div>
     <div class="chat-bottom">
       <div class="chat-input-row">
-        <input id="chat-input" class="modal-input" placeholder="메시지 입력">
+        <textarea id="chat-input" class="modal-input chat-message-input" placeholder="메시지 입력" rows="1"></textarea>
         <button id="chat-send-btn" class="btn-dark">전송</button>
       </div>
       <button id="chat-leave-btn" class="btn-dark full leave">채팅방 나가기</button>

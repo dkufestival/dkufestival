@@ -25,6 +25,10 @@ router.post('/participants/:participantId/kick', auth, requireRole('ADMIN'), val
   reason: { type: 'string', maxLength: 255 },
 }), adminController.kickParticipant);
 router.post('/participants/:participantId/restore', auth, requireRole('ADMIN'), adminController.restoreParticipant);
+router.post('/participants/:participantId/global-chat-block', auth, requireRole('ADMIN'), validateBody({
+  reason: { type: 'string', maxLength: 255 },
+}), adminController.blockParticipantGlobalChat);
+router.post('/participants/:participantId/global-chat-unblock', auth, requireRole('ADMIN'), adminController.unblockParticipantGlobalChat);
 router.post('/tables/:tableId/checkin', auth, requireRole('ADMIN'), validateBody({
   maleCount: { type: 'number', min: 0 },
   femaleCount: { type: 'number', min: 0 },

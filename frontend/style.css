@@ -1060,6 +1060,7 @@ input, select, textarea { font-size: 16px; }
   border-top: 1px solid var(--border-soft);
 }
 .global-chat-input-row .modal-input { flex: 1; min-width: 0; }
+.chat-message-input { min-height: 42px; height: 42px; line-height: 1.35; overflow-y: auto; }
 .global-chat-input-row .btn-dark { flex-shrink: 0; padding: 10px 16px; }
 .global-chat-input-row .btn-dark:disabled { opacity: .5; cursor: not-allowed; }
 .global-chat-message.admin .global-chat-message-content {
@@ -1766,6 +1767,8 @@ input, select, textarea { font-size: 16px; }
   border-radius: 14px;
   font-size: 12px;
   line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 .chat-bubble.me {
   background: var(--lime);

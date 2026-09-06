@@ -153,6 +153,41 @@ async function restoreParticipant(req, res, next) {
   } catch (error) { next(error); }
 }
 
+async function changeGlobalChatBlock(req, res, next, { blocked }) {
+  try {
+    const participant = await Participant.findByPk(req.params.participantId);
+    if (!participant) throw new AppError(404, 'PARTICIPANT_NOT_FOUND', 'Participant not found.');
+
+    await participant.update(blocked ? {
+      globalChatBlockedAt: new Date(),
+      globalChatBlockedReason: req.body.reason?.trim() || null,
+    } : {
+      globalChatBlockedAt: null,
+      globalChatBlockedReason: null,
+    });
+
+    const io = req.app.get('io');
+    io?.to('admins').emit('admin:participants-updated');
+    io?.to(`participant:${participant.id}`).emit(
+      blocked ? 'participant:global-chat-blocked' : 'participant:global-chat-unblocked',
+      {
+        participantId: participant.id,
+        globalChatBlockedAt: participant.globalChatBlockedAt,
+        globalChatBlockedReason: participant.globalChatBlockedReason,
+      }
+    );
+    res.json({ data: participant });
+  } catch (error) { next(error); }
+}
+
+async function blockParticipantGlobalChat(req, res, next) {
+  return changeGlobalChatBlock(req, res, next, { blocked: true });
+}
+
+async function unblockParticipantGlobalChat(req, res, next) {
+  return changeGlobalChatBlock(req, res, next, { blocked: false });
+}
+
 async function checkoutTable(req, res, next) {
   try {
     const result = await tableService.checkoutTable(req.params.tableId);
@@ -298,6 +333,8 @@ module.exports = {
   endParticipantAccess,
   kickParticipant,
   restoreParticipant,
+  blockParticipantGlobalChat,
+  unblockParticipantGlobalChat,
   checkoutTable,
   checkin,
   extend,

@@ -29,6 +29,9 @@ async function sendAsParticipant(sessionId, participantId, content) {
   if (content.trim().length > 500) throw new AppError(400, 'MESSAGE_TOO_LONG', '메시지는 500자 이하로 입력해주세요.');
   const participant = await Participant.findOne({ where: { id: participantId, tableSessionId: sessionId } });
   if (!participant) throw new AppError(403, 'PARTICIPANT_FORBIDDEN', 'Participant not found for this session.');
+  if (participant.globalChatBlockedAt) {
+    throw new AppError(403, 'GLOBAL_CHAT_BLOCKED', '관리자에 의해 전체채팅 이용이 제한되었습니다.');
+  }
 
   const message = await GlobalChatMessage.create({
     senderParticipantId: participantId,

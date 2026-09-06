@@ -38,6 +38,14 @@ const Participant = sequelize.define(
       type: DataTypes.STRING(255),
       allowNull: true,
     },
+    globalChatBlockedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    globalChatBlockedReason: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
   },
   {
     tableName: 'participants',

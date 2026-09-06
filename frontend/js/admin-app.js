@@ -329,11 +329,13 @@ function renderParticipantsAdmin() {
     if (participant.isHost) nameRow.appendChild(text('span', 'participant-host-tag', '대표'));
     if (participant.blockedAt) nameRow.appendChild(text('span', 'participant-kicked-tag', '재접속 차단'));
     else if (participant.kickedAt) nameRow.appendChild(text('span', 'participant-ended-tag', '이용 종료됨'));
+    if (participant.globalChatBlockedAt) nameRow.appendChild(text('span', 'participant-ended-tag', '전체채팅 금지'));
     info.appendChild(nameRow);
     const sessionActive = isCurrent(participant);
     info.appendChild(text('span', 'participant-admin-meta', `TABLE ${participantTableNumber(participant)} · ${sessionActive ? '현재 세션' : '지난 세션'} · 입장 ${formatDateTime(participant.createdAt)}`));
     if (participant.blockedAt) info.appendChild(text('span', 'participant-admin-reason', `${participant.blockedReason || '관리자 강제 퇴장'} · ${formatDateTime(participant.blockedAt)}`));
     else if (participant.kickedAt) info.appendChild(text('span', 'participant-admin-reason', `${participant.kickedReason || '관리자 이용 종료'} · ${formatDateTime(participant.kickedAt)}`));
+    if (participant.globalChatBlockedAt) info.appendChild(text('span', 'participant-admin-reason', `${participant.globalChatBlockedReason || '전체채팅 이용 제한'} · ${formatDateTime(participant.globalChatBlockedAt)}`));
     row.append(avatar, info);
     let action;
     if (participant.blockedAt) {
@@ -351,6 +353,18 @@ function renderParticipantsAdmin() {
     } else {
       action = document.createElement('div');
       action.className = 'participant-action-group';
+      action.appendChild(button('participant-action', participant.globalChatBlockedAt ? '전체채팅 허용' : '전체채팅 금지', async () => {
+        if (participant.globalChatBlockedAt) {
+          await adminApi.unblockParticipantGlobalChat(participant.id);
+          showToast('전체채팅 이용을 허용했습니다.');
+        } else {
+          if (!window.confirm(`${participant.nickname} 사용자의 전체채팅 메시지 전송을 금지하시겠습니까?`)) return;
+          await adminApi.blockParticipantGlobalChat(participant.id, { reason: '관리자 전체채팅 이용 제한' });
+          showToast('전체채팅 메시지 전송을 금지했습니다.');
+        }
+        await loadParticipants();
+        renderParticipantsAdmin();
+      }));
       action.appendChild(button('participant-action', '개별 연락', () => {
         sendParticipantMessage(participant).catch((error) => showToast(error.message));
       }));

@@ -644,6 +644,16 @@ function bindSocket() {
     showScreen('screen-kicked');
     socket.disconnect();
   });
+  socket.on('participant:global-chat-blocked', (payload = {}) => {
+    if (Number(payload.participantId) !== Number(state.participant?.id)) return;
+    state.participant = { ...state.participant, ...payload };
+    updateGlobalChatInputState();
+  });
+  socket.on('participant:global-chat-unblocked', (payload = {}) => {
+    if (Number(payload.participantId) !== Number(state.participant?.id)) return;
+    state.participant = { ...state.participant, ...payload };
+    updateGlobalChatInputState();
+  });
   socket.on('admin:message', (payload = {}) => {
     $('admin-message-content').textContent = payload.content || '관리자가 연락을 보냈습니다.';
     openModal('modal-admin-message');
@@ -1482,8 +1492,19 @@ function renderGlobalChat({ forceBottom = false } = {}) {
     row.appendChild(body);
     log.appendChild(row);
   });
+  updateGlobalChatInputState();
   $('global-chat-empty').hidden = state.globalChatMessages.length > 0;
   log.scrollTop = shouldStickToBottom ? log.scrollHeight : previousScrollTop;
+}
+
+function updateGlobalChatInputState() {
+  const input = $('global-chat-input');
+  const sendButton = $('global-chat-send-btn');
+  if (!input || !sendButton || state.isMonitor) return;
+  const blocked = Boolean(state.participant?.globalChatBlockedAt);
+  input.disabled = blocked;
+  sendButton.disabled = blocked || state.globalChatSending;
+  input.placeholder = blocked ? '관리자에 의해 전체채팅 이용이 제한되었습니다.' : '메시지 입력...';
 }
 
 function mergeGlobalChatMessages(messages) {
@@ -1524,6 +1545,7 @@ async function toggleGlobalChat() {
 
 function sendGlobalChatMessage() {
   const input = $('global-chat-input');
+  if (state.participant?.globalChatBlockedAt) return showToast('관리자에 의해 전체채팅 이용이 제한되었습니다.');
   const content = input.value.trim();
   if (!content || state.globalChatSending) return;
   const socket = getSocket();
@@ -1532,7 +1554,7 @@ function sendGlobalChatMessage() {
   $('global-chat-send-btn').disabled = true;
   socket.timeout(5000).emit('globalChat:send', { content }, (error, response) => {
     state.globalChatSending = false;
-    $('global-chat-send-btn').disabled = false;
+    updateGlobalChatInputState();
     if (error || !response?.ok) return showToast(response?.message || response?.error || '메시지 전송에 실패했습니다.');
     input.value = '';
     input.focus();
@@ -2443,9 +2465,6 @@ function bindEvents() {
   });
   $('request-block-toggle').addEventListener('click', () => toggleRequestBlock());
   $('chat-send-btn').addEventListener('click', sendChatMessage);
-  $('chat-input').addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') sendChatMessage();
-  });
   $('chat-leave-btn').addEventListener('click', () => openModal('modal-leave-confirm'));
   $('leave-cancel-btn').addEventListener('click', () => closeModal('modal-leave-confirm'));
   $('leave-confirm-btn').addEventListener('click', confirmLeaveChat);
@@ -2467,12 +2486,6 @@ function bindEvents() {
     openModal('modal-received-requests');
   });
   $('global-chat-send-btn').addEventListener('click', sendGlobalChatMessage);
-  $('global-chat-input').addEventListener('keydown', (event) => {
-    if (event.key === 'Enter' && !event.isComposing) {
-      event.preventDefault();
-      sendGlobalChatMessage();
-    }
-  });
   $('notice-btn').addEventListener('click', () => {
     setMainContent('notice');
     showNoticeList();
