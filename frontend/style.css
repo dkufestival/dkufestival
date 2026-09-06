@@ -939,6 +939,7 @@ input, select, textarea { font-size: 16px; }
 }
 #notice-detail-view[hidden] { display: none; }
 .notice-detail-header { flex-shrink: 0; }
+#notice-detail-title { text-align: left; }
 #notice-detail-view .notice-detail-back { margin-bottom: 26px; }
 #notice-detail-content {
   flex: 1;
