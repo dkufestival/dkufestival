@@ -76,6 +76,14 @@ function setFreePlayMode() {
   setMessage('공을 위로 빠르게 밀어보세요');
 }
 
+function notifyTimeMatchOpened(game) {
+  if (game?.type !== 'TIME_MATCH') return;
+  setMessage('스톱워치 게임이 열렸어요 · 게임 메뉴에서 입장하세요');
+  footerNode.textContent = '스톱워치 게임이 시작되었습니다 · 게임 메뉴에서 입장할 수 있어요';
+  window.clearTimeout(notifyTimeMatchOpened.timer);
+  notifyTimeMatchOpened.timer = window.setTimeout(() => setFreePlayMode(), 4200);
+}
+
 async function fetchJson(path, options = {}) {
   const headers = { ...(options.headers || {}) };
   if (participantAuth?.token) headers.Authorization = `Bearer ${participantAuth.token}`;
@@ -141,6 +149,8 @@ function connectCompetitionSocket() {
     transports: ['websocket', 'polling'],
   });
   socket.on('basketball:leaderboard', (payload = {}) => renderLeaderboard(payload.leaderboard || []));
+  socket.on('game:global:started', notifyTimeMatchOpened);
+  socket.on('game:global:current', notifyTimeMatchOpened);
   const returnToGlobalGame = (game, { announce = false } = {}) => {
     if (!game || ['BASKETBALL', 'TIME_MATCH'].includes(game.type)) return;
     clearTimeout(globalGameRedirectTimer);
