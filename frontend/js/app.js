@@ -308,55 +308,66 @@ async function afterAuthenticated() {
 const ONBOARDING_SLIDES = [
   {
     eyebrow: 'TABLE MAP', title: '테이블을 눌러 대화를 시작해요',
-    body: '지도에서 다른 테이블을 누르면 채팅 요청을 보낼 수 있어요. 원하지 않는 테이블의 요청은 테이블별로 차단할 수도 있어요.',
-    image: 'assets/onboarding/01-table-map.png', alt: '테이블 지도와 채팅 요청 진입 화면', badge: '테이블 선택 · 채팅 요청 · 테이블별 차단'
+    body: '지도에서 다른 테이블을 누르면 채팅 요청을 보내거나 좋아요를 누를 수 있어요. 원하지 않는 테이블의 요청은 테이블별로 차단할 수도 있어요.',
+    image: 'assets/onboarding/02-chat-request.png', imagePosition: 'center', alt: '다른 테이블을 눌렀을 때 표시되는 채팅 요청 화면', badge: '테이블 선택 · 채팅 요청 · 테이블별 요청 차단 · 좋아요 누르기'
   },
   {
     eyebrow: 'PRIVATE CHAT', title: '수락하면 둘만의 채팅방이 열려요',
     body: '상대가 요청을 수락하면 바로 채팅할 수 있고, 언제든 채팅방 나가기로 대화를 종료할 수 있어요.',
-    image: 'assets/onboarding/02-chat-request.png', alt: '채팅 요청 수락 화면', badge: '요청 수락 · 채팅 · 나가기'
+    image: 'assets/onboarding/03-private-chat.png', imagePosition: 'top', alt: '채팅 요청 수락 후 열린 둘만의 채팅방', badge: '요청 수락 · 채팅 · 나가기'
+  },
+  {
+    eyebrow: 'REQUEST INBOX', title: '받은 요청함도 꼭 확인해요',
+    body: '다른 테이블이 보낸 채팅 요청은 받은 요청함에 모여요. 요청을 확인한 뒤 수락하거나 거절할 수 있어요.',
+    image: 'assets/onboarding/02-received-requests.png', imagePosition: 'center', alt: '받은 채팅 요청을 확인하고 수락하거나 거절하는 화면', badge: '받은 요청 확인 · 수락 · 거절'
   },
   {
     eyebrow: 'OPEN CHAT', title: '축제 이야기는 전체채팅에서',
     body: '하단의 전체채팅을 누르면 행사장 모든 참가자와 실시간으로 대화할 수 있어요. 서로 배려하는 대화를 부탁드려요.',
-    image: 'assets/onboarding/04-global-chat.png', alt: '실제 전체채팅 화면', badge: '모든 테이블과 실시간 대화'
+    image: 'assets/onboarding/04-global-chat.png', imagePosition: 'center 80%', alt: '실제 전체채팅 화면', badge: '모든 테이블과 실시간 대화'
   },
   {
     eyebrow: 'SOLO GAME', title: '기다리는 동안 개인 게임 한 판!',
-    body: '농구게임과 시간 맞추기는 언제든 자유롭게 플레이할 수 있어요. 농구 최고 기록은 참가자 순위에도 반영돼요.',
-    image: 'assets/onboarding/05-personal-games.png', alt: '실제 개인 게임 선택 화면', badge: '농구게임 · 시간 맞추기'
+    body: '농구게임은 언제든 자유롭게 플레이할 수 있어요. 스톱워치 게임은 관리자가 정해진 시간에 열었을 때만 참여할 수 있어요. 농구 최고 기록은 참가자 순위에도 반영돼요.',
+    image: 'assets/onboarding/05-personal-games.png', imagePosition: 'top', alt: '실제 개인 게임 선택 화면', badge: '농구게임 · 스톱워치 게임'
   },
   {
     eyebrow: 'GROUP GAME', title: '다 함께 즐기는 단체 게임',
     body: '핀볼 관전, OX퀴즈, 가위바위보, 제시어 맞히기, 룰렛, 이미지게임이 준비되어 있어요. 게임마다 소정의 상품도 놓치지 마세요.',
-    image: 'assets/onboarding/05-personal-games.png', alt: '실제 게임 메뉴 화면', badge: '6가지 단체 게임 · 상품 증정'
+    image: null, alt: '', badge: '6가지 단체 게임 · 상품 증정'
   },
   {
     eyebrow: 'AUTO PLAY', title: '전체 게임은 자동으로 시작돼요',
     body: '관리자가 전체 게임을 시작하면 채팅 중이어도 게임 화면으로 자동 전환돼요. 게임이 끝나면 시작 전 화면으로 안전하게 돌아옵니다.',
-    image: 'assets/onboarding/01-table-map.png', alt: '전체 게임 자동 전환 안내', badge: '자동 전환 · 이전 화면 복귀'
+    image: null, alt: '', badge: '자동 전환 · 이전 화면 복귀'
   },
   {
     eyebrow: 'NOTICE', title: '공지 확인은 꼭 해주세요',
     body: '게임 시작, 상품 수령, 현장 운영 안내 등 중요한 소식이 공지에 올라와요. 새 공지 배지가 보이면 바로 확인해 주세요.',
-    image: 'assets/onboarding/06-notices.png', alt: '실제 공지 화면', badge: '운영 안내 · 상품 수령 정보'
+    image: 'assets/onboarding/06-notices.png', imagePosition: 'top', alt: '실제 공지 화면', badge: '운영 안내 · 상품 수령 정보'
   }
 ];
 
 // 배포 후 브라우저가 이전 가이드 이미지를 계속 보여주지 않도록 버전을 붙인다.
-const ONBOARDING_ASSET_VERSION = '20260906-4';
+const ONBOARDING_ASSET_VERSION = '20260906-5';
 
 let onboardingIndex = 0;
 let onboardingPointerX = null;
 
 function renderOnboarding() {
   const slide = ONBOARDING_SLIDES[onboardingIndex];
-  $('onboarding-progress').style.width = `${((onboardingIndex + 1) / ONBOARDING_SLIDES.length) * 100}%`;
-  $('onboarding-slide').innerHTML = `
+  const imageMarkup = slide.image ? `
     <div class="onboarding-image-wrap">
-      <img src="${slide.image}?v=${ONBOARDING_ASSET_VERSION}" alt="${slide.alt}" draggable="false">
+      <img src="${slide.image}?v=${ONBOARDING_ASSET_VERSION}" alt="${slide.alt}" style="object-position:${slide.imagePosition || 'center'}" draggable="false">
       <span class="onboarding-count">${onboardingIndex + 1} / ${ONBOARDING_SLIDES.length}</span>
-    </div>
+    </div>` : `
+    <div class="onboarding-text-only-head">
+      <span class="onboarding-count">${onboardingIndex + 1} / ${ONBOARDING_SLIDES.length}</span>
+    </div>`;
+  $('onboarding-progress').style.width = `${((onboardingIndex + 1) / ONBOARDING_SLIDES.length) * 100}%`;
+  $('onboarding-slide').classList.toggle('text-only', !slide.image);
+  $('onboarding-slide').innerHTML = `
+    ${imageMarkup}
     <div class="onboarding-copy">
       <div class="onboarding-eyebrow">${slide.eyebrow}</div>
       <h2>${slide.title}</h2>
