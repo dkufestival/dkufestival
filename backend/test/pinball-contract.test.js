@@ -3,6 +3,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { injectViewer } = require('../src/services/pinball-page.service');
+
+const viewerSource = fs.readFileSync(path.resolve(__dirname, '..', '..', 'frontend/pinball-local/pinball.js'), 'utf8');
 const { normalizePinballEntries } = require('../src/services/game.service');
 
 test('pinball game is registered with admin names and participant viewer', () => {
@@ -45,4 +47,14 @@ test('pinball entries support repeated marbles and enforce the total limit', () 
   });
   assert.equal(normalizePinballEntries(['민수*80', '지영']), null);
   assert.equal(normalizePinballEntries(['민수/2', '지영']), null);
+});
+
+test('pinball viewer buffers authoritative snapshots and smooths the camera without changing physics', () => {
+  assert.match(viewerSource, /INTERPOLATION_DELAY = 100/);
+  assert.match(viewerSource, /MAX_SNAPSHOT_BUFFER = 10/);
+  assert.match(viewerSource, /function getRenderSnapshots\(now\)/);
+  assert.match(viewerSource, /new Map\(previous\.balls\.map\(\(ball\) => \[ball\.id, ball\]\)\)/);
+  assert.match(viewerSource, /CAMERA_SPEED = 10/);
+  assert.match(viewerSource, /1 - Math\.exp\(-CAMERA_SPEED \* deltaSeconds\)/);
+  assert.doesNotMatch(viewerSource, /cameraY = targetCamera/);
 });

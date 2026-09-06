@@ -28,6 +28,13 @@ let renderScale = 1;
 let viewportHeight = 700;
 let cameraY = 0;
 let winnerAnnounced = false;
+let lastFrameAt = performance.now();
+
+const INTERPOLATION_DELAY = 100;
+const MAX_SNAPSHOT_BUFFER = 10;
+const SNAPSHOT_RESET_GAP = 500;
+const POSITION_SNAP_DISTANCE = 100;
+const CAMERA_SPEED = 10;
 
 function announceWinner(ball) {
   if (winnerAnnounced) return;
@@ -275,26 +282,65 @@ function draw() {
 const gameId = Number(params.get('gameId'));
 let lastSnapshotSeq = -1;
 let latestSnapshot = null;
-let previousSnapshot = null;
-let receivedAt = 0;
-function applySnapshot(snapshot) {
-  if (snapshot?.gameId !== gameId || !Number.isSafeInteger(snapshot.seq) || snapshot.seq <= lastSnapshotSeq) return;
-  previousSnapshot = latestSnapshot;
-  latestSnapshot = snapshot;
-  lastSnapshotSeq = snapshot.seq;
-  receivedAt = performance.now();
-  simulationSteps = snapshot.step;
-  finishOrder = snapshot.result.finishOrder;
-  eliminatedOrder = snapshot.result.eliminatedOrder;
+let snapshotBuffer = [];
+let rankingSignature = '';
+
+function ballsHaveMatchingIds(before, after) {
+  if (before.length !== after.length) return false;
+  const beforeIds = new Set(before.map((ball) => ball.id));
+  return after.every((ball) => beforeIds.has(ball.id));
+}
+
+function ballTerminalStateChanged(before, after) {
+  const beforeById = new Map(before.map((ball) => [ball.id, ball]));
+  return after.some((ball) => {
+    const previous = beforeById.get(ball.id);
+    return previous && Boolean(previous.finished || previous.eliminated) !== Boolean(ball.finished || ball.eliminated);
+  });
+}
+
+function shouldResetSnapshotBuffer(snapshot) {
+  const previous = snapshotBuffer.at(-1)?.snapshot;
+  if (!previous) return true;
+  const serverGap = snapshot.serverTime - previous.serverTime;
+  return serverGap <= 0
+    || serverGap > SNAPSHOT_RESET_GAP
+    || snapshot.status !== previous.status
+    || snapshot.status !== 'running'
+    || !ballsHaveMatchingIds(previous.balls, snapshot.balls)
+    || ballTerminalStateChanged(previous.balls, snapshot.balls);
+}
+
+function updateRanking(snapshot) {
+  const nextSignature = [
+    ...snapshot.result.finishOrder.map((ball) => `f:${ball.id}`),
+    ...snapshot.result.eliminatedOrder.map((ball) => `e:${ball.id}`),
+  ].join('|');
+  if (nextSignature === rankingSignature) return;
+  rankingSignature = nextSignature;
   rankingNode.replaceChildren(...[
-    ...finishOrder.map(ball => ({ ball, eliminated: false })),
-    ...eliminatedOrder.map(ball => ({ ball, eliminated: true })),
+    ...snapshot.result.finishOrder.map(ball => ({ ball, eliminated: false })),
+    ...snapshot.result.eliminatedOrder.map(ball => ({ ball, eliminated: true })),
   ].map(({ ball, eliminated }) => {
     const li = document.createElement('li');
     li.textContent = `${eliminated ? '탈락 · ' : ''}${ball.name}`;
     if (eliminated) li.style.color = '#ff7187';
     return li;
   }));
+}
+
+function applySnapshot(snapshot) {
+  if (snapshot?.gameId !== gameId || !Number.isSafeInteger(snapshot.seq) || snapshot.seq <= lastSnapshotSeq) return;
+  const receivedAt = performance.now();
+  if (shouldResetSnapshotBuffer(snapshot)) snapshotBuffer = [];
+  snapshotBuffer.push({ snapshot, receivedAt });
+  if (snapshotBuffer.length > MAX_SNAPSHOT_BUFFER) snapshotBuffer.shift();
+  latestSnapshot = snapshot;
+  lastSnapshotSeq = snapshot.seq;
+  simulationSteps = snapshot.step;
+  finishOrder = snapshot.result.finishOrder;
+  eliminatedOrder = snapshot.result.eliminatedOrder;
+  updateRanking(snapshot);
   if (snapshot.result.winner) announceWinner(snapshot.result.winner);
   statusNode.textContent = snapshot.status === 'finished' ? (finishOrder.length ? '레이스 종료' : '전원 탈락')
     : snapshot.status === 'cancelled' ? '경기가 중단되었습니다'
@@ -305,24 +351,51 @@ addEventListener('message', event => {
   applySnapshot(event.data.snapshot);
 });
 if (!editMode && gameId) parent.postMessage({ type: 'pinball:ready', gameId }, location.origin);
-function frame() {
-  if (latestSnapshot) {
-    const next = latestSnapshot;
-    const prev = previousSnapshot;
-    const gap = prev ? next.serverTime - prev.serverTime : 0;
-    const blend = prev && gap > 0 && gap <= 250 && next.status === 'running';
-    const alpha = blend ? Math.min(1, (performance.now() - receivedAt) / Math.min(gap, 100)) : 1;
-    simulationTime = blend ? prev.simulationTime + (next.simulationTime - prev.simulationTime) * alpha : next.simulationTime;
-    balls = next.balls.map((ball, index) => {
-      const before = prev?.balls[index];
-      if (!blend || !before || before.id !== ball.id || ball.finished || ball.eliminated
-        || Math.hypot(ball.x - before.x, ball.y - before.y) > 100) return ball;
-      return { ...ball, x: before.x + (ball.x - before.x) * alpha, y: before.y + (ball.y - before.y) * alpha };
-    });
+function getRenderSnapshots(now) {
+  const latest = snapshotBuffer.at(-1);
+  if (!latest) return null;
+  const renderServerTime = latest.snapshot.serverTime + (now - latest.receivedAt) - INTERPOLATION_DELAY;
+  if (renderServerTime <= snapshotBuffer[0].snapshot.serverTime) return { next: snapshotBuffer[0].snapshot, previous: null, alpha: 1 };
+  for (let index = 1; index < snapshotBuffer.length; index += 1) {
+    const next = snapshotBuffer[index].snapshot;
+    if (renderServerTime <= next.serverTime) {
+      const previous = snapshotBuffer[index - 1].snapshot;
+      const alpha = (renderServerTime - previous.serverTime) / Math.max(1, next.serverTime - previous.serverTime);
+      return { previous, next, alpha: Math.max(0, Math.min(1, alpha)) };
+    }
   }
+  return { next: latest.snapshot, previous: null, alpha: 1 };
+}
+
+function renderSnapshot(now) {
+  const selection = getRenderSnapshots(now);
+  if (!selection) return;
+  const { previous, next, alpha } = selection;
+  const blend = previous && previous.status === 'running' && next.status === 'running';
+  simulationTime = blend ? previous.simulationTime + (next.simulationTime - previous.simulationTime) * alpha : next.simulationTime;
+  if (!blend) {
+    balls = next.balls;
+    return;
+  }
+  const previousBallsById = new Map(previous.balls.map((ball) => [ball.id, ball]));
+  balls = next.balls.map((ball) => {
+    const before = previousBallsById.get(ball.id);
+    if (!before || ball.finished || ball.eliminated || before.finished || before.eliminated
+      || Math.hypot(ball.x - before.x, ball.y - before.y) > POSITION_SNAP_DISTANCE) return ball;
+    return { ...ball, x: before.x + (ball.x - before.x) * alpha, y: before.y + (ball.y - before.y) * alpha };
+  });
+}
+
+function frame(now = performance.now()) {
+  const deltaSeconds = Math.min(.1, Math.max(0, (now - lastFrameAt) / 1000));
+  lastFrameAt = now;
+  if (latestSnapshot) renderSnapshot(now);
   const leader = balls.filter((ball) => !ball.finished && !ball.eliminated).reduce((best, ball) => (!best || ball.y > best.y ? ball : best), null);
   const targetCamera = Math.max(0, Math.min(height - viewportHeight, (leader?.y || height) - viewportHeight * .38));
-  if (!editMode) cameraY = targetCamera;
+  if (!editMode) {
+    const smoothing = 1 - Math.exp(-CAMERA_SPEED * deltaSeconds);
+    cameraY += (targetCamera - cameraY) * smoothing;
+  }
   draw();
   requestAnimationFrame(frame);
 }
