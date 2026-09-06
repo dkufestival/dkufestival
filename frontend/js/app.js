@@ -344,7 +344,7 @@ const ONBOARDING_SLIDES = [
 ];
 
 // 배포 후 브라우저가 이전 가이드 이미지를 계속 보여주지 않도록 버전을 붙인다.
-const ONBOARDING_ASSET_VERSION = '20260906-3';
+const ONBOARDING_ASSET_VERSION = '20260906-4';
 
 let onboardingIndex = 0;
 let onboardingPointerX = null;
