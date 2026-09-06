@@ -12,6 +12,7 @@ export function initMapZoom({ viewport, canvas, minScale: baseMinScale = 1, maxS
   let pinchStartScale = 1;
   let lastTap = 0;
   let enabled = true;
+  let hasInteracted = false;
 
   function apply() {
     canvas.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
@@ -20,6 +21,7 @@ export function initMapZoom({ viewport, canvas, minScale: baseMinScale = 1, maxS
   }
 
   function setScale(nextScale, cx, cy) {
+    hasInteracted = true;
     const prevScale = scale;
     scale = Math.min(maxScale, Math.max(minScale, nextScale));
     const ratio = scale / prevScale;
@@ -42,7 +44,7 @@ export function initMapZoom({ viewport, canvas, minScale: baseMinScale = 1, maxS
       viewport.clientHeight / canvas.offsetHeight,
     );
     minScale = Math.min(baseMinScale, fitScale);
-    if (scale < minScale) {
+    if (!hasInteracted || scale < minScale) {
       scale = minScale;
       apply();
     }

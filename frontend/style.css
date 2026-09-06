@@ -521,31 +521,6 @@ input, select, textarea { font-size: 16px; }
 }
 .pill-badge:empty, .pill-badge[data-zero="true"] { display: none; }
 
-.member-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 10px 20px 0;
-  background: #000;
-}
-.member-chips:empty { display: none; padding: 0; }
-.chip {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-light);
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 20px;
-  padding: 4px 10px;
-  white-space: nowrap;
-}
-.chip.me {
-  background: #ffffff;
-  border: 1px solid #ffffff;
-  color: #14150f;
-  cursor: pointer;
-}
-
 .map-viewport {
   flex: 1;
   min-height: 0;
@@ -1237,21 +1212,24 @@ input, select, textarea { font-size: 16px; }
 .board-post-item .history-preview { font-size: 11px; line-height: 1.4; }
 #board-post-list { max-height: 400px; }
 .board-header-actions { flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
-.board-icon-btn {
+.board-text-btn {
   flex-shrink: 0;
-  width: 32px;
   height: 32px;
+  padding: 0 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  white-space: nowrap;
+  border-radius: 16px;
   border: 1px solid var(--border-soft);
   background: var(--card-dark-2);
   color: var(--text-light);
+  font-size: 12px;
+  font-weight: 700;
   cursor: pointer;
 }
-.board-icon-btn:active { background: rgba(255,255,255,0.1); }
-.board-icon-btn.accent {
+.board-text-btn:active { background: rgba(255,255,255,0.1); }
+.board-text-btn.accent {
   border-color: var(--lime);
   background: var(--lime);
   color: var(--lime-deep);
@@ -2097,6 +2075,7 @@ input, select, textarea { font-size: 16px; }
 
 #accept-toggle-label {
   color: #fff;
+  word-break: keep-all;
 }
 
 .push-prompt .accept-toggle-btn {

@@ -11,7 +11,7 @@ import { globalChatApi } from './globalChat.js';
 import { boardApi } from './board.js?v=3';
 import { noticesApi } from './notices.js?v=2';
 import { STORAGE_KEYS } from './config.js';
-import { initMapZoom } from './mapzoom.js?v=3';
+import { initMapZoom } from './mapzoom.js?v=4';
 import { basketballApi } from './basketball-api.js';
 import { monitorApi } from './monitor.js';
 
@@ -410,8 +410,7 @@ function enableMonitorUi() {
   banner.id = 'monitor-banner';
   document.querySelector('.phone')?.prepend(banner);
   banner.innerHTML = '<strong>MONITOR MODE</strong><span id="monitor-connection-status">연결 중</span><span id="monitor-current-game">현재 전체게임: -</span><span>마지막 이벤트 <time id="monitor-last-event">-</time></span>';
-  document.querySelector('.stats-bar').hidden = true;
-  ['map-viewport', 'member-chips', 'accept-toggle-banner', 'global-chat-btn', 'board-btn'].forEach((id) => { const node = $(id); if (node) node.hidden = true; });
+  ['map-viewport', 'accept-toggle-banner', 'global-chat-btn', 'board-btn'].forEach((id) => { const node = $(id); if (node) node.hidden = true; });
   $('staff-call-text').textContent = '직원호출 테스트';
 }
 
@@ -631,17 +630,14 @@ function bindSocket() {
   socket.on('participant:joined', async (payload = {}) => {
     if (payload.sessionId && Number(payload.sessionId) !== Number(state.session?.id)) return;
     await refreshParticipants();
-    renderParticipants();
   });
   socket.on('participant:updated', async () => {
     await refreshParticipants();
-    renderParticipants();
   });
   socket.on('participant:left', async (payload = {}) => {
     // Reserved for a future explicit leave flow; checkout still uses table:checked-out.
     if (payload.sessionId && Number(payload.sessionId) !== Number(state.session?.id)) return;
     await refreshParticipants();
-    renderParticipants();
   });
   socket.on('participant:kicked', (payload = {}) => {
     clearParticipantAuth();
@@ -961,7 +957,6 @@ function renderAll() {
     return;
   }
   renderStats();
-  renderParticipants();
   renderTables();
   renderSeatView();
   renderChatRequest();
@@ -1152,16 +1147,6 @@ async function toggleTableLike(table) {
   }
 }
 
-function renderParticipants() {
-  const box = $('member-chips');
-  clear(box);
-  state.participants
-    .filter((participant) => participant.id !== state.participant?.id)
-    .forEach((participant) => {
-      const chip = text('span', 'chip', `${participant.nickname}${participant.isHost ? ' 대표' : ''}`);
-      box.appendChild(chip);
-    });
-}
 
 function formatComposition(session) {
   const male = session.maleCount || 0;
@@ -2535,7 +2520,7 @@ function bindEvents() {
     if (!nickname) return showToast('닉네임을 입력해 주세요.');
     state.participant = await participantsApi.updateMe({ nickname });
     await refreshParticipants();
-    renderParticipants();
+    renderTableTagNickname();
     closeModal('modal-nickname');
   });
   $('global-chat-btn').addEventListener('click', toggleGlobalChat);
