@@ -309,12 +309,12 @@ const ONBOARDING_SLIDES = [
   {
     eyebrow: 'TABLE MAP', title: '테이블을 눌러 대화를 시작해요',
     body: '지도에서 다른 테이블을 누르면 채팅 요청을 보낼 수 있어요. 원하지 않는 테이블의 요청은 테이블별로 차단할 수도 있어요.',
-    image: 'assets/onboarding/02-chat-request.png', alt: '다른 테이블 채팅 요청 화면', badge: '채팅 요청 · 테이블별 차단'
+    image: 'assets/onboarding/01-table-map.png', alt: '테이블 지도와 채팅 요청 진입 화면', badge: '테이블 선택 · 채팅 요청 · 테이블별 차단'
   },
   {
     eyebrow: 'PRIVATE CHAT', title: '수락하면 둘만의 채팅방이 열려요',
     body: '상대가 요청을 수락하면 바로 채팅할 수 있고, 언제든 채팅방 나가기로 대화를 종료할 수 있어요.',
-    image: 'assets/onboarding/01-table-map.png', alt: '테이블 채팅 화면 예시', badge: '요청 수락 · 채팅 · 나가기'
+    image: 'assets/onboarding/02-chat-request.png', alt: '채팅 요청 수락 화면', badge: '요청 수락 · 채팅 · 나가기'
   },
   {
     eyebrow: 'LIKE', title: '대화 중인 테이블에는 좋아요를 남겨요',
