@@ -334,17 +334,29 @@ const ONBOARDING_SLIDES = [
   {
     eyebrow: 'GROUP GAME', title: '다 함께 즐기는 단체 게임',
     body: '핀볼 관전, OX퀴즈, 가위바위보, 제시어 맞히기, 룰렛, 이미지게임이 준비되어 있어요. 게임마다 소정의 상품도 놓치지 마세요.',
+    points: ['핀볼 관전 · OX퀴즈', '가위바위보 · 제시어 맞히기', '룰렛 · 이미지게임', '게임별 소정의 상품'],
     image: null, alt: '', badge: '6가지 단체 게임 · 상품 증정'
   },
   {
     eyebrow: 'AUTO PLAY', title: '전체 게임은 자동으로 시작돼요',
     body: '관리자가 전체 게임을 시작하면 채팅 중이어도 게임 화면으로 자동 전환돼요. 게임이 끝나면 시작 전 화면으로 안전하게 돌아옵니다.',
+    points: ['관리자가 시작하면 자동 화면 전환', '채팅 중이어도 전체 게임 우선', '게임 종료 후 이전 화면으로 복귀'],
     image: null, alt: '', badge: '자동 전환 · 이전 화면 복귀'
   },
   {
     eyebrow: 'NOTICE', title: '공지 확인은 꼭 해주세요',
     body: '게임 시작, 상품 수령, 현장 운영 안내 등 중요한 소식이 공지에 올라와요. 새 공지 배지가 보이면 바로 확인해 주세요.',
     image: 'assets/onboarding/06-notices.png', imagePosition: 'top', alt: '실제 공지 화면', badge: '운영 안내 · 상품 수령 정보'
+  },
+  {
+    eyebrow: 'STAFF CALL', title: '도움이 필요하면 직원을 호출해요',
+    body: '상단의 직원호출 버튼을 누르면 운영진에게 바로 요청이 전달돼요. 주문이나 현장 도움이 필요할 때 이용해 주세요.',
+    image: 'assets/onboarding/07-staff-call.png', imagePosition: 'top', alt: '직원호출 버튼 위치와 호출 중 상태', badge: '직원호출 · 운영진 확인'
+  },
+  {
+    eyebrow: 'IDEAL BOARD', title: '이상형 게시판에서 인연을 찾아봐요',
+    body: '내 프로필을 등록하면 다른 참가자의 프로필을 확인할 수 있어요. 정보를 열람하면 서로의 인스타그램과 테이블 번호가 공개되고 상대방의 열람 기록에도 남아요.',
+    image: 'assets/onboarding/08-ideal-board.png', imagePosition: 'top', alt: '이상형 게시판 프로필 등록 화면', badge: '프로필 등록 · 이상형 확인 · 상호 정보 공개'
   }
 ];
 
@@ -360,10 +372,11 @@ function renderOnboarding() {
     <div class="onboarding-image-wrap">
       <img src="${slide.image}?v=${ONBOARDING_ASSET_VERSION}" alt="${slide.alt}" style="object-position:${slide.imagePosition || 'center'}" draggable="false">
       <span class="onboarding-count">${onboardingIndex + 1} / ${ONBOARDING_SLIDES.length}</span>
-    </div>` : `
-    <div class="onboarding-text-only-head">
-      <span class="onboarding-count">${onboardingIndex + 1} / ${ONBOARDING_SLIDES.length}</span>
-    </div>`;
+    </div>` : '';
+  const pointsMarkup = slide.points?.length ? `
+    <div class="onboarding-points">
+      ${slide.points.map((point) => `<div class="onboarding-point"><span></span>${point}</div>`).join('')}
+    </div>` : '';
   $('onboarding-progress').style.width = `${((onboardingIndex + 1) / ONBOARDING_SLIDES.length) * 100}%`;
   $('onboarding-slide').classList.toggle('text-only', !slide.image);
   $('onboarding-slide').innerHTML = `
@@ -372,6 +385,7 @@ function renderOnboarding() {
       <div class="onboarding-eyebrow">${slide.eyebrow}</div>
       <h2>${slide.title}</h2>
       <p>${slide.body}</p>
+      ${pointsMarkup}
       <div class="onboarding-badge">${slide.badge}</div>
     </div>`;
   $('onboarding-dots').innerHTML = ONBOARDING_SLIDES.map((_, index) =>
