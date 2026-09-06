@@ -129,7 +129,6 @@ async function createRequest(user, data) {
     }
     await assertRequestNotBlocked(targetSessionId, requesterSessionId, transaction);
     await assertRequesterAvailable(requesterSessionId, transaction);
-    await assertNotActiveElsewhere(targetSessionId, transaction);
 
     const existingPending = await ChatRoom.findOne({
       where: { requesterSessionId, targetSessionId, status: 'PENDING' },
