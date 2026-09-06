@@ -1806,33 +1806,19 @@ function renderBoardForm() {
 
   fillSelect($('bw-faceType'), options.faceTypes, '얼굴상 선택');
   fillSelect($('bw-mbti'), options.mbtiTypes, 'MBTI 선택');
-  fillSelect($('bw-drinkStyle'), options.drinkStyles, '주량 선택');
-  fillSelect($('bw-balanceQuestion'), options.balanceQuestions.map((question) => question.question), null);
-  $('bw-balanceQuestion').value = options.balanceQuestions.find((question) => question.id === form.balanceQuestionId)?.question || '';
-
-  renderTensionChips();
-  renderBalanceChoiceChips();
-  renderIdealFaceTypeChips();
-  renderIdealMbtiChips();
-  renderIdealAgePrefChips();
 }
 
 async function showBoardWrite() {
   if (!state.board.postOptions) state.board.postOptions = await boardApi.options();
   const options = state.board.postOptions;
   state.board.formState = {
-    tension: null,
-    balanceQuestionId: options.balanceQuestions[0]?.id || null,
-    balanceChoice: null,
-    idealFaceTypes: new Set(),
-    idealMbti: new Set(),
-    idealAgePref: null,
+    idealType: '',
+    other: '',
   };
   $('bw-age').value = '';
   $('bw-height').value = '';
-  $('bw-charmPoint').value = '';
-  $('bw-idealCeleb').value = '';
-  $('bw-idealHeight').value = '';
+  $('bw-idealType').value = '';
+  $('bw-other').value = '';
   renderBoardForm();
   showBoardView('board-write-view');
 }
@@ -1851,29 +1837,11 @@ async function createBoardPost() {
   const height = Number($('bw-height').value);
   const faceType = $('bw-faceType').value;
   const mbti = $('bw-mbti').value;
-  const drinkStyle = $('bw-drinkStyle').value;
-  const charmPoint = $('bw-charmPoint').value.trim();
-  const idealCeleb = $('bw-idealCeleb').value.trim();
-  const idealHeightRaw = $('bw-idealHeight').value;
+  const idealType = $('bw-idealType').value.trim();
+  const other = $('bw-other').value.trim();
 
-  if (!age || !height || !faceType || !mbti || !drinkStyle || !form.tension) {
-    showToast('나이/키/얼굴상/MBTI/주량/텐션을 모두 입력해 주세요.');
-    return;
-  }
-  if (!form.balanceChoice) {
-    showToast('밸런스 게임 답을 선택해 주세요.');
-    return;
-  }
-  if (!charmPoint) {
-    showToast('매력포인트를 입력해 주세요.');
-    return;
-  }
-  if (!form.idealFaceTypes.size) {
-    showToast('이상형 얼굴상을 하나 이상 선택해 주세요.');
-    return;
-  }
-  if (!form.idealAgePref) {
-    showToast('이상형 나이대를 선택해 주세요.');
+  if (!age || !height || !faceType || !mbti || !idealType) {
+    showToast('나이/키/본인의 얼굴상/MBTI/본인의 이상형을 입력해 주세요.');
     return;
   }
 
@@ -1882,16 +1850,8 @@ async function createBoardPost() {
     height,
     faceType,
     mbti,
-    drinkStyle,
-    tension: form.tension,
-    balanceQuestionId: form.balanceQuestionId,
-    balanceChoice: form.balanceChoice,
-    charmPoint,
-    idealCeleb: idealCeleb || undefined,
-    idealHeight: idealHeightRaw ? Number(idealHeightRaw) : undefined,
-    idealFaceTypes: [...form.idealFaceTypes],
-    idealMbti: [...form.idealMbti],
-    idealAgePref: form.idealAgePref,
+    idealType,
+    other,
   });
   if (!state.board.posts.some((item) => item.id === post.id)) state.board.posts.unshift(post);
   showBoardList();
@@ -1935,6 +1895,11 @@ function renderBoardDetailContent(post) {
   row('키', `${d.height}cm`);
   row('얼굴상', d.faceType);
   row('MBTI', d.mbti);
+  if (d.idealType !== undefined) {
+    row('본인의 이상형', d.idealType);
+    row('기타', d.other || '-');
+    return;
+  }
   row('주량', d.drinkStyle);
   row('텐션', d.tension);
   row('매력포인트', d.charmPoint);
@@ -2517,12 +2482,6 @@ function bindEvents() {
   $('game-btn').addEventListener('click', () => setMainContent('game'));
   $('board-profile-save-btn').addEventListener('click', () => saveBoardProfile().catch((error) => showToast(error.message)));
   $('board-write-btn').addEventListener('click', () => showBoardWrite().catch((error) => showToast(error.message)));
-  $('bw-balanceQuestion').addEventListener('change', (event) => {
-    const question = state.board.postOptions.balanceQuestions.find((item) => item.question === event.target.value);
-    state.board.formState.balanceQuestionId = question?.id || null;
-    state.board.formState.balanceChoice = null;
-    renderBalanceChoiceChips();
-  });
   $('board-history-btn').addEventListener('click', () => showBoardViews().catch((error) => showToast(error.message)));
   $('board-gender-filter').addEventListener('click', (event) => {
     const btn = event.target.closest('.board-filter-tab');

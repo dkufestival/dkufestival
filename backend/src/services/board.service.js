@@ -45,41 +45,26 @@ function assertIntInRange(value, min, max, field) {
 }
 
 function buildPostDetails(data) {
-  const balanceQuestion = BALANCE_QUESTIONS.find((question) => question.id === data.balanceQuestionId);
-  if (!balanceQuestion) throw new AppError(400, 'INVALID_POST', 'balanceQuestionId 값이 올바르지 않습니다.');
-  const balanceChoice = assertOneOf(data.balanceChoice, ['A', 'B'], 'balanceChoice');
-  const charmPoint = String(data.charmPoint || '').trim();
-  if (!charmPoint || charmPoint.length > 40) throw new AppError(400, 'INVALID_POST', '매력포인트는 1~40자여야 합니다.');
-  const idealCeleb = String(data.idealCeleb || '').trim().slice(0, 30);
+  const idealType = String(data.idealType || '').trim();
+  if (!idealType || idealType.length > 300) throw new AppError(400, 'INVALID_POST', '본인의 이상형은 1~300자여야 합니다.');
+  const other = String(data.other || '').trim().slice(0, 1000);
 
   return {
     age: assertIntInRange(data.age, 18, 60, '나이'),
     height: assertIntInRange(data.height, 130, 210, '키'),
     faceType: assertOneOf(data.faceType, FACE_TYPES, '얼굴상'),
     mbti: assertOneOf(data.mbti, MBTI_TYPES, 'MBTI'),
-    drinkStyle: assertOneOf(data.drinkStyle, DRINK_STYLES, '주량'),
-    tension: assertOneOf(data.tension, TENSION_TYPES, '텐션'),
-    balanceQuestionId: balanceQuestion.id,
-    balanceChoice,
-    balanceAnswer: balanceChoice === 'A' ? balanceQuestion.optionA : balanceQuestion.optionB,
-    charmPoint,
-    idealCeleb: idealCeleb || null,
-    idealHeight: data.idealHeight ? assertIntInRange(data.idealHeight, 130, 210, '이상형 키') : null,
-    idealFaceTypes: assertSubsetOf(data.idealFaceTypes, FACE_TYPES, '이상형 얼굴상'),
-    idealMbti: assertSubsetOf(data.idealMbti, MBTI_TYPES, '이상형 MBTI'),
-    idealAgePref: assertOneOf(data.idealAgePref, AGE_PREFS, '이상형 나이대'),
+    idealType,
+    other,
   };
 }
 
 function summarizePost(details) {
-  const balanceQuestion = BALANCE_QUESTIONS.find((question) => question.id === details.balanceQuestionId);
   const title = `${details.age}세 · ${details.height}cm · ${details.faceType}`;
   const content = [
-    `MBTI ${details.mbti} · 주량 ${details.drinkStyle} · 텐션 ${details.tension}`,
-    `매력포인트: ${details.charmPoint}`,
-    details.idealCeleb ? `이상형 연예인: ${details.idealCeleb}` : null,
-    balanceQuestion ? `밸런스 게임(${balanceQuestion.question}): ${details.balanceAnswer}` : null,
-    `이상형: ${details.idealHeight ? `${details.idealHeight}cm 이상` : '키 상관없음'} · ${details.idealFaceTypes.length ? details.idealFaceTypes.join('/') : '얼굴상 상관없음'} · ${details.idealMbti.length ? details.idealMbti.join('/') : 'MBTI 상관없음'} · ${details.idealAgePref}`,
+    `MBTI: ${details.mbti}`,
+    `본인의 이상형: ${details.idealType}`,
+    details.other ? `기타: ${details.other}` : null,
   ].filter(Boolean).join('\n');
   return { title, content };
 }
