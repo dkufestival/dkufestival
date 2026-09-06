@@ -11,7 +11,7 @@ import { globalChatApi } from './globalChat.js';
 import { boardApi } from './board.js?v=3';
 import { noticesApi } from './notices.js?v=2';
 import { STORAGE_KEYS } from './config.js';
-import { initMapZoom } from './mapzoom.js?v=4';
+import { initMapZoom } from './mapzoom.js?v=5';
 import { basketballApi } from './basketball-api.js';
 import { monitorApi } from './monitor.js';
 
@@ -1282,6 +1282,7 @@ function initTableMap() {
     minScale: 1,
     maxScale: 3,
     zoomedThreshold: 1.6,
+    reserveBottom: 26,
   });
   $('map-zoom-in').addEventListener('click', () => mapZoom.zoomIn());
   $('map-zoom-out').addEventListener('click', () => mapZoom.zoomOut());
