@@ -2602,8 +2602,17 @@ function bindEvents() {
   });
   $('board-write-back').addEventListener('click', showBoardList);
   $('board-detail-back').addEventListener('click', () => {
-    if (state.board.viewerProfile) showBoardViewerProfile({ peer: state.board.viewerProfile });
-    else showBoardList();
+    // 상대 프로필 안에서 작성 게시글을 연 경우에는 프로필로 돌아간다.
+    if (state.board.viewerProfile && state.board.currentPost) {
+      showBoardViewerProfile({ peer: state.board.viewerProfile });
+      return;
+    }
+    // 열람 기록에서 상대 프로필을 연 경우에는 해당 기록 목록으로 돌아간다.
+    if (state.board.viewerProfile && state.board.viewsDirection) {
+      showBoardViews(state.board.viewsDirection).catch((error) => showToast(error.message));
+      return;
+    }
+    showBoardList();
   });
   $('board-views-back').addEventListener('click', showBoardList);
   $('board-submit-btn').addEventListener('click', () => createBoardPost().catch((error) => showToast(error.message)));
