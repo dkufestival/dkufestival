@@ -763,12 +763,7 @@ function parsePinballEntries() {
 }
 
 function pinballViewerUrl(game) {
-  const params = new URLSearchParams({
-    viewer: '1',
-    names: (game.state?.names || []).join(','),
-    seed: String(game.state?.seed || 1),
-    startAt: String(game.state?.startAt || 0),
-  });
+  const params = new URLSearchParams({ viewer: '1', gameId: String(game.id) });
   return `/pinball-local/?${params}`;
 }
 

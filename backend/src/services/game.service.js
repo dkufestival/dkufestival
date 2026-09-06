@@ -1,6 +1,8 @@
 const { Op, QueryTypes } = require('sequelize');
 const { GameSession, TableSession, Participant } = require('../models');
 
+const pinballRuntime = require('./pinball-runtime.service');
+
 const DIRECT_START_GAME_TYPES = ['TIME_MATCH', 'BASKETBALL'];
 const SCORED_GAME_TYPES = ['OX_QUIZ', 'RPS', 'WORD_GUESS', 'IMAGE_GAME'];
 
@@ -87,6 +89,7 @@ async function acceptInvite(sessionId, data) {
 async function handleAction(sessionId, data, participantId) {
   const game = await GameSession.findByPk(data.gameId);
   if (!game) throw createServiceError('게임을 찾을 수 없습니다.', 'GAME_NOT_FOUND');
+  if (game.type === 'PINBALL') throw createServiceError('핀볼 상태는 서버에서만 결정합니다.', 'INVALID_GAME_ACTION');
   if (game.mode === 'PAIR') {
     requireParticipant(game, sessionId);
   } else {
@@ -488,6 +491,7 @@ function getActiveGlobalGame() {
 async function updateGlobalGame(data) {
   const game = await GameSession.findOne({ where: { id: Number(data.gameId), mode: 'GLOBAL', status: 'ACTIVE' } });
   if (!game) throw createServiceError('진행 중인 단체 게임을 찾을 수 없습니다.', 'GLOBAL_GAME_NOT_FOUND');
+  if (game.type === 'PINBALL') return startPinballGame(data);
   const rounds = game.state?.rounds || [];
   const currentRound = Number(game.state?.currentRound || 0);
   if (data.action === 'START') {
@@ -560,11 +564,49 @@ async function updateGlobalGame(data) {
   return game;
 }
 
+async function startPinballGame(data) {
+  const game = await GameSession.sequelize.transaction(async transaction => {
+    const locked = await GameSession.findByPk(Number(data.gameId), { transaction, lock: transaction.LOCK.UPDATE });
+    if (locked?.status !== 'ACTIVE' || locked.state?.lifecyclePhase !== 'ANNOUNCED' || data.action !== 'START') {
+      throw createServiceError('핀볼을 시작할 수 있는 단계가 아닙니다.', 'INVALID_GAME_PHASE');
+    }
+    locked.state = { ...locked.state, lifecyclePhase: 'STARTED', actualStartedAt: new Date().toISOString(), startAt: Date.now() + 2000 };
+    locked.changed('state', true);
+    await locked.save({ transaction });
+    transaction.afterCommit(() => { pinballRuntime.start(locked); });
+    return locked;
+  });
+  return game;
+}
+
+async function persistPinballSnapshot(gameId, snapshot) {
+  return GameSession.sequelize.transaction(async transaction => {
+    const game = await GameSession.findByPk(gameId, { transaction, lock: transaction.LOCK.UPDATE });
+    if (!game || game.status !== 'ACTIVE' || game.state?.pinballSnapshot) return;
+    game.state = { ...game.state, pinballSnapshot: snapshot };
+    game.changed('state', true);
+    await game.save({ transaction });
+  });
+}
+
+// No per-frame DB writes. A process restart explicitly interrupts unfinished races
+// instead of replaying or silently producing a second authoritative result.
+async function recoverPinballGames() {
+  const games = await GameSession.findAll({ where: { mode: 'GLOBAL', type: 'PINBALL', status: 'ACTIVE' } });
+  for (const game of games) {
+    if (game.state?.lifecyclePhase === 'STARTED' && !game.state.pinballSnapshot) {
+      await persistPinballSnapshot(game.id, pinballRuntime.cancelled(game, 'server-restarted'));
+      console.warn(`[PINBALL] interrupted gameId=${game.id} reason=server-restarted`);
+    }
+  }
+}
+
 async function endGlobalGame(data) {
   return withGlobalGameLock(async (transaction) => {
     const activeGames = await GameSession.findAll({
       where: { mode: 'GLOBAL', status: 'ACTIVE' },
       transaction,
+      lock: transaction.LOCK.UPDATE,
     });
     const game = activeGames.find((item) => item.id === Number(data.gameId));
     if (!game) throw createServiceError('진행 중인 단체 게임을 찾을 수 없습니다.', 'GLOBAL_GAME_NOT_FOUND');
@@ -574,13 +616,16 @@ async function endGlobalGame(data) {
       item.status = 'ENDED';
       item.endedAt = endedAt;
       if (item.id === game.id) {
-        item.state = { ...(item.state || {}), ...(data.state || {}) };
+        item.state = item.type === 'PINBALL'
+          ? { ...item.state, pinballSnapshot: item.state.pinballSnapshot || (pinballRuntime.current(item)?.status === 'finished' ? pinballRuntime.current(item) : pinballRuntime.cancelled(item)) }
+          : { ...(item.state || {}), ...(data.state || {}) };
         item.changed('state', true);
       }
       return item.save({ transaction });
     }));
+    transaction.afterCommit(() => activeGames.filter(item => item.type === 'PINBALL').forEach(item => pinballRuntime.stop(item.id)));
     return game;
   });
 }
 
-module.exports = { createInvite, acceptInvite, handleAction, endGame, startGlobalGame, updateGlobalGame, endGlobalGame, getActiveGlobalGame, getMyGlobalResponse, grantAttempts, revokeAttempts, normalizePinballEntries, rpsScore };
+module.exports = { persistPinballSnapshot, recoverPinballGames, createInvite, acceptInvite, handleAction, endGame, startGlobalGame, updateGlobalGame, endGlobalGame, getActiveGlobalGame, getMyGlobalResponse, grantAttempts, revokeAttempts, normalizePinballEntries, rpsScore };

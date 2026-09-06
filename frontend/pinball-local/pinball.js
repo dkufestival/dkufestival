@@ -1,33 +1,14 @@
-import { serverNow } from '../js/game-clock.js';
-import { DEFAULT_MAP } from './map-data.js?v=1';
+import './map-data.js?v=2';
+const DEFAULT_MAP = globalThis.PINBALL_MAP;
 
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
 const statusNode = document.getElementById('status');
 const rankingNode = document.getElementById('ranking');
 const params = new URLSearchParams(location.search);
-const editMode = params.get('edit') === '1';
+const editMode = params.get('edit') === '1' && !params.has('gameId');
 const MAP_STORAGE_KEY = 'festival-pinball-map-v1';
 
-function seededRandom(value) {
-  let seed = Number(value) >>> 0 || 1;
-  return () => {
-    seed += 0x6D2B79F5;
-    let n = seed;
-    n = Math.imul(n ^ n >>> 15, n | 1);
-    n ^= n + Math.imul(n ^ n >>> 7, n | 61);
-    return ((n ^ n >>> 14) >>> 0) / 4294967296;
-  };
-}
-
-const random = seededRandom(params.get('seed'));
-const rawNames = (params.get('names') || '').split(',').map((v) => v.trim()).filter(Boolean);
-const names = rawNames.flatMap((value) => {
-  const match = /^(.*?)(?:\*(\d+))?$/.exec(value);
-  return Array.from({ length: Math.max(1, Math.min(80, Number(match?.[2] || 1))) }, () => match?.[1] || value);
-}).slice(0, 80);
-const colors = ['#ff5d73', '#55d6ff', '#ffe45e', '#a8ff60', '#c998ff', '#ff9f43', '#66f2c2', '#ff7ee2'];
-const STEP = 1 / 120;
 const BOARD_WIDTH = 390;
 const BOARD_HEIGHT = 1850;
 let width = BOARD_WIDTH;
@@ -232,157 +213,6 @@ function setupEditor() {
   });
 }
 
-function createBalls() {
-  const radius = Math.max(8, Math.min(11, width / 36));
-  const columns = Math.max(2, Math.min(10, Math.floor((width - 30) / (radius * 2.4))));
-  balls = names.map((name, index) => ({
-    id: index, name,
-    x: 18 + radius + (index % columns) * ((width - 36 - radius * 2) / Math.max(1, columns - 1)),
-    y: 60 + Math.floor(index / columns) * radius * 2.15,
-    vx: (random() - .5) * 22, vy: 0, radius,
-    color: colors[index % colors.length], finished: false,
-  }));
-}
-
-function collideCircle(ball, obstacle, bounce = .72) {
-  const dx = ball.x - obstacle.x;
-  const dy = ball.y - obstacle.y;
-  const distance = Math.hypot(dx, dy);
-  const minimum = ball.radius + obstacle.radius;
-  if (!distance || distance >= minimum) return false;
-  const nx = dx / distance;
-  const ny = dy / distance;
-  ball.x = obstacle.x + nx * minimum;
-  ball.y = obstacle.y + ny * minimum;
-  const velocity = ball.vx * nx + ball.vy * ny;
-  if (velocity < 0) {
-    ball.vx -= (1 + bounce) * velocity * nx;
-    ball.vy -= (1 + bounce) * velocity * ny;
-  }
-  return true;
-}
-
-function collideSegment(ball, x1, y1, x2, y2, bounce = .66, push = 0) {
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  const lengthSquared = dx * dx + dy * dy || 1;
-  const t = Math.max(0, Math.min(1, ((ball.x - x1) * dx + (ball.y - y1) * dy) / lengthSquared));
-  const hit = collideCircle(ball, { x: x1 + dx * t, y: y1 + dy * t, radius: 4 }, bounce);
-  if (hit && push) {
-    const length = Math.sqrt(lengthSquared);
-    ball.vx += -dy / length * push;
-    ball.vy += dx / length * push;
-  }
-  return hit;
-}
-
-function renderResults() {
-  rankingNode.innerHTML = [
-    ...finishOrder.map((item) => `<li>${item.name}</li>`),
-    ...eliminatedOrder.map((item) => `<li style="color:#ff7187">탈락 · ${item.name}</li>`),
-  ].join('');
-  const completed = finishOrder.length + eliminatedOrder.length;
-  if (completed === balls.length) statusNode.textContent = finishOrder.length ? '레이스 종료' : '전원 탈락';
-}
-
-function collideBalls() {
-  for (let i = 0; i < balls.length; i += 1) {
-    const a = balls[i];
-    if (a.finished || a.eliminated) continue;
-    for (let j = i + 1; j < balls.length; j += 1) {
-      const b = balls[j];
-      if (b.finished || b.eliminated) continue;
-      const dx = b.x - a.x;
-      const dy = b.y - a.y;
-      const distance = Math.hypot(dx, dy);
-      const minimum = a.radius + b.radius;
-      if (!distance || distance >= minimum) continue;
-      const nx = dx / distance;
-      const ny = dy / distance;
-      const overlap = (minimum - distance) / 2;
-      a.x -= nx * overlap; a.y -= ny * overlap;
-      b.x += nx * overlap; b.y += ny * overlap;
-      const relative = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
-      if (relative < 0) {
-        const impulse = relative * .86;
-        a.vx += impulse * nx; a.vy += impulse * ny;
-        b.vx -= impulse * nx; b.vy -= impulse * ny;
-      }
-    }
-  }
-}
-
-function updateBall(ball) {
-  if (ball.finished || ball.eliminated) return;
-  ball.vy += 430 * STEP;
-  ball.vx *= .998;
-  ball.x += ball.vx * STEP;
-  ball.y += ball.vy * STEP;
-  if (ball.x < ball.radius + 5) { ball.x = ball.radius + 5; ball.vx = Math.abs(ball.vx) * .75; }
-  if (ball.x > width - ball.radius - 5) { ball.x = width - ball.radius - 5; ball.vx = -Math.abs(ball.vx) * .75; }
-  pegs.forEach((peg) => collideCircle(ball, peg));
-  sideBumpers.forEach((bumper) => {
-    if (collideCircle(ball, bumper, .78)) {
-      ball.vx += bumper.x < width / 2 ? 34 : -34;
-    }
-  });
-  spinners.forEach((spinner) => {
-    const angle = spinner.phase + simulationTime * spinner.speed;
-    const dx = Math.cos(angle) * spinner.length / 2;
-    const dy = Math.sin(angle) * spinner.length / 2;
-    collideSegment(ball, spinner.x - dx, spinner.y - dy, spinner.x + dx, spinner.y + dy, .8, spinner.speed * 13);
-  });
-  rails.forEach(([x1, y1, x2, y2]) => collideSegment(ball, x1, y1, x2, y2, .58));
-  sideWalls.forEach(([x1, y1, x2, y2]) => collideSegment(ball, x1, y1, x2, y2, .5));
-  const bladeAngle = simulationTime * 3;
-  const bladeX = width / 2;
-  const bladeY = height - 126;
-  for (let arm = 0; arm < 1; arm += 1) {
-    const angle = bladeAngle;
-    const tipX = bladeX + Math.cos(angle) * 46;
-    const tipY = bladeY + Math.sin(angle) * 46;
-    if (collideSegment(ball, bladeX, bladeY, tipX, tipY, .2)) {
-      ball.eliminated = true;
-      eliminatedOrder.push(ball);
-      renderResults();
-      statusNode.textContent = `${ball.name} 칼날 충돌 · 탈락`;
-      return;
-    }
-  }
-  const funnelTop = height - 190;
-  const exitHalf = Math.max(24, ball.radius * 2.4);
-  collideSegment(ball, 5, funnelTop, width / 2 - exitHalf, height - 42, .48);
-  collideSegment(ball, width - 5, funnelTop, width / 2 + exitHalf, height - 42, .48);
-  // 출구 안으로 충분히 진입한 공은 아래쪽 경계와 재충돌하기 전에 즉시 완주 처리한다.
-  if (ball.y >= height - 45 && Math.abs(ball.x - width / 2) <= exitHalf - ball.radius * .2) {
-    ball.finished = true;
-    finishOrder.push(ball);
-    if (finishOrder.length === 1) announceWinner(ball);
-    renderResults();
-    if (finishOrder.length + eliminatedOrder.length < balls.length) statusNode.textContent = `${finishOrder.length}위 탈출`;
-    return;
-  }
-  if (ball.y > height - 48 && Math.abs(ball.x - width / 2) > exitHalf - ball.radius * .25) {
-    ball.y = height - 48;
-    ball.vy = -Math.abs(ball.vy) * .32;
-    ball.vx += ball.x < width / 2 ? 30 : -30;
-  }
-  if (ball.y > height + ball.radius) {
-    ball.finished = true;
-    finishOrder.push(ball);
-    if (finishOrder.length === 1) announceWinner(ball);
-    renderResults();
-    if (finishOrder.length + eliminatedOrder.length < balls.length) statusNode.textContent = `${finishOrder.length}위 탈출`;
-  }
-}
-
-function simulate() {
-  simulationSteps += 1;
-  simulationTime = simulationSteps * STEP;
-  balls.forEach(updateBall);
-  collideBalls();
-}
-
 function line(x1, y1, x2, y2, color, size) {
   ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
   ctx.strokeStyle = color; ctx.lineWidth = size; ctx.lineCap = 'round'; ctx.stroke();
@@ -442,20 +272,53 @@ function draw() {
   }
 }
 
-const startAt = Number(params.get('startAt')) || 0;
+const gameId = Number(params.get('gameId'));
+let lastSnapshotSeq = -1;
+let latestSnapshot = null;
+let previousSnapshot = null;
+let receivedAt = 0;
+function applySnapshot(snapshot) {
+  if (snapshot?.gameId !== gameId || !Number.isSafeInteger(snapshot.seq) || snapshot.seq <= lastSnapshotSeq) return;
+  previousSnapshot = latestSnapshot;
+  latestSnapshot = snapshot;
+  lastSnapshotSeq = snapshot.seq;
+  receivedAt = performance.now();
+  simulationSteps = snapshot.step;
+  finishOrder = snapshot.result.finishOrder;
+  eliminatedOrder = snapshot.result.eliminatedOrder;
+  rankingNode.replaceChildren(...[
+    ...finishOrder.map(ball => ({ ball, eliminated: false })),
+    ...eliminatedOrder.map(ball => ({ ball, eliminated: true })),
+  ].map(({ ball, eliminated }) => {
+    const li = document.createElement('li');
+    li.textContent = `${eliminated ? '탈락 · ' : ''}${ball.name}`;
+    if (eliminated) li.style.color = '#ff7187';
+    return li;
+  }));
+  if (snapshot.result.winner) announceWinner(snapshot.result.winner);
+  statusNode.textContent = snapshot.status === 'finished' ? (finishOrder.length ? '레이스 종료' : '전원 탈락')
+    : snapshot.status === 'cancelled' ? '경기가 중단되었습니다'
+    : snapshot.status === 'waiting' ? '곧 시작합니다' : '레이스 진행 중';
+}
+addEventListener('message', event => {
+  if (event.origin !== location.origin || event.source !== parent || event.data?.type !== 'pinball:state') return;
+  applySnapshot(event.data.snapshot);
+});
+if (!editMode && gameId) parent.postMessage({ type: 'pinball:ready', gameId }, location.origin);
 function frame() {
-  if (!editMode && startAt && serverNow() >= startAt) {
-    if (!started) { started = true; statusNode.textContent = '전 구슬 동시 출발'; }
-    const targetSteps = Math.floor(Math.max(0, serverNow() - startAt) / 1000 / STEP);
-    // Replay the same fixed steps when joining late or resuming a background tab.
-    // Yield in bounded batches without displaying a stale, restarted race.
-    const limit = Math.min(targetSteps, simulationSteps + 2400);
-    while (simulationSteps < limit && finishOrder.length + eliminatedOrder.length < balls.length) simulate();
-    if (simulationSteps < targetSteps && finishOrder.length + eliminatedOrder.length < balls.length) {
-      statusNode.textContent = '현재 경기 위치로 동기화 중...';
-      requestAnimationFrame(frame);
-      return;
-    }
+  if (latestSnapshot) {
+    const next = latestSnapshot;
+    const prev = previousSnapshot;
+    const gap = prev ? next.serverTime - prev.serverTime : 0;
+    const blend = prev && gap > 0 && gap <= 250 && next.status === 'running';
+    const alpha = blend ? Math.min(1, (performance.now() - receivedAt) / Math.min(gap, 100)) : 1;
+    simulationTime = blend ? prev.simulationTime + (next.simulationTime - prev.simulationTime) * alpha : next.simulationTime;
+    balls = next.balls.map((ball, index) => {
+      const before = prev?.balls[index];
+      if (!blend || !before || before.id !== ball.id || ball.finished || ball.eliminated
+        || Math.hypot(ball.x - before.x, ball.y - before.y) > 100) return ball;
+      return { ...ball, x: before.x + (ball.x - before.x) * alpha, y: before.y + (ball.y - before.y) * alpha };
+    });
   }
   const leader = balls.filter((ball) => !ball.finished && !ball.eliminated).reduce((best, ball) => (!best || ball.y > best.y ? ball : best), null);
   const targetCamera = Math.max(0, Math.min(height - viewportHeight, (leader?.y || height) - viewportHeight * .38));
@@ -467,7 +330,6 @@ function frame() {
 addEventListener('resize', resize);
 new ResizeObserver(resize).observe(canvas);
 resize();
-createBalls();
 setupEditor();
-if (!editMode) statusNode.textContent = balls.length < 2 ? '구슬을 2개 이상 입력해주세요' : (startAt ? '곧 시작합니다' : '관리자 시작 대기 중');
+if (!editMode) statusNode.textContent = '서버 경기 상태를 기다리는 중...';
 requestAnimationFrame(frame);

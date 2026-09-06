@@ -1,3 +1,4 @@
+const pinballRuntime = require('../services/pinball-runtime.service');
 const gameService = require('../services/game.service');
 
 const sessionRoom = (sessionId) => `session:${sessionId}`;
@@ -30,6 +31,24 @@ function reply(callback, response) {
 }
 
 function registerGameSocket(io, socket) {
+  pinballRuntime.configure({ io, persist: gameService.persistPinballSnapshot });
+  socket.on('pinball:join', async (payload = {}, callback) => {
+    try {
+      const game = await gameService.getActiveGlobalGame();
+      if (!game || game.type !== 'PINBALL' || Number(payload.gameId) !== Number(game.id)) throw new Error('PINBALL_NOT_ACTIVE');
+      if (socket.data.pinballGameId) await socket.leave(pinballRuntime.room(socket.data.pinballGameId));
+      socket.data.pinballGameId = Number(game.id);
+      await socket.join(pinballRuntime.room(game.id));
+      const snapshot = pinballRuntime.current(game);
+      if (snapshot) socket.emit('pinball:state', snapshot);
+      reply(callback, { ok: true, data: snapshot });
+      console.info(`[PINBALL] viewer joined gameId=${game.id} socket=${socket.id}`);
+    } catch (error) { reply(callback, { ok: false, error: error.message }); }
+  });
+  socket.on('pinball:leave', () => {
+    if (socket.data.pinballGameId) socket.leave(pinballRuntime.room(socket.data.pinballGameId));
+    delete socket.data.pinballGameId;
+  });
   gameService.getActiveGlobalGame()
     .then((game) => {
       socket.emit('game:global:current', socket.data.user.role === 'ADMIN' ? game : participantGame(game));
@@ -162,6 +181,10 @@ function registerGameSocket(io, socket) {
     try {
       if (socket.data.user.role !== 'ADMIN') throw new Error('ADMIN_REQUIRED');
       const game = await gameService.endGlobalGame(payload);
+      if (game.type === 'PINBALL' && game.state?.pinballSnapshot) {
+        io.to(pinballRuntime.room(game.id)).emit('pinball:end', game.state.pinballSnapshot);
+        io.in(pinballRuntime.room(game.id)).socketsLeave(pinballRuntime.room(game.id));
+      }
       emitParticipantAudience(io, 'game:global:ended', game);
       io.to('admins').emit('game:global:ended', game);
       reply(callback, { ok: true, data: game });

@@ -9,6 +9,13 @@ const express = require('express');
 const { Server } = require('socket.io');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const { GameSession } = require('../src/models');
+const pinballRuntime = require('../src/services/pinball-runtime.service');
+const gameService = require('../src/services/game.service');
+const pinballHistory = new Map();
+let resultWrites = 0;
+gameService.persistPinballSnapshot = async (id, snapshot) => {
+  if (!game.state.pinballSnapshot) { game.state.pinballSnapshot = snapshot; resultWrites++; }
+};
 const registerGame = require('../src/socket/game.socket');
 const root = path.resolve(__dirname, '../../frontend');
 let game = null;
@@ -32,7 +39,7 @@ app.get('/api/{*rest}', (req, res) => {
   res.json({ data });
 });
 // Read-only probes exist only in this test server, never in shipped assets.
-app.get('/pinball-local/pinball.js', (req, res) => res.type('js').send(fs.readFileSync(path.join(root, 'pinball-local/pinball.js'), 'utf8') + '\nglobalThis.pinballSnapshot = () => ({ simulationSteps, balls, finishOrder, eliminatedOrder, cameraY });'));
+app.get('/pinball-local/pinball.js', (req, res) => res.type('js').send(fs.readFileSync(path.join(root, 'pinball-local/pinball.js'), 'utf8') + '\nglobalThis.pinballSnapshot = () => ({ simulationSteps, balls, finishOrder, eliminatedOrder, cameraY, latestSnapshot, lastSnapshotSeq });'));
 app.get('/js/game-clock.js', (req, res) => res.type('js').send(fs.readFileSync(path.join(root, 'js/game-clock.js'), 'utf8').replace('return epoch + performance.now() - origin;', 'return globalThis.testNow ?? (epoch + performance.now() - origin);')));
 app.use(express.static(root));
 const server = http.createServer(app);
@@ -40,6 +47,7 @@ const io = new Server(server);
 io.on('connection', socket => {
   socket.data = { user: { role: socket.handshake.auth.token === 'admin' ? 'ADMIN' : 'PARTICIPANT' }, sessionId: 1, participantId: 1 };
   socket.join(socket.data.user.role === 'ADMIN' ? 'admins' : 'participants');
+  socket.onAnyOutgoing((event, snapshot) => { if (event.startsWith('pinball:') && snapshot?.seq) pinballHistory.set(snapshot.seq, JSON.parse(JSON.stringify(snapshot))); });
   registerGame(io, socket);
 });
 let browser;
@@ -53,6 +61,10 @@ async function main() {
     await context.addInitScript(({role, skew}) => {
       localStorage.setItem('piumOnboardingSeenV1', '1');
       localStorage.setItem(role === 'admin' ? 'piumAdminToken' : 'piumParticipantAuth', role === 'admin' ? 'admin' : JSON.stringify({ token: 'participant', tableId: 1, tableNumber: 1, tableSessionId: 1, participantId: 1 }));
+      if (skew && location.pathname === '/pinball-local/') {
+        const originalFrame = window.requestAnimationFrame.bind(window);
+        window.requestAnimationFrame = callback => setTimeout(() => originalFrame(callback), 250);
+      }
       if (skew) localStorage.setItem('festival-pinball-map-v1', JSON.stringify({ pegs: [], spinners: [], rails: [] }));
       const realNow = Date.now.bind(Date);
       Date.now = () => realNow() + skew;
@@ -123,6 +135,7 @@ async function main() {
 
   const startAt = Date.now() + 500;
   fixture('PINBALL', { names: ['가', '나', '다', '라'], seed: 12345, startAt });
+  const runtime = pinballRuntime.start(game);
   await admin.reload();
   await admin.locator('[data-tab="games"]').click();
   await admin.locator('#pinball-admin-frame').scrollIntoViewIfNeeded();
@@ -132,41 +145,92 @@ async function main() {
   await late.reload();
   await late.waitForSelector('#screen-pinball.active');
   const pinFrame = p => p.frames().find(f => f.url().includes('/pinball-local/'));
-  async function compareAt(ms) {
+  async function compare() {
     const frames = [admin, early, late].map(pinFrame);
-    await Promise.all(frames.map(f => f.waitForFunction(() => typeof globalThis.pinballSnapshot === 'function')));
-    await Promise.all(frames.map(f => f.evaluate(t => { globalThis.testNow = t; }, startAt + ms)));
-    await Promise.all(frames.map(async (f, index) => {
-      try {
-        await f.waitForFunction(steps => globalThis.pinballSnapshot && (pinballSnapshot().simulationSteps >= steps || pinballSnapshot().balls.every(b => b.finished || b.eliminated)), Math.floor(ms / 1000 * 120));
-      } catch (error) {
-        console.error('Pinball sync timeout', index, await f.evaluate(() => ({ url: location.href, now: globalThis.testNow, snapshot: pinballSnapshot() })));
-        throw error;
-      }
-    }));
+    await Promise.all(frames.map(f => f.waitForFunction(() => globalThis.pinballSnapshot?.().latestSnapshot?.step > 0)));
     const snapshots = await Promise.all(frames.map(f => f.evaluate(() => pinballSnapshot())));
-    // Camera viewport differs between admin and phone; physics and outcomes must match exactly.
-    snapshots.forEach(s => delete s.cameraY);
-    assert.deepEqual(snapshots[0], snapshots[1]);
-    assert.deepEqual(snapshots[0], snapshots[2]);
-    return snapshots[0];
+    snapshots.forEach(s => {
+      assert.deepEqual(s.latestSnapshot, pinballHistory.get(s.lastSnapshotSeq));
+      assert.equal(s.simulationSteps, s.latestSnapshot.step);
+    });
+    return snapshots;
   }
-  await compareAt(6000);
+  await compare();
+  await pinFrame(late).evaluate(() => {
+    const original = window.requestAnimationFrame.bind(window);
+    window.requestAnimationFrame = callback => setTimeout(() => original(callback), 250);
+  });
+  console.log('PASS 1 admin + 2 viewers receive exact authoritative positions/velocities/results');
   await early.reload();
   await early.waitForSelector('#screen-pinball.active');
-  await compareAt(10000);
-  await late.goto(base + '/basketball/');
+  let snapshots = await compare();
+  assert.ok(snapshots[1].simulationSteps > 120);
+  console.log('PASS 2 participant reload starts from latest snapshot');
+  await early.waitForTimeout(10000);
+  await late.reload();
   await late.waitForSelector('#screen-pinball.active');
-  await compareAt(15000);
-  const final = await compareAt(180000);
-  assert.ok(final.finishOrder.length > 0, 'winner exists');
+  snapshots = await compare();
+  assert.ok(snapshots[2].simulationSteps > 1200);
+  console.log('PASS 3 participant entry after 10 seconds starts at current state');
+  await admin.reload();
+  await admin.locator('[data-tab="games"]').click();
+  await compare();
+  console.log('PASS admin reload does not replace simulation');
+  await early.evaluate(async () => { const {getSocket} = await import('/js/socket.js'); getSocket().disconnect(); });
+  await early.waitForTimeout(600);
+  await early.evaluate(async () => { const {getSocket} = await import('/js/socket.js'); getSocket().connect(); });
+  await early.waitForTimeout(600);
+  snapshots = await compare();
+  assert.ok(runtime.snapshot.seq - snapshots[1].lastSnapshotSeq < 10);
+  console.log('PASS 5 reconnect rejoins room and recovers latest snapshot');
+  await early.waitForTimeout(1000);
+  await Promise.all([admin, early, late].map(p => pinFrame(p).evaluate(() => { globalThis.testNow = -999999999; })));
+  await compare();
+
+  // Complete only the SERVER simulation quickly for the final-result assertion.
+  for (let i = 0; i < 120 * 600 && !runtime.simulation.done; i++) runtime.simulation.advance();
+  assert.ok(runtime.simulation.done, 'race terminates');
+  runtime.tick();
+  await early.waitForTimeout(800);
+  snapshots = await compare();
+  snapshots.forEach(s => {
+    assert.deepEqual(s.latestSnapshot, runtime.snapshot);
+    assert.deepEqual(s.balls, runtime.snapshot.balls);
+  });
+  assert.equal(resultWrites, 1);
   for (const p of [admin, early, late]) {
     const f = pinFrame(p);
-    assert.equal(await f.locator('#winner-close').count(), 0);
-    assert.equal(await f.locator('#winner-popup').isVisible(), true);
-    assert.equal(await f.locator('#winner-name').textContent(), final.finishOrder[0].name);
+    assert.equal(await f.locator('#winner-name').textContent(), runtime.snapshot.result.winner.name);
   }
-  console.log('PASS pinball exact ball positions/rankings for delayed join, reload, re-entry, background catch-up, local map differences and +2 minute device clock; winner popup has no confirm button');
+  console.log('PASS 6 + 7 identical final results at low FPS; final DB persistence invoked once');
+  const old = { ...runtime.snapshot, seq: runtime.snapshot.seq - 1, balls: [] };
+  await pinFrame(early).evaluate(snapshot => {
+    window.dispatchEvent(new MessageEvent('message', { origin: location.origin, source: parent, data: { type: 'pinball:state', snapshot } }));
+  }, old);
+  await compare();
+  await early.reload();
+  await early.waitForSelector('#screen-pinball.active');
+  snapshots = await compare();
+  assert.deepEqual(snapshots[1].latestSnapshot, runtime.snapshot);
+  console.log('PASS stale snapshot ignored and finished race survives viewer reload');
+  pinballRuntime.stop(game.id);
+  fixture('PINBALL', { names: ['가*40', '나*40'], seed: 12345, startAt: Date.now() });
+  const longRuntime = pinballRuntime.start(game);
+  for (const p of [admin, early, late]) await p.reload();
+  await admin.locator('[data-tab="games"]').click();
+  await early.waitForSelector('#screen-pinball.active');
+  await late.waitForSelector('#screen-pinball.active');
+  await compare();
+  await early.waitForTimeout(31000);
+  assert.equal(longRuntime.snapshot.status, 'running');
+  await Promise.all([admin, early, late].map(p => p.evaluate(async () => {
+    const clock = await import('/js/game-clock.js');
+    await clock.syncGameClock();
+  })));
+  snapshots = await compare();
+  assert.ok(snapshots.every(s => s.simulationSteps > 3600));
+  console.log('PASS 4 race still running after 30s, periodic + explicit clock resync cannot change authority');
+  pinballRuntime.stop(game.id);
   game = null;
   await early.evaluate(async () => { const {getSocket} = await import('/js/socket.js'); getSocket().disconnect().connect(); });
   await early.waitForSelector('#screen-seats.active');

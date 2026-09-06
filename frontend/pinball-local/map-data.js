@@ -21,7 +21,7 @@ const pegPoints = [
   [292.5,1576],[239.32257265521795,1579.434434857992],
 ];
 
-export const DEFAULT_MAP = {
+const DEFAULT_MAP = {
   pegs: pegPoints.map(([x, y]) => ({ x, y, radius: 5 })),
   sideBumpers: [
     { x: 31.48907075627477, y: 235.03749380779394, radius: 8 },
@@ -51,3 +51,6 @@ export const DEFAULT_MAP = {
     [62,1420,155,1460],[235,1460,328,1420],
   ],
 };
+
+if (typeof module !== 'undefined') module.exports = DEFAULT_MAP;
+else globalThis.PINBALL_MAP = DEFAULT_MAP;

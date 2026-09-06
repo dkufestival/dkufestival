@@ -44,6 +44,7 @@ async function startServer() {
       await sequelize.sync();
     }
 
+    await require('./services/game.service').recoverPinballGames();
     server.listen(env.port, () => {
       console.log(`Festival backend listening on port ${env.port}`);
     });
