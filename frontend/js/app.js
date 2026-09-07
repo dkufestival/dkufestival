@@ -308,44 +308,54 @@ async function afterAuthenticated() {
 const ONBOARDING_SLIDES = [
   {
     eyebrow: 'TABLE MAP', title: '테이블을 눌러 대화를 시작해요',
+    body: '지도에서 다른 테이블을 누르면 채팅 요청을 보내거나 좋아요를 누를 수 있어요. 원하지 않는 테이블의 요청은 테이블별로 차단할 수도 있어요.',
     image: 'assets/onboarding/02-chat-request.png', imagePosition: 'center', alt: '다른 테이블을 눌렀을 때 표시되는 채팅 요청 화면'
   },
   {
     eyebrow: 'PRIVATE CHAT', title: '수락하면 둘만의 채팅방이 열려요',
+    body: '상대가 요청을 수락하면 바로 채팅할 수 있고, 언제든 채팅방 나가기로 대화를 종료할 수 있어요.',
     image: 'assets/onboarding/03-private-chat.png', imagePosition: 'top', alt: '채팅 요청 수락 후 열린 둘만의 채팅방'
   },
   {
     eyebrow: 'REQUEST INBOX', title: '받은 요청함도 꼭 확인해요',
+    body: '다른 테이블이 보낸 채팅 요청은 받은 요청함에 모여요. 요청을 확인한 뒤 수락하거나 거절할 수 있어요.',
     image: 'assets/onboarding/02-received-requests.png', imagePosition: 'center', alt: '받은 채팅 요청을 확인하고 수락하거나 거절하는 화면'
   },
   {
     eyebrow: 'IDEAL BOARD', title: '이상형 게시판에서 인연을 찾아봐요',
+    body: '내 프로필을 등록하면 다른 참가자의 프로필을 확인할 수 있어요. 정보를 열람하면 서로의 인스타그램과 테이블 번호가 공개되고 상대방의 열람 기록에도 남아요.',
     image: 'assets/onboarding/08-ideal-board.png', imagePosition: 'top', alt: '이상형 게시판 프로필 등록 화면'
   },
   {
     eyebrow: 'OPEN CHAT', title: '축제 이야기는 전체채팅에서',
+    body: '하단의 전체채팅을 누르면 행사장 모든 참가자와 실시간으로 대화할 수 있어요. 서로 배려하는 대화를 부탁드려요.',
     image: 'assets/onboarding/04-global-chat.png', imagePosition: 'center 80%', alt: '실제 전체채팅 화면'
   },
   {
     eyebrow: 'SOLO GAME', title: '기다리는 동안 개인 게임 한 판!',
+    body: '농구게임은 언제든 자유롭게 플레이할 수 있어요. 스톱워치 게임은 관리자가 정해진 시간에 열었을 때만 참여할 수 있어요. 농구 최고 기록은 참가자 순위에도 반영돼요.',
     image: 'assets/onboarding/05-personal-games.png', imagePosition: 'top', alt: '실제 개인 게임 선택 화면'
   },
   {
     eyebrow: 'GROUP GAME', title: '다 함께 즐기는 단체 게임',
+    body: '관리자가 여는 다섯 가지 단체 게임을 모두 함께 즐겨보세요.',
     points: ['핀볼 관전', 'OX퀴즈', '가위바위보', '제시어 맞히기', '룰렛'],
     prize: '게임별 소정의 상품', image: null, alt: ''
   },
   {
     eyebrow: 'AUTO PLAY', title: '전체 게임은 자동으로 시작돼요',
+    body: '관리자가 전체 게임을 시작하면 채팅 중이어도 게임 화면으로 자동 전환돼요. 게임이 끝나면 시작 전 화면으로 안전하게 돌아옵니다.',
     points: ['관리자가 시작하면 자동 화면 전환', '채팅 중이어도 전체 게임 우선', '게임 종료 후 이전 화면으로 복귀'],
     image: null, alt: ''
   },
   {
     eyebrow: 'NOTICE', title: '공지 확인은 꼭 해주세요',
+    body: '게임 시작, 상품 수령, 현장 운영 안내 등 중요한 소식이 공지에 올라와요. 새 공지 배지가 보이면 바로 확인해 주세요.',
     image: 'assets/onboarding/06-notices.png', imagePosition: 'top', alt: '실제 공지 화면'
   },
   {
     eyebrow: 'STAFF CALL', title: '도움이 필요하면 직원을 호출해요',
+    body: '상단의 직원호출 버튼을 누르면 운영진에게 바로 요청이 전달돼요. 주문이나 현장 도움이 필요할 때 이용해 주세요.',
     image: 'assets/onboarding/07-staff-call.png', imagePosition: 'top', alt: '직원호출 버튼 위치와 호출 중 상태'
   }
 ];
@@ -362,10 +372,6 @@ function renderOnboarding() {
     <div class="onboarding-image-wrap">
       <img src="${slide.image}?v=${ONBOARDING_ASSET_VERSION}" alt="${slide.alt}" style="object-position:${slide.imagePosition || 'center'}" draggable="false">
       <span class="onboarding-count">${onboardingIndex + 1} / ${ONBOARDING_SLIDES.length}</span>
-      <div class="onboarding-image-title">
-        <div class="onboarding-eyebrow">${slide.eyebrow}</div>
-        <h2>${slide.title}</h2>
-      </div>
     </div>` : '';
   const pointsMarkup = slide.points?.length ? `
     <div class="onboarding-points">
@@ -376,12 +382,13 @@ function renderOnboarding() {
   $('onboarding-slide').classList.toggle('text-only', !slide.image);
   $('onboarding-slide').innerHTML = `
     ${imageMarkup}
-    ${slide.image ? '' : `<div class="onboarding-copy">
+    <div class="onboarding-copy">
       <div class="onboarding-eyebrow">${slide.eyebrow}</div>
       <h2>${slide.title}</h2>
+      <p>${slide.body}</p>
       ${pointsMarkup}
       ${prizeMarkup}
-    </div>`}`;
+    </div>`;
   $('onboarding-dots').innerHTML = ONBOARDING_SLIDES.map((_, index) =>
     `<button type="button" class="onboarding-dot${index === onboardingIndex ? ' active' : ''}" data-onboarding-index="${index}" aria-label="${index + 1}번째 안내"></button>`
   ).join('');
