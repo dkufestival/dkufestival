@@ -381,17 +381,15 @@ function renderOnboarding() {
   $('onboarding-progress').style.width = `${((onboardingIndex + 1) / ONBOARDING_SLIDES.length) * 100}%`;
   $('onboarding-slide').classList.toggle('text-only', !slide.image);
   $('onboarding-slide').innerHTML = `
+    <div class="onboarding-heading">
+      <div class="onboarding-eyebrow">${slide.eyebrow}</div>
+      <h2>${slide.title}</h2>
+    </div>
     ${imageMarkup}
-    <div class="onboarding-copy">
-      <div class="onboarding-heading">
-        <div class="onboarding-eyebrow">${slide.eyebrow}</div>
-        <h2>${slide.title}</h2>
-      </div>
-      <div class="onboarding-details">
-        <p>${slide.body}</p>
-        ${pointsMarkup}
-        ${prizeMarkup}
-      </div>
+    <div class="onboarding-details">
+      <p>${slide.body}</p>
+      ${pointsMarkup}
+      ${prizeMarkup}
     </div>`;
   $('onboarding-dots').innerHTML = ONBOARDING_SLIDES.map((_, index) =>
     `<button type="button" class="onboarding-dot${index === onboardingIndex ? ' active' : ''}" data-onboarding-index="${index}" aria-label="${index + 1}번째 안내"></button>`
