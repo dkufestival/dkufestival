@@ -383,11 +383,15 @@ function renderOnboarding() {
   $('onboarding-slide').innerHTML = `
     ${imageMarkup}
     <div class="onboarding-copy">
-      <div class="onboarding-eyebrow">${slide.eyebrow}</div>
-      <h2>${slide.title}</h2>
-      <p>${slide.body}</p>
-      ${pointsMarkup}
-      ${prizeMarkup}
+      <div class="onboarding-heading">
+        <div class="onboarding-eyebrow">${slide.eyebrow}</div>
+        <h2>${slide.title}</h2>
+      </div>
+      <div class="onboarding-details">
+        <p>${slide.body}</p>
+        ${pointsMarkup}
+        ${prizeMarkup}
+      </div>
     </div>`;
   $('onboarding-dots').innerHTML = ONBOARDING_SLIDES.map((_, index) =>
     `<button type="button" class="onboarding-dot${index === onboardingIndex ? ' active' : ''}" data-onboarding-index="${index}" aria-label="${index + 1}번째 안내"></button>`
