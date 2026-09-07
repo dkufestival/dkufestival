@@ -2214,15 +2214,12 @@ input, select, textarea { font-size: 16px; }
 .onboarding-image-title h2 { margin: 7px 0 0; color: #fff; font-size: clamp(22px, 6vw, 28px); line-height: 1.2; letter-spacing: -.04em; text-shadow: 0 2px 12px rgba(0,0,0,.85); }
 .onboarding-slide.text-only .onboarding-copy { min-height: 100%; box-sizing: border-box; padding: 54px 28px 42px; display: flex; flex-direction: column; }
 .onboarding-slide.text-only .onboarding-copy h2 { font-size: clamp(25px, 7vw, 31px); }
-.onboarding-slide.text-only .onboarding-copy p { margin-bottom: 0; }
-.onboarding-slide.text-only .onboarding-badge { margin-top: auto; align-self: flex-start; }
-.onboarding-points { display: grid; gap: 11px; margin: 28px 0 22px; }
+.onboarding-points { display: grid; gap: 9px; margin: 28px 0 14px; }
 .onboarding-point { display: flex; align-items: center; gap: 10px; min-height: 39px; padding: 0 13px; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; background: rgba(255,255,255,.035); color: #e5e6df; font-size: 13px; font-weight: 800; }
 .onboarding-point span { flex: 0 0 auto; width: 7px; height: 7px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 10px rgba(255,171,3,.4); }
+.onboarding-prize { margin-top: 6px; padding: 18px 16px; border-radius: 14px; background: var(--lime); color: #1c1600; font-size: 18px; font-weight: 950; text-align: center; letter-spacing: -.03em; box-shadow: 0 10px 28px rgba(255,171,3,.18); }
 .onboarding-copy { padding: 10px 22px 18px; }
 .onboarding-copy h2 { margin: 8px 0 9px; color: #fff; font-size: clamp(21px, 6vw, 27px); line-height: 1.22; letter-spacing: -.04em; }
-.onboarding-copy p { margin: 0; color: #b8baaf; font-size: 14px; line-height: 1.65; word-break: keep-all; }
-.onboarding-badge { display: inline-flex; margin-top: 14px; padding: 7px 10px; border-radius: 9px; color: #201700; background: var(--lime); font-size: 11px; font-weight: 900; }
 .onboarding-nav { min-height: 64px; padding: 10px 14px 14px; display: grid; grid-template-columns: 72px 1fr 72px; align-items: center; gap: 8px; border-top: 1px solid rgba(255,255,255,.06); }
 .onboarding-nav-btn { min-height: 40px; border: 0; border-radius: 12px; background: #292b22; color: #dadbd4; font-weight: 800; cursor: pointer; }
 .onboarding-nav-btn:disabled { opacity: .28; }
@@ -2232,7 +2229,9 @@ input, select, textarea { font-size: 16px; }
 .onboarding-dot.active { width: 19px; background: var(--lime); }
 @media (max-height: 700px) {
   .onboarding-copy { padding-bottom: 12px; }
-  .onboarding-copy p { font-size: 13px; line-height: 1.48; }
+  .onboarding-points { gap: 7px; margin-top: 20px; }
+  .onboarding-point { min-height: 35px; }
+  .onboarding-prize { padding: 14px; font-size: 16px; }
 }
 .kicked-screen { place-items:center; padding:28px; background:radial-gradient(circle at 50% 30%, rgba(255,92,77,.13), transparent 42%), #0e100b; }
 .kicked-screen.active { display:grid; }
