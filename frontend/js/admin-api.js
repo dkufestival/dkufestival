@@ -24,6 +24,7 @@ export const adminApi = {
   resetBasketballLeaderboard: () => api.post('/api/admin/basketball/reset', {}, adminOptions),
   resetAllData: () => api.post('/api/admin/data/reset', {}, adminOptions),
   chatRooms: (status = 'ACTIVE') => api.get(`/api/admin/chat/rooms?status=${encodeURIComponent(status)}`, adminOptions),
+  chatMessages: (roomId) => api.get(`/api/admin/chat/rooms/${roomId}/messages`, adminOptions),
   endChatRoom: (roomId) => api.post(`/api/admin/chat/rooms/${roomId}/end`, {}, adminOptions),
   staffCalls: () => api.get('/api/admin/staff-calls', adminOptions),
   resolveStaffCall: (id) => api.post(`/api/admin/staff-calls/${id}/resolve`, {}, adminOptions),

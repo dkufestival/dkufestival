@@ -50,6 +50,7 @@ router.delete('/global-chat', auth, requireRole('ADMIN'), adminController.clearG
 router.post('/basketball/reset', auth, requireRole('ADMIN'), adminController.resetBasketballLeaderboard);
 router.post('/data/reset', auth, requireRole('ADMIN'), adminController.resetAllData);
 router.get('/chat/rooms', auth, requireRole('ADMIN'), chatController.adminListRooms);
+router.get('/chat/rooms/:roomId/messages', auth, requireRole('ADMIN'), chatController.adminGetMessages);
 router.post('/chat/rooms/:roomId/end', auth, requireRole('ADMIN'), chatController.adminEndRoom);
 router.get('/staff-calls', auth, requireRole('ADMIN'), staffCallController.adminList);
 router.post('/staff-calls/:id/resolve', auth, requireRole('ADMIN'), staffCallController.adminResolve);

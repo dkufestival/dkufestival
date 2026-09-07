@@ -441,6 +441,16 @@ async function adminListRooms(status = 'ACTIVE') {
   });
 }
 
+async function adminGetMessages(roomId) {
+  const room = await ChatRoom.findByPk(roomId);
+  if (!room) throw new AppError(404, 'CHAT_ROOM_NOT_FOUND', 'Chat room not found.');
+  return ChatMessage.findAll({
+    where: { roomId: room.id },
+    include: [{ model: Participant, as: 'senderParticipant', attributes: ['id', 'nickname'] }],
+    order: [['createdAt', 'ASC']],
+  });
+}
+
 async function adminEndRoom(roomId) {
   return sequelize.transaction(async (transaction) => {
     const room = await ChatRoom.findByPk(roomId, { transaction, lock: transaction.LOCK.UPDATE });
@@ -470,6 +480,7 @@ module.exports = {
   cancelPendingForSession,
   deletePendingRequestsFromSession,
   adminListRooms,
+  adminGetMessages,
   adminEndRoom,
   decorateRoom,
 };

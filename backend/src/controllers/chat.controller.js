@@ -190,6 +190,15 @@ async function adminListRooms(req, res, next) {
   }
 }
 
+async function adminGetMessages(req, res, next) {
+  try {
+    const messages = await chatService.adminGetMessages(req.params.roomId);
+    res.json({ data: messages });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function adminEndRoom(req, res, next) {
   try {
     const ended = await chatService.adminEndRoom(req.params.roomId);
@@ -225,5 +234,6 @@ module.exports = {
   getMessages,
   endRoom,
   adminListRooms,
+  adminGetMessages,
   adminEndRoom,
 };

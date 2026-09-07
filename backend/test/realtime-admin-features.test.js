@@ -54,3 +54,22 @@ test('admin contact sends the message only to the selected participant room', as
     Participant.findByPk = original;
   }
 });
+
+test('admin can open an active private chat and receive new messages in real time', () => {
+  const html = read('frontend/admin.html');
+  const admin = read('frontend/js/admin-app.js');
+  const adminApi = read('frontend/js/admin-api.js');
+  const routes = read('backend/src/routes/admin.routes.js');
+  const controller = read('backend/src/controllers/chat.controller.js');
+  const service = read('backend/src/services/chat.service.js');
+  const socket = read('backend/src/socket/chat.socket.js');
+
+  assert.match(html, /id="admin-chat-viewer"/);
+  assert.match(admin, /adminApi\.chatMessages\(roomId\)/);
+  assert.match(admin, /socket\.on\('admin:chat-message', appendAdminChatMessage\)/);
+  assert.match(adminApi, /chatMessages: \(roomId\).*\/api\/admin\/chat\/rooms\/\$\{roomId\}\/messages/);
+  assert.match(routes, /router\.get\('\/chat\/rooms\/:roomId\/messages'.*requireRole\('ADMIN'\).*adminGetMessages/);
+  assert.match(controller, /chatService\.adminGetMessages\(req\.params\.roomId\)/);
+  assert.match(service, /async function adminGetMessages\(roomId\)[\s\S]*ChatMessage\.findAll/);
+  assert.match(socket, /io\.to\('admins'\)\.emit\('admin:chat-message', message\)/);
+});

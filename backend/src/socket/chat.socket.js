@@ -40,6 +40,7 @@ function registerChatSocket(io, socket) {
         payload.content
       );
       io.to(roomName(payload.roomId)).emit('chat:message', message);
+      io.to('admins').emit('admin:chat-message', message);
       reply(callback, { ok: true, data: message });
     } catch (error) {
       reply(callback, { ok: false, error: error.code || error.message || 'CHAT_ERROR' });

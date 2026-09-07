@@ -15,6 +15,10 @@ const state = {
   tables: [],
   participants: [],
   chatRooms: [],
+  activeAdminChatRoomId: null,
+  adminChatMessages: [],
+  adminChatLoading: false,
+  adminChatError: '',
   notices: [],
   globalChatMessages: [],
   globalChatLoaded: false,
@@ -104,6 +108,7 @@ function bindSocket() {
   socket.on('admin:participants-updated', () => loadParticipants().then(renderParticipantsAdmin).catch(() => {}));
   socket.on('chat:started', () => scheduleAdminRefresh({ includeChatRooms: true }));
   socket.on('chat:ended', () => scheduleAdminRefresh({ includeChatRooms: true }));
+  socket.on('admin:chat-message', appendAdminChatMessage);
   socket.on('globalChat:message', (message) => {
     state.globalChatMessages.push(message);
     renderGlobalChat();
@@ -585,16 +590,153 @@ function tableLabel(session) {
   return `TABLE ${session?.table?.tableNumber || '-'}`;
 }
 
+function selectedAdminChatRoom() {
+  return state.chatRooms.find((room) => Number(room.id) === Number(state.activeAdminChatRoomId)) || null;
+}
+
+function resetAdminChatViewerState() {
+  state.activeAdminChatRoomId = null;
+  state.adminChatMessages = [];
+  state.adminChatLoading = false;
+  state.adminChatError = '';
+}
+
+function mergeAdminChatMessages(messages) {
+  const byId = new Map();
+  messages.forEach((message) => {
+    if (!message) return;
+    const key = message.id == null
+      ? `${message.roomId}:${message.senderParticipantId}:${message.createdAt}:${message.content}`
+      : String(message.id);
+    byId.set(key, message);
+  });
+  return [...byId.values()].sort((a, b) => {
+    const timeDiff = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    return timeDiff || Number(a.id || 0) - Number(b.id || 0);
+  });
+}
+
+function adminChatMessageSide(room, message) {
+  const senderId = Number(message.senderParticipantId ?? message.senderParticipant?.id);
+  const targetIds = new Set((room.targetSession?.participants || []).map((participant) => Number(participant.id)));
+  if (targetIds.has(senderId)) return 'target';
+  const requesterIds = new Set((room.requesterSession?.participants || []).map((participant) => Number(participant.id)));
+  return requesterIds.has(senderId) ? 'requester' : 'unknown';
+}
+
+function adminChatMessageIdentity(room, message, side) {
+  const nickname = message.senderParticipant?.nickname || '참가자';
+  const session = side === 'target' ? room.targetSession : room.requesterSession;
+  return `${tableLabel(session)} · ${nickname}`;
+}
+
+function adminChatMessageTime(value) {
+  if (!value) return '';
+  return new Date(value).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+}
+
+function scrollAdminChatToBottom() {
+  requestAnimationFrame(() => {
+    const list = $('admin-chat-message-list');
+    if (list) list.scrollTop = list.scrollHeight;
+  });
+}
+
+function renderAdminChatViewer() {
+  const viewer = $('admin-chat-viewer');
+  if (!viewer) return;
+  clear(viewer);
+  const room = selectedAdminChatRoom();
+  if (!room) {
+    const empty = document.createElement('div');
+    empty.className = 'admin-chat-viewer-empty';
+    empty.appendChild(text('strong', '', '채팅방을 선택해주세요'));
+    empty.appendChild(text('span', '', '왼쪽 목록에서 현재 대화 중인 테이블을 클릭하세요.'));
+    viewer.appendChild(empty);
+    return;
+  }
+
+  const header = document.createElement('header');
+  header.className = 'admin-chat-viewer-head';
+  const heading = document.createElement('div');
+  heading.appendChild(text('span', 'admin-chat-live-label', 'LIVE'));
+  heading.appendChild(text('strong', '', `${tableLabel(room.requesterSession)} ↔ ${tableLabel(room.targetSession)}`));
+  heading.appendChild(text('small', '', `채팅 시작 ${formatDateTime(room.acceptedAt)}`));
+  header.appendChild(heading);
+  header.appendChild(button('admin-chat-viewer-close', '닫기', () => {
+    resetAdminChatViewerState();
+    renderChatRooms();
+  }));
+  viewer.appendChild(header);
+
+  const messages = document.createElement('div');
+  messages.id = 'admin-chat-message-list';
+  messages.className = 'admin-chat-message-list';
+  messages.setAttribute('role', 'log');
+  if (state.adminChatLoading) {
+    messages.appendChild(text('div', 'admin-chat-status', '대화 내용을 불러오는 중입니다...'));
+  } else if (state.adminChatError) {
+    messages.appendChild(text('div', 'admin-chat-status error', state.adminChatError));
+  } else if (!state.adminChatMessages.length) {
+    messages.appendChild(text('div', 'admin-chat-status', '아직 주고받은 메시지가 없습니다.'));
+  } else {
+    state.adminChatMessages.forEach((message) => {
+      const side = adminChatMessageSide(room, message);
+      const row = document.createElement('div');
+      row.className = `admin-chat-message-row ${side}`;
+      row.appendChild(text('span', 'admin-chat-message-sender', adminChatMessageIdentity(room, message, side)));
+      row.appendChild(text('div', 'admin-chat-message-bubble', message.content));
+      row.appendChild(text('time', 'admin-chat-message-time', adminChatMessageTime(message.createdAt)));
+      messages.appendChild(row);
+    });
+  }
+  viewer.appendChild(messages);
+  scrollAdminChatToBottom();
+}
+
+async function openAdminChatViewer(room) {
+  const roomId = Number(room.id);
+  state.activeAdminChatRoomId = roomId;
+  state.adminChatMessages = [];
+  state.adminChatLoading = true;
+  state.adminChatError = '';
+  renderChatRooms();
+  try {
+    const loadedMessages = await adminApi.chatMessages(roomId);
+    if (Number(state.activeAdminChatRoomId) !== roomId) return;
+    state.adminChatMessages = mergeAdminChatMessages([...loadedMessages, ...state.adminChatMessages]);
+  } catch (error) {
+    if (Number(state.activeAdminChatRoomId) !== roomId) return;
+    state.adminChatError = error.message || '대화 내용을 불러오지 못했습니다.';
+  } finally {
+    if (Number(state.activeAdminChatRoomId) === roomId) {
+      state.adminChatLoading = false;
+      renderAdminChatViewer();
+    }
+  }
+}
+
+function appendAdminChatMessage(message) {
+  if (Number(message?.roomId) !== Number(state.activeAdminChatRoomId)) return;
+  state.adminChatMessages = mergeAdminChatMessages([...state.adminChatMessages, message]);
+  state.adminChatError = '';
+  renderAdminChatViewer();
+}
+
 function renderChatRooms() {
   const list = $('chat-room-list');
   clear(list);
+  if (state.activeAdminChatRoomId && !selectedAdminChatRoom()) resetAdminChatViewerState();
   if (!state.chatRooms.length) {
     list.appendChild(text('div', 'song-empty', '활성 채팅이 없습니다.'));
+    renderAdminChatViewer();
     return;
   }
   state.chatRooms.forEach((room) => {
     const item = document.createElement('div');
-    item.className = 'admin-list-item';
+    item.className = `admin-list-item admin-chat-room-item${Number(room.id) === Number(state.activeAdminChatRoomId) ? ' selected' : ''}`;
+    item.setAttribute('role', 'button');
+    item.tabIndex = 0;
     const info = document.createElement('div');
     info.className = 'admin-list-info';
     info.appendChild(text('div', 'song-item-title', `${tableLabel(room.requesterSession)} ↔ ${tableLabel(room.targetSession)}`));
@@ -602,14 +744,23 @@ function renderChatRooms() {
     const targetCount = (room.targetSession?.participants || []).length;
     info.appendChild(text('div', 'song-item-meta', `시작 ${formatDateTime(room.acceptedAt)} · 참가 ${requesterCount + targetCount}명`));
     item.appendChild(info);
-    item.appendChild(button('song-done-btn danger', '강제 종료', async () => {
+    item.addEventListener('click', () => openAdminChatViewer(room));
+    item.addEventListener('keydown', (event) => {
+      if (event.target !== item || !['Enter', ' '].includes(event.key)) return;
+      event.preventDefault();
+      openAdminChatViewer(room);
+    });
+    item.appendChild(button('song-done-btn danger', '강제 종료', async (event) => {
+      event.stopPropagation();
       if (!window.confirm('이 채팅을 강제 종료하시겠습니까?')) return;
       await adminApi.endChatRoom(room.id);
+      if (Number(room.id) === Number(state.activeAdminChatRoomId)) resetAdminChatViewerState();
       await loadChatRooms();
       renderAll();
     }));
     list.appendChild(item);
   });
+  renderAdminChatViewer();
 }
 
 function renderGameControls() {
