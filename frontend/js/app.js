@@ -346,7 +346,7 @@ const ONBOARDING_SLIDES = [
     eyebrow: 'AUTO PLAY', title: '전체 게임은 자동으로 시작돼요',
     body: '관리자가 전체 게임을 시작하면 채팅 중이어도 게임 화면으로 자동 전환돼요. 게임이 끝나면 시작 전 화면으로 안전하게 돌아옵니다.',
     points: ['관리자가 시작하면 자동 화면 전환', '채팅 중이어도 전체 게임 우선', '게임 종료 후 이전 화면으로 복귀'],
-    image: null, alt: ''
+    image: null, alt: '', layout: 'auto-play'
   },
   {
     eyebrow: 'NOTICE', title: '공지 확인은 꼭 해주세요',
@@ -387,6 +387,7 @@ function renderOnboarding() {
   const slideRoot = $('onboarding-slide');
   slideRoot.classList.toggle('text-only', !slide.image);
   slideRoot.classList.toggle('group-games', slide.layout === 'group-games');
+  slideRoot.classList.toggle('auto-play', slide.layout === 'auto-play');
   slideRoot.innerHTML = `
     <div class="onboarding-heading">
       <div class="onboarding-eyebrow">${slide.eyebrow}</div>
