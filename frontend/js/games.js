@@ -6,5 +6,4 @@ export const GAME_TYPES = [
   { id: 'RPS', name: '가위바위보' },
   { id: 'WORD_GUESS', name: '제시어 맞히기' },
   { id: 'ROULETTE', name: '룰렛' },
-  { id: 'IMAGE_GAME', name: '이미지 게임' },
 ];

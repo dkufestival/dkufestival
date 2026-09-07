@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
-<link rel="stylesheet" href="admin.css?v=22">
+<link rel="stylesheet" href="admin.css?v=23">
 </head>
 <body>
 <section id="screen-login" class="screen active">
@@ -38,7 +38,6 @@
       <button class="nav-btn" data-tab="globalchat">전체채팅</button>
       <button class="nav-btn" data-tab="board">게시판</button>
       <button class="nav-btn" data-tab="notices">공지</button>
-      <button class="nav-btn" data-tab="attempts">기회 추가</button>
     </nav>
     <button id="logout-btn" class="logout-btn">로그아웃</button>
   </aside>
@@ -132,6 +131,30 @@
             <label style="grid-column: 1 / -1;"><span>참가자별 기회</span><input id="time-target-attempts" type="number" min="1" max="20" value="1"></label>
           </div>
           <p>게임 시작 시 모든 사용자에게 동일한 목표 시간과 기회 횟수가 전송됩니다.</p>
+
+          <section class="time-match-attempts">
+            <div class="time-match-attempts-head">
+              <div>
+                <strong>참가자 기회 추가</strong>
+                <span>진행 중인 스톱워치 게임에만 지급됩니다.</span>
+              </div>
+            </div>
+
+            <div class="detail-label">테이블 검색</div>
+            <input id="attempts-table-search" class="field" type="number" min="1" placeholder="테이블 번호 입력 (예: 1)">
+            <div id="attempts-table-result" class="attempts-table-result"></div>
+
+            <div class="time-setting-inputs attempts-amount-input">
+              <label style="grid-column: 1 / -1;"><span>추가 기회</span><input id="attempts-amount" type="number" min="1" max="20" value="1"></label>
+            </div>
+            <p class="attempts-hint">참가자를 선택하지 않고 지급하면 해당 테이블 전체 인원에게 기회가 지급됩니다.</p>
+
+            <button id="grant-attempts-btn" class="btn-dark full" type="button">기회 지급</button>
+            <p id="grant-attempts-status" class="game-status attempts-status"></p>
+
+            <div class="detail-label attempts-history-title">기회 지급 내역</div>
+            <div id="attempts-history-list" class="attempts-history-list"></div>
+          </section>
         </div>
         <div id="pinball-setting" class="pinball-setting" hidden>
           <div class="time-setting-head">
@@ -222,29 +245,6 @@
       </div>
     </div>
 
-    <div id="tab-attempts" class="tab-panel">
-      <div class="game-panel" style="max-width:620px;">
-        <h3 class="panel-title">기회 추가</h3>
-
-        <div class="detail-label" style="margin-bottom:8px;">게임 선택</div>
-        <div id="attempts-game-list" class="game-list"></div>
-
-        <div class="detail-label" style="margin:20px 0 8px;">테이블 검색</div>
-        <input id="attempts-table-search" class="field" type="number" min="1" placeholder="테이블 번호 입력 (예: 1)">
-        <div id="attempts-table-result" class="attempts-table-result"></div>
-
-        <div class="time-setting-inputs" style="margin-top:20px;">
-          <label style="grid-column: 1 / -1;"><span>추가 기회</span><input id="attempts-amount" type="number" min="1" max="20" value="1"></label>
-        </div>
-        <p class="attempts-hint">참가자를 선택하지 않고 지급하면 해당 테이블 전체 인원에게 기회가 지급됩니다.</p>
-
-        <button id="grant-attempts-btn" class="btn-dark full" style="margin-top:6px;">기회 지급</button>
-        <p id="grant-attempts-status" class="game-status" style="margin-top:12px;"></p>
-
-        <div class="detail-label" style="margin-top:6px;">기회 지급 내역</div>
-        <div id="attempts-history-list" class="attempts-history-list"></div>
-      </div>
-    </div>
   </main>
 </section>
 
@@ -268,6 +268,6 @@
 </div>
 
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-<script type="module" src="js/admin-app.js?v=34"></script>
+<script type="module" src="js/admin-app.js?v=35"></script>
 </body>
 </html>

@@ -39,7 +39,6 @@ const state = {
   refreshPending: false,
   gameHistory: [],
   gameHistoryById: {},
-  attemptsSelectedGame: 'TIME_MATCH',
   attemptsSelectedTable: null,
   attemptsSelectedParticipantIds: new Set(),
   attemptsGrantHistory: [],
@@ -47,7 +46,7 @@ const state = {
   basketballLeaderboard: [],
 };
 
-const RANKED_GAME_TYPES = ['TIME_MATCH', 'RPS', 'OX_QUIZ', 'WORD_GUESS', 'IMAGE_GAME'];
+const RANKED_GAME_TYPES = ['TIME_MATCH', 'RPS', 'OX_QUIZ', 'WORD_GUESS'];
 
 function showToast(message) {
   const toast = $('admin-toast');
@@ -654,6 +653,7 @@ function renderGameControls() {
   }
   $('time-target-seconds').disabled = Boolean(state.activeGame);
   $('time-target-milliseconds').disabled = Boolean(state.activeGame);
+  $('time-target-attempts').disabled = Boolean(state.activeGame);
   $('pinball-names').disabled = Boolean(state.activeGame);
   const isPinballActive = state.activeGame?.type === 'PINBALL' && ['STARTED', 'RESULTS'].includes(phase);
   $('pinball-admin-preview').hidden = !isPinballActive;
@@ -794,8 +794,13 @@ function formatTargetTime(targetMs) {
 }
 
 function renderTimeMatchSetting() {
-  $('time-match-setting').hidden = state.selectedGame !== 'TIME_MATCH';
+  const isSelected = state.selectedGame === 'TIME_MATCH';
+  $('time-match-setting').hidden = !isSelected;
   $('time-target-preview').textContent = formatTargetTime(targetTimeMs());
+  const canGrant = isSelected && state.activeGame?.type === 'TIME_MATCH';
+  $('grant-attempts-btn').disabled = !canGrant;
+  if (!canGrant) $('grant-attempts-status').textContent = '스톱워치 게임이 진행 중일 때 기회를 추가할 수 있습니다.';
+  else if ($('grant-attempts-status').textContent.includes('진행 중일 때')) $('grant-attempts-status').textContent = '진행 중인 참가자를 선택해 기회를 추가하세요.';
 }
 
 function settingField(label, id, value = '', type = 'input') {
@@ -831,7 +836,7 @@ function defaultRound(type) {
   if (type === 'RPS') return { prompt: '가위바위보를 선택하세요', answer: 'rock' };
   if (type === 'WORD_GUESS') return { prompts: [], answer: '' };
   if (type === 'ROULETTE') return { options: [] };
-  return { imageUrl: '', answer: '', imageStage: 0 };
+  return {};
 }
 
 function roundInput(label, value, update, type = 'input') {
@@ -876,9 +881,6 @@ function renderRoundCard(round, index) {
     card.appendChild(roundInput('정답', round.answer, (value) => { round.answer = value; }));
   } else if (state.selectedGame === 'ROULETTE') {
     card.appendChild(roundInput('옵션 (줄바꿈 또는 쉼표)', (round.options || []).join('\n'), (value) => { round.options = value.split(/[\n,]/).map((item) => item.trim()).filter(Boolean); }, 'textarea'));
-  } else if (state.selectedGame === 'IMAGE_GAME') {
-    card.appendChild(roundInput('이미지 URL', round.imageUrl, (value) => { round.imageUrl = value; }));
-    card.appendChild(roundInput('정답', round.answer, (value) => { round.answer = value; }));
   }
   return card;
 }
@@ -1328,26 +1330,10 @@ function bindEvents() {
     if (event.key === 'Enter') sendGlobalChatMessage().catch((error) => showToast(error.message));
   });
 
-  renderAttemptsGameList();
   renderAttemptsHistory();
+  renderAttemptsTableResult();
   $('attempts-table-search').addEventListener('input', renderAttemptsTableResult);
   $('grant-attempts-btn').addEventListener('click', submitGrantAttempts);
-}
-
-function renderAttemptsGameList() {
-  const list = $('attempts-game-list');
-  clear(list);
-  GAME_TYPES.forEach((game) => {
-    const item = document.createElement('div');
-    item.className = `game-option ${game.id === state.attemptsSelectedGame ? 'selected' : ''}`;
-    item.appendChild(text('span', 'game-option-name', game.name));
-    item.appendChild(text('span', 'game-option-level', game.id));
-    item.addEventListener('click', () => {
-      state.attemptsSelectedGame = game.id;
-      renderAttemptsGameList();
-    });
-    list.appendChild(item);
-  });
 }
 
 function renderAttemptsTableResult() {
@@ -1393,8 +1379,8 @@ function renderAttemptsTableResult() {
 function submitGrantAttempts() {
   const table = state.attemptsSelectedTable;
   if (!table) return showToast('테이블을 먼저 검색해주세요.');
-  if (!state.activeGame || state.activeGame.type !== state.attemptsSelectedGame) {
-    return showToast('선택한 게임이 현재 진행 중이 아닙니다.');
+  if (!state.activeGame || state.activeGame.type !== 'TIME_MATCH') {
+    return showToast('스톱워치 게임이 현재 진행 중이 아닙니다.');
   }
   const amount = Math.max(1, Math.min(20, Number($('attempts-amount').value) || 1));
   const requestedParticipantIds = [...state.attemptsSelectedParticipantIds];

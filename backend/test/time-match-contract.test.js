@@ -6,6 +6,7 @@ const path = require('node:path');
 test('time match game is registered in the model and central controls', () => {
   const modelSource = fs.readFileSync(path.join(__dirname, '../src/models/GameSession.js'), 'utf8');
   const serviceSource = fs.readFileSync(path.join(__dirname, '../src/services/game.service.js'), 'utf8');
+  const adminHtml = fs.readFileSync(path.join(__dirname, '../../frontend/admin.html'), 'utf8');
   const adminSource = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-app.js'), 'utf8');
   const socketSource = fs.readFileSync(path.join(__dirname, '../src/socket/game.socket.js'), 'utf8');
   const participantSource = fs.readFileSync(path.join(__dirname, '../../frontend/js/app.js'), 'utf8');
@@ -14,6 +15,10 @@ test('time match game is registered in the model and central controls', () => {
   assert.match(modelSource, /'TIME_MATCH'/);
   assert.match(serviceSource, /differenceMs = elapsedMs - targetMs/);
   assert.match(adminSource, /state\.selectedGame === 'TIME_MATCH'/);
+  assert.doesNotMatch(adminHtml, /data-tab="attempts"/);
+  assert.ok(adminHtml.indexOf('id="time-match-setting"') < adminHtml.indexOf('id="attempts-table-search"'));
+  assert.ok(adminHtml.indexOf('id="attempts-table-search"') < adminHtml.indexOf('id="pinball-setting"'));
+  assert.match(adminSource, /state\.activeGame\.type !== 'TIME_MATCH'/);
   assert.match(adminSource, /`\$\{row\.nickname\}\(table \$\{row\.tableNumber\}\)`/);
   assert.match(socketSource, /\['TIME_MATCH', 'PINBALL', 'BASKETBALL'\]\.includes\(game\.type\)/);
   assert.match(participantSource, /if \(game\.type !== 'TIME_MATCH'\) showGlobalGameScreen\(\)/);

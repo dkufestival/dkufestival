@@ -390,6 +390,16 @@ input, select, textarea { font-size: 16px; }
 .time-setting-inputs input:focus { border-color: var(--lime); }
 .time-setting-inputs input:disabled { opacity: .45; }
 .time-match-setting p { margin: 11px 0 0; color: var(--text-muted); font-size: 10px; line-height: 1.5; }
+.time-match-attempts { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-soft); }
+.time-match-attempts-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.time-match-attempts-head strong { display: block; color: var(--text-light); font-size: 13px; }
+.time-match-attempts-head span { display: block; margin-top: 4px; color: var(--text-muted); font-size: 10px; }
+.time-match-attempts .detail-label { margin-bottom: 8px; }
+.time-match-attempts .attempts-amount-input { margin-top: 16px; }
+.time-match-attempts .btn-dark { margin-top: 10px; }
+.time-match-attempts .btn-dark:disabled { cursor: not-allowed; opacity: .42; }
+.time-match-attempts .attempts-status { min-height: 18px; margin: 10px 0 14px; }
+.time-match-attempts .attempts-history-title { margin-top: 2px; }
 .pinball-setting { margin: 0 0 18px; padding: 18px; border: 1px solid rgba(200,241,63,.28); border-radius: 10px; background: #10110f; }
 .pinball-setting[hidden] { display: none; }
 .pinball-setting .time-setting-head strong { font-size: 16px; }
