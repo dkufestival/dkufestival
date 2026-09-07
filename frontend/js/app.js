@@ -372,6 +372,10 @@ function renderOnboarding() {
     <div class="onboarding-image-wrap">
       <img src="${slide.image}?v=${ONBOARDING_ASSET_VERSION}" alt="${slide.alt}" style="object-position:${slide.imagePosition || 'center'}" draggable="false">
       <span class="onboarding-count">${onboardingIndex + 1} / ${ONBOARDING_SLIDES.length}</span>
+      <div class="onboarding-image-title">
+        <div class="onboarding-eyebrow">${slide.eyebrow}</div>
+        <h2>${slide.title}</h2>
+      </div>
     </div>` : '';
   const pointsMarkup = slide.points?.length ? `
     <div class="onboarding-points">
@@ -381,13 +385,13 @@ function renderOnboarding() {
   $('onboarding-slide').classList.toggle('text-only', !slide.image);
   $('onboarding-slide').innerHTML = `
     ${imageMarkup}
-    <div class="onboarding-copy">
+    ${slide.image ? '' : `<div class="onboarding-copy">
       <div class="onboarding-eyebrow">${slide.eyebrow}</div>
       <h2>${slide.title}</h2>
       <p>${slide.body}</p>
       ${pointsMarkup}
       <div class="onboarding-badge">${slide.badge}</div>
-    </div>`;
+    </div>`}`;
   $('onboarding-dots').innerHTML = ONBOARDING_SLIDES.map((_, index) =>
     `<button type="button" class="onboarding-dot${index === onboardingIndex ? ' active' : ''}" data-onboarding-index="${index}" aria-label="${index + 1}번째 안내"></button>`
   ).join('');
