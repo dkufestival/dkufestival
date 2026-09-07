@@ -378,6 +378,11 @@ function renderOnboarding() {
       ${slide.points.map((point) => `<div class="onboarding-point"><span></span>${point}</div>`).join('')}
     </div>` : '';
   const prizeMarkup = slide.prize ? `<div class="onboarding-prize">${slide.prize}</div>` : '';
+  const detailsMarkup = pointsMarkup || prizeMarkup ? `
+    <div class="onboarding-details">
+      ${pointsMarkup}
+      ${prizeMarkup}
+    </div>` : '';
   $('onboarding-progress').style.width = `${((onboardingIndex + 1) / ONBOARDING_SLIDES.length) * 100}%`;
   $('onboarding-slide').classList.toggle('text-only', !slide.image);
   $('onboarding-slide').innerHTML = `
@@ -385,12 +390,9 @@ function renderOnboarding() {
       <div class="onboarding-eyebrow">${slide.eyebrow}</div>
       <h2>${slide.title}</h2>
     </div>
+    <div class="onboarding-description"><p>${slide.body}</p></div>
     ${imageMarkup}
-    <div class="onboarding-details">
-      <p>${slide.body}</p>
-      ${pointsMarkup}
-      ${prizeMarkup}
-    </div>`;
+    ${detailsMarkup}`;
   $('onboarding-dots').innerHTML = ONBOARDING_SLIDES.map((_, index) =>
     `<button type="button" class="onboarding-dot${index === onboardingIndex ? ' active' : ''}" data-onboarding-index="${index}" aria-label="${index + 1}번째 안내"></button>`
   ).join('');
