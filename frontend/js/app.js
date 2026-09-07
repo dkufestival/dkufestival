@@ -340,7 +340,7 @@ const ONBOARDING_SLIDES = [
     eyebrow: 'GROUP GAME', title: '다 함께 즐기는 단체 게임',
     body: '관리자가 여는 다섯 가지 단체 게임을 모두 함께 즐겨보세요.',
     points: ['핀볼 관전', 'OX퀴즈', '가위바위보', '제시어 맞히기', '룰렛'],
-    prize: '게임별 소정의 상품', image: null, alt: ''
+    prize: '게임별 소정의 상품', image: null, alt: '', layout: 'group-games'
   },
   {
     eyebrow: 'AUTO PLAY', title: '전체 게임은 자동으로 시작돼요',
@@ -384,8 +384,10 @@ function renderOnboarding() {
       ${prizeMarkup}
     </div>` : '';
   $('onboarding-progress').style.width = `${((onboardingIndex + 1) / ONBOARDING_SLIDES.length) * 100}%`;
-  $('onboarding-slide').classList.toggle('text-only', !slide.image);
-  $('onboarding-slide').innerHTML = `
+  const slideRoot = $('onboarding-slide');
+  slideRoot.classList.toggle('text-only', !slide.image);
+  slideRoot.classList.toggle('group-games', slide.layout === 'group-games');
+  slideRoot.innerHTML = `
     <div class="onboarding-heading">
       <div class="onboarding-eyebrow">${slide.eyebrow}</div>
       <h2>${slide.title}</h2>
