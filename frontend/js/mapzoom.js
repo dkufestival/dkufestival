@@ -1,5 +1,5 @@
 // 좌석 지도(테이블 배치도) 확대/축소/이동 제어
-export function initMapZoom({ viewport, canvas, minScale: baseMinScale = 1, maxScale = 3, zoomedThreshold = 1.6, onScaleChange, reserveBottom = 0 }) {
+export function initMapZoom({ viewport, canvas, minScale: baseMinScale = 1, maxScale = 3, zoomedThreshold = 1.6, onScaleChange, reserveBottom = 0, viewSelector = '#map-view' }) {
   let minScale = baseMinScale;
   let scale = minScale;
   let x = 0;
@@ -62,7 +62,7 @@ export function initMapZoom({ viewport, canvas, minScale: baseMinScale = 1, maxS
 
   viewport.addEventListener('wheel', (event) => {
     if (!enabled) return;
-    if (!event.target.closest?.('#map-view')) return;
+    if (!event.target.closest?.(viewSelector)) return;
     event.preventDefault();
     const rect = viewport.getBoundingClientRect();
     const cx = event.clientX - rect.left;
@@ -72,7 +72,7 @@ export function initMapZoom({ viewport, canvas, minScale: baseMinScale = 1, maxS
 
   viewport.addEventListener('mousedown', (event) => {
     if (!enabled) return;
-    if (!event.target.closest?.('#map-view')) return;
+    if (!event.target.closest?.(viewSelector)) return;
     dragging = true;
     moved = false;
     lastX = event.clientX;
@@ -91,7 +91,7 @@ export function initMapZoom({ viewport, canvas, minScale: baseMinScale = 1, maxS
 
   viewport.addEventListener('touchstart', (event) => {
     if (!enabled) return;
-    if (!event.target.closest?.('#map-view')) return;
+    if (!event.target.closest?.(viewSelector)) return;
     if (event.touches.length === 1) {
       dragging = true;
       moved = false;
@@ -114,7 +114,7 @@ export function initMapZoom({ viewport, canvas, minScale: baseMinScale = 1, maxS
 
   viewport.addEventListener('touchmove', (event) => {
     if (!enabled) return;
-    if (!event.target.closest?.('#map-view')) return;
+    if (!event.target.closest?.(viewSelector)) return;
     if (event.touches.length === 1 && dragging) {
       const dx = event.touches[0].clientX - lastX;
       const dy = event.touches[0].clientY - lastY;

@@ -11,7 +11,7 @@ import { globalChatApi } from './globalChat.js';
 import { boardApi } from './board.js?v=3';
 import { noticesApi } from './notices.js?v=2';
 import { STORAGE_KEYS } from './config.js';
-import { initMapZoom } from './mapzoom.js?v=5';
+import { initMapZoom } from './mapzoom.js?v=6';
 import { basketballApi } from './basketball-api.js';
 import { monitorApi } from './monitor.js';
 

@@ -190,49 +190,122 @@ input, select, textarea { font-size: 16px; }
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
 
-/* 테이블 그리드 */
-.table-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 16px;
+/* 테이블 배치도 (사용자 맵과 동일한 구조) */
+.admin-map-viewport {
+  position: relative;
+  height: 640px;
+  max-height: 70vh;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #161613;
+  border: 1px solid var(--border-soft);
+  touch-action: pan-y;
+  cursor: grab;
 }
-.table-card {
-  background: var(--card-dark);
+.admin-map-viewport:active { cursor: grabbing; }
+.admin-map-view { position: absolute; inset: 0; }
+.admin-map-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  grid-template-columns: repeat(8, 100px);
+  gap: 10px;
+  padding: 18px;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+.admin-map-zone {
+  background: #33342c;
   border: 1px solid var(--border-soft);
   border-radius: 10px;
-  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.admin-map-zone-top { grid-column: 1 / 8; grid-row: 1; min-height: 92px; }
+.admin-map-zone-left { grid-column: 1; grid-row: 2 / span 3; min-height: 92px; }
+.admin-map-zone-right {
+  grid-column: 8;
+  grid-row: 2 / span 3;
+  min-height: 92px;
+  background: transparent;
+  border: none;
+}
+.admin-map-zone-label {
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  padding: 10px 6px;
+  font-family: var(--font-display);
+  font-size: 14px;
+  color: var(--text-light);
+  writing-mode: vertical-rl;
+}
+.admin-table-cell {
+  width: 100px;
+  min-height: 92px;
+  border-radius: 10px;
+  border: 1px solid var(--border-soft);
+  background: var(--card-dark);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 4px;
+  color: var(--text-light);
   cursor: pointer;
+  text-align: center;
   transition: transform 0.08s ease, border-color 0.15s ease;
 }
-.table-card:hover { transform: translateY(-2px); border-color: var(--lime); }
-.table-card-num {
+.admin-table-cell:hover { transform: translateY(-2px); border-color: var(--lime); }
+.admin-table-cell-num {
   font-family: var(--font-display);
-  font-size: 20px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--text-light);
 }
-.table-card.occupied .table-card-num { color: var(--lime); }
-.table-card-status {
-  font-size: 11px;
+.admin-table-cell.occupied .admin-table-cell-num { color: var(--lime); }
+.admin-table-cell-status {
+  font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
   color: var(--text-muted);
-  margin-top: 4px;
   text-transform: uppercase;
 }
-.table-card.occupied .table-card-status { color: var(--lime); }
-.table-card-meta {
-  margin-top: 14px;
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: var(--text-muted);
-}
-.table-card-timer {
+.admin-table-cell.occupied .admin-table-cell-status { color: var(--lime); }
+.admin-table-cell-meta { font-size: 10px; color: var(--text-muted); }
+.admin-table-cell-timer {
   font-family: var(--font-display);
+  font-size: 11px;
   font-weight: 700;
   color: var(--text-light);
 }
+.admin-table-cell.ending-soon { border-color: #ff4d4d; }
+.admin-table-cell.ending-soon .admin-table-cell-num,
+.admin-table-cell.ending-soon .admin-table-cell-status,
+.admin-table-cell.ending-soon .admin-table-cell-timer { color: #ff4d4d; }
+.admin-map-controls {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.admin-map-zoom-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.admin-map-zoom-btn.reset { font-size: 14px; }
 
 /* 상세 패널 (오른쪽 슬라이드) */
 .detail-overlay {

@@ -10,6 +10,7 @@ import { boardApi } from './board.js';
 import { noticesApi } from './notices.js?v=2';
 import { GAME_TYPES } from './games.js';
 import { basketballApi } from './basketball-api.js';
+import { initMapZoom } from './mapzoom.js?v=6';
 
 const state = {
   tables: [],
@@ -464,23 +465,80 @@ function renderStats() {
   $('stat-game').textContent = state.activeGame ? '진행 중' : '대기 중';
 }
 
-function renderTableGrid() {
-  const grid = $('table-grid');
-  clear(grid);
-  state.tables.forEach((table) => {
-    const session = table.activeSession;
-    const card = document.createElement('div');
-    card.className = `table-card ${session ? 'occupied' : ''}`;
-    card.appendChild(text('div', 'table-card-num', `TABLE ${table.tableNumber}`));
-    card.appendChild(text('div', 'table-card-status', session ? `사용 중 · ${session.participants?.length || 0}명 접속` : '비어 있음'));
-    const meta = document.createElement('div');
-    meta.className = 'table-card-meta';
-    meta.appendChild(text('span', '', session ? `남 ${session.maleCount} / 여 ${session.femaleCount}` : `QR ${table.qrEnabled ? 'ON' : 'OFF'}`));
-    meta.appendChild(text('span', 'table-card-timer', session ? formatRemaining(session.expiresAt) : '-'));
-    card.appendChild(meta);
-    card.addEventListener('click', () => openDetail(table.id));
-    grid.appendChild(card);
+let adminMapZoom = null;
+function initAdminMap() {
+  if (adminMapZoom) return;
+  adminMapZoom = initMapZoom({
+    viewport: $('admin-map-viewport'),
+    canvas: $('admin-map-canvas'),
+    minScale: 1,
+    maxScale: 3,
+    zoomedThreshold: 1.6,
+    reserveBottom: 26,
+    viewSelector: '#admin-map-view',
   });
+  $('admin-map-zoom-in').addEventListener('click', () => adminMapZoom.zoomIn());
+  $('admin-map-zoom-out').addEventListener('click', () => adminMapZoom.zoomOut());
+  $('admin-map-zoom-reset').addEventListener('click', () => adminMapZoom.reset());
+}
+
+function renderTableGrid() {
+  initAdminMap();
+  const canvas = $('admin-map-canvas');
+  clear(canvas);
+
+  canvas.appendChild(text('div', 'admin-map-zone admin-map-zone-top', ''));
+  canvas.appendChild(text('div', 'admin-map-zone admin-map-zone-left', ''));
+  const rightZone = document.createElement('div');
+  rightZone.className = 'admin-map-zone admin-map-zone-right';
+  rightZone.appendChild(text('div', 'admin-map-zone-label', '입구'));
+  canvas.appendChild(rightZone);
+
+  const bottomRowTableOrder = [75, 76, 77, 78, 79, 80];
+  const blockedColsByTableRow = { 1: [1, 8], 2: [1, 8], 3: [1, 8] };
+  let slotTableRow = 1;
+  let slotCol = 1;
+  const nextTableSlot = () => {
+    while (true) {
+      if (slotCol > 8) { slotTableRow += 1; slotCol = 1; continue; }
+      const blocked = blockedColsByTableRow[slotTableRow] || [];
+      if (blocked.includes(slotCol)) { slotCol += 1; continue; }
+      const slot = { row: slotTableRow + 1, col: slotCol };
+      slotCol += 1;
+      return slot;
+    }
+  };
+  let bottomRow = null;
+
+  state.tables.forEach((table) => {
+    const isBottomRowTable = bottomRowTableOrder.includes(table.tableNumber);
+    const session = table.activeSession;
+    const remainingMs = session ? new Date(session.expiresAt).getTime() - Date.now() : null;
+    const endingSoon = remainingMs !== null && remainingMs > 0 && remainingMs <= 10 * 60 * 1000;
+    const cell = document.createElement('div');
+    cell.className = `admin-table-cell ${session ? 'occupied' : ''}${endingSoon ? ' ending-soon' : ''}`;
+    if (isBottomRowTable) {
+      if (bottomRow === null) bottomRow = slotTableRow + 2;
+      cell.style.gridRow = String(bottomRow);
+      cell.style.gridColumn = String(bottomRowTableOrder.indexOf(table.tableNumber) + 2);
+    } else {
+      const slot = nextTableSlot();
+      cell.style.gridRow = String(slot.row);
+      cell.style.gridColumn = String(slot.col);
+    }
+    cell.appendChild(text('div', 'admin-table-cell-num', String(table.tableNumber).padStart(2, '0')));
+    cell.appendChild(text('div', 'admin-table-cell-status', session ? `사용중 · ${session.participants?.length || 0}명` : '비어있음'));
+    if (session) {
+      cell.appendChild(text('div', 'admin-table-cell-meta', `남${session.maleCount}/여${session.femaleCount}`));
+      cell.appendChild(text('div', 'admin-table-cell-timer', formatRemaining(session.expiresAt)));
+    } else {
+      cell.appendChild(text('div', 'admin-table-cell-meta', `QR ${table.qrEnabled ? 'ON' : 'OFF'}`));
+    }
+    cell.addEventListener('click', () => openDetail(table.id));
+    canvas.appendChild(cell);
+  });
+
+  adminMapZoom?.refreshMinScale();
 }
 
 function openDetail(tableId) {
