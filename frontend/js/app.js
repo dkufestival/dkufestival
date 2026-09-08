@@ -1232,8 +1232,7 @@ function renderTables() {
 
   const likeHeatMax = computeLikeHeatMaxByCategory(state.tables);
 
-  const letterTableLabels = { 75: 'A', 76: 'B', 77: 'C', 78: 'D', 79: 'E', 80: 'F' };
-  const letterTableOrder = [75, 76, 77, 78, 79, 80];
+  const bottomRowTableOrder = [75, 76, 77, 78, 79, 80];
   const blockedColsByTableRow = { 1: [1, 8], 2: [1, 8], 3: [1, 8] };
   let slotTableRow = 1;
   let slotCol = 1;
@@ -1247,10 +1246,10 @@ function renderTables() {
       return slot;
     }
   };
-  let letterRow = null;
+  let bottomRow = null;
 
   state.tables.forEach((table) => {
-    const letterLabel = letterTableLabels[table.tableNumber];
+    const isBottomRowTable = bottomRowTableOrder.includes(table.tableNumber);
     const session = table.activeSession;
     const isMine = table.id === state.table?.id;
     const requestsOff = !isMine && !!session && session.acceptingRequests === false;
@@ -1262,10 +1261,10 @@ function renderTables() {
     }
     const cell = document.createElement('div');
     cell.className = `table-cell ${isMine ? 'mine' : session ? `taken${genderClass}` : 'available'}${requestsOff ? ' requests-off' : ''}`;
-    if (letterLabel) {
-      if (letterRow === null) letterRow = slotTableRow + 2;
-      cell.style.gridRow = String(letterRow);
-      cell.style.gridColumn = String(letterTableOrder.indexOf(table.tableNumber) + 2);
+    if (isBottomRowTable) {
+      if (bottomRow === null) bottomRow = slotTableRow + 2;
+      cell.style.gridRow = String(bottomRow);
+      cell.style.gridColumn = String(bottomRowTableOrder.indexOf(table.tableNumber) + 2);
     } else {
       const slot = nextTableSlot();
       cell.style.gridRow = String(slot.row);
@@ -1279,7 +1278,7 @@ function renderTables() {
       const opacity = LIKE_HEAT_BASE_OPACITY + spread * t;
       cell.style.background = `rgba(${LIKE_HEAT_CATEGORY_RGB[category]}, ${opacity.toFixed(3)})`;
     }
-    cell.appendChild(text('span', 'table-cell-number', letterLabel || String(table.tableNumber).padStart(2, '0')));
+    cell.appendChild(text('span', 'table-cell-number', String(table.tableNumber).padStart(2, '0')));
     if (session) cell.appendChild(text('div', 'table-cell-count', formatComposition(session)));
     if (session?.inChat) cell.appendChild(text('div', 'table-cell-chatting', '채팅중'));
     if (isMine) {
