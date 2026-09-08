@@ -1229,12 +1229,12 @@ function renderTables() {
   rightZone.className = 'map-zone map-zone-right';
   rightZone.appendChild(text('div', 'map-zone-label', '입구'));
   canvas.appendChild(rightZone);
-  canvas.appendChild(text('div', 'map-zone map-zone-right-2', ''));
 
   const likeHeatMax = computeLikeHeatMaxByCategory(state.tables);
 
-  const hiddenTableNumbers = [78, 79, 80];
-  const blockedColsByTableRow = { 1: [1, 8], 2: [8] };
+  const letterTableLabels = { 75: 'A', 76: 'B', 77: 'C', 78: 'D', 79: 'E', 80: 'F' };
+  const letterTableOrder = [75, 76, 77, 78, 79, 80];
+  const blockedColsByTableRow = { 1: [1, 8], 2: [1, 8], 3: [1, 8] };
   let slotTableRow = 1;
   let slotCol = 1;
   const nextTableSlot = () => {
@@ -1247,9 +1247,10 @@ function renderTables() {
       return slot;
     }
   };
+  let letterRow = null;
 
   state.tables.forEach((table) => {
-    if (hiddenTableNumbers.includes(table.tableNumber)) return;
+    const letterLabel = letterTableLabels[table.tableNumber];
     const session = table.activeSession;
     const isMine = table.id === state.table?.id;
     const requestsOff = !isMine && !!session && session.acceptingRequests === false;
@@ -1261,9 +1262,15 @@ function renderTables() {
     }
     const cell = document.createElement('div');
     cell.className = `table-cell ${isMine ? 'mine' : session ? `taken${genderClass}` : 'available'}${requestsOff ? ' requests-off' : ''}`;
-    const slot = nextTableSlot();
-    cell.style.gridRow = String(slot.row);
-    cell.style.gridColumn = String(slot.col);
+    if (letterLabel) {
+      if (letterRow === null) letterRow = slotTableRow + 2;
+      cell.style.gridRow = String(letterRow);
+      cell.style.gridColumn = String(letterTableOrder.indexOf(table.tableNumber) + 2);
+    } else {
+      const slot = nextTableSlot();
+      cell.style.gridRow = String(slot.row);
+      cell.style.gridColumn = String(slot.col);
+    }
     if (category && !requestsOff) {
       const maxForCategory = likeHeatMax[category] || 0;
       const likeCount = session.receivedLikeCount || 0;
@@ -1272,7 +1279,7 @@ function renderTables() {
       const opacity = LIKE_HEAT_BASE_OPACITY + spread * t;
       cell.style.background = `rgba(${LIKE_HEAT_CATEGORY_RGB[category]}, ${opacity.toFixed(3)})`;
     }
-    cell.appendChild(text('span', 'table-cell-number', String(table.tableNumber).padStart(2, '0')));
+    cell.appendChild(text('span', 'table-cell-number', letterLabel || String(table.tableNumber).padStart(2, '0')));
     if (session) cell.appendChild(text('div', 'table-cell-count', formatComposition(session)));
     if (session?.inChat) cell.appendChild(text('div', 'table-cell-chatting', '채팅중'));
     if (isMine) {
@@ -1301,6 +1308,7 @@ function renderTables() {
     }
     canvas.appendChild(cell);
   });
+
   mapZoom?.refreshMinScale();
 }
 
