@@ -5,6 +5,7 @@ const adminOptions = { auth: true, role: 'ADMIN' };
 export const adminApi = {
   login: (body) => api.post('/api/admin/login', body),
   tables: () => api.get('/api/admin/tables', adminOptions),
+  stats: () => api.get('/api/admin/stats?hours=24&limit=288', adminOptions),
   participants: () => api.get('/api/admin/participants', adminOptions),
   messageParticipant: (participantId, content) => api.post(`/api/admin/participants/${participantId}/message`, { content }, adminOptions),
   endParticipantAccess: (participantId, body = {}) => api.post(`/api/admin/participants/${participantId}/end-access`, body, adminOptions),

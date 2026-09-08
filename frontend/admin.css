@@ -876,6 +876,15 @@ input, select, textarea { font-size: 16px; }
 .participant-session-ended { color:var(--text-muted); font-size:10px; font-weight:700; }
 .participant-reentry-status { color:var(--lime); font-size:10px; font-weight:800; }
 .participants-empty { padding:34px; border:1px dashed var(--border-soft); border-radius:12px; color:var(--text-muted); text-align:center; }
+.traffic-stats-panel { max-width:920px; }
+.traffic-stats-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:18px; }
+.traffic-stats-head .panel-title { margin:0 0 6px; }
+.traffic-stats-head p { margin:0; color:var(--text-muted); font-size:12px; }
+.traffic-stats-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px; }
+.traffic-stat-card { display:flex; min-height:105px; flex-direction:column; justify-content:space-between; padding:15px; border:1px solid var(--border-soft); border-radius:12px; background:var(--card-dark-2); }
+.traffic-stat-card span { color:var(--text-muted); font-size:11px; font-weight:700; }
+.traffic-stat-card strong { color:var(--lime); font:900 24px var(--font-display); letter-spacing:-1px; }
+.traffic-stats-empty { grid-column:1 / -1; padding:30px; color:var(--text-muted); text-align:center; }
 @media (max-width: 720px) {
   .admin-chat-panel-head { align-items: stretch; flex-direction: column; gap: 12px; }
   .admin-chat-monitor-badge { align-self: flex-start; }
@@ -886,5 +895,6 @@ input, select, textarea { font-size: 16px; }
   .participant-admin-head { align-items:stretch; flex-direction:column; }
   .participant-admin-head .field { width:100%; }
   .participant-admin-row { grid-template-columns:38px minmax(0,1fr); }
+  .traffic-stats-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); }
   .participant-action { grid-column:1 / -1; width:100%; }
 }

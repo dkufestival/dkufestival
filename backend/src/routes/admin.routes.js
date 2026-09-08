@@ -14,6 +14,7 @@ router.post('/login', validateBody({
   password: { required: true, type: 'string', maxLength: 200 },
 }), adminController.login);
 router.get('/tables', auth, requireRole('ADMIN'), adminController.getTables);
+router.get('/stats', auth, requireRole('ADMIN'), adminController.getStats);
 router.get('/participants', auth, requireRole('ADMIN'), adminController.getParticipants);
 router.post('/participants/:participantId/message', auth, requireRole('ADMIN'), validateBody({
   content: { required: true, type: 'string', maxLength: 500 },

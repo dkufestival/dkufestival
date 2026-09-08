@@ -12,6 +12,7 @@ const sequelize = require('../config/db');
 const globalChatService = require('../services/globalChat.service');
 const boardService = require('../services/board.service');
 const chatService = require('../services/chat.service');
+const statsService = require('../services/stats.service');
 
 async function login(req, res, next) {
   try {
@@ -39,6 +40,12 @@ async function getTables(req, res, next) {
   } catch (error) {
     next(error);
   }
+}
+
+async function getStats(req, res, next) {
+  try {
+    res.json({ data: await statsService.getStats({ hours: req.query.hours, limit: req.query.limit }) });
+  } catch (error) { next(error); }
 }
 
 async function getParticipants(req, res, next) {
@@ -328,6 +335,7 @@ async function resetAllData(req, res, next) {
 module.exports = {
   login,
   getTables,
+  getStats,
   getParticipants,
   messageParticipant,
   endParticipantAccess,

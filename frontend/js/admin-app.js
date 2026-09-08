@@ -48,6 +48,7 @@ const state = {
   attemptsGrantHistory: [],
   gameUpdateInFlight: false,
   basketballLeaderboard: [],
+  trafficStats: null,
 };
 
 const RANKED_GAME_TYPES = ['TIME_MATCH', 'RPS', 'OX_QUIZ', 'WORD_GUESS'];
@@ -195,6 +196,10 @@ async function loadTables() {
   state.tables = await adminApi.tables();
 }
 
+async function loadTrafficStats() {
+  state.trafficStats = await adminApi.stats();
+}
+
 async function loadParticipants() {
   state.participants = await adminApi.participants();
 }
@@ -227,7 +232,7 @@ async function loadStaffCalls() {
 async function syncAdminState(options = {}) {
   if (state.syncPromise) return state.syncPromise;
   state.syncPromise = (async () => {
-    await Promise.allSettled([loadTables(), loadParticipants(), loadChatRooms(), loadNotices(), loadGlobalChat(), loadBoard(), loadBasketballLeaderboard(), loadStaffCalls()]);
+    await Promise.allSettled([loadTables(), loadParticipants(), loadChatRooms(), loadNotices(), loadGlobalChat(), loadBoard(), loadBasketballLeaderboard(), loadStaffCalls(), loadTrafficStats()]);
     if (options.render !== false) renderAll();
     if (state.activeDetailTable) openDetail(state.activeDetailTable);
   })().finally(() => {
@@ -273,6 +278,30 @@ function renderAll() {
   renderNoticeHistory();
   renderBasketballLeaderboard();
   renderParticipantsAdmin();
+  renderTrafficStats();
+}
+
+function renderTrafficStats() {
+  const grid = $('traffic-stats-grid');
+  if (!grid) return;
+  clear(grid);
+  const summary = state.trafficStats?.summary;
+  if (!summary) {
+    grid.appendChild(text('div', 'traffic-stats-empty', '\ud1b5\uacc4 \ub370\uc774\ud130\ub97c \ubd88\ub7ec\uc62c \uc218 \uc5c6\uc2b5\ub2c8\ub2e4.'));
+    return;
+  }
+  [
+    ['\ub204\uc801 \ucc38\uac00\uc790', summary.totalUniqueParticipants], ['\ud604\uc7ac \ub3d9\uc2dc \ucc38\uac00\uc790', summary.currentConcurrentParticipants],
+    ['\ucd5c\ub300 \ub3d9\uc2dc \ucc38\uac00\uc790', summary.peakConcurrentParticipants], ['\ud604\uc7ac Socket \uc5f0\uacb0', summary.currentSocketConnections],
+    ['\ucd5c\ub300 Socket \uc5f0\uacb0', summary.peakSocketConnections], ['\ub204\uc801 HTTP \uc694\uccad', summary.totalHttpRequests],
+    ['\ub204\uc801 Socket \uc5f0\uacb0', summary.totalSocketConnections],
+  ].forEach(([name, value]) => {
+    const card = document.createElement('article');
+    card.className = 'traffic-stat-card';
+    card.appendChild(text('span', '', name));
+    card.appendChild(text('strong', '', Number(value || 0).toLocaleString()));
+    grid.appendChild(card);
+  });
 }
 
 function participantTableNumber(participant) {
@@ -1398,12 +1427,14 @@ function bindEvents() {
   $('basketball-ranking-reset-btn').addEventListener('click', () => resetBasketballLeaderboard().catch((error) => showToast(error.message)));
   $('all-data-reset-btn').addEventListener('click', () => resetAllData().catch((error) => showToast(error.message)));
   $('participant-search').addEventListener('input', renderParticipantsAdmin);
+  $('traffic-stats-refresh')?.addEventListener('click', () => loadTrafficStats().then(renderTrafficStats).catch((error) => showToast(error.message)));
   document.querySelectorAll('.nav-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.nav-btn').forEach((node) => node.classList.remove('active'));
       document.querySelectorAll('.tab-panel').forEach((panel) => panel.classList.remove('active'));
       btn.classList.add('active');
       $(`tab-${btn.dataset.tab}`).classList.add('active');
+      if (btn.dataset.tab === 'traffic') loadTrafficStats().then(renderTrafficStats).catch(() => {});
     });
   });
   $('detail-close').addEventListener('click', closeDetail);

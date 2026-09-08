@@ -15,6 +15,8 @@ const TableLike = require('./TableLike');
 const StaffCall = require('./StaffCall');
 const BoardProfile = require('./BoardProfile');
 const BoardProfileView = require('./BoardProfileView');
+const ServiceStat = require('./ServiceStat');
+const TrafficSnapshot = require('./TrafficSnapshot');
 
 Table.hasMany(TableSession, { foreignKey: 'tableId', as: 'sessions', constraints: false });
 TableSession.belongsTo(Table, { foreignKey: 'tableId', as: 'table', constraints: false });
@@ -106,4 +108,6 @@ module.exports = {
   StaffCall,
   BoardProfile,
   BoardProfileView,
+  ServiceStat,
+  TrafficSnapshot,
 };

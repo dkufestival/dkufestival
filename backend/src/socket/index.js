@@ -3,10 +3,13 @@ const registerChatSocket = require('./chat.socket');
 const registerGameSocket = require('./game.socket');
 const registerGlobalChatSocket = require('./globalChat.socket');
 const socketAuth = require('./auth.socket');
+const statsService = require('../services/stats.service');
 
 function registerSocketHandlers(io) {
   io.use(socketAuth);
   io.on('connection', (socket) => {
+    statsService.recordSocketConnection(socket);
+    socket.once('disconnect', () => statsService.recordSocketDisconnect(socket));
     socket.join(socket.data.user.role === 'ADMIN' ? 'admins' : socket.data.user.role === 'MONITOR' ? 'monitors' : 'participants');
     if (socket.data.sessionId) socket.join(`session:${socket.data.sessionId}`);
     if (socket.data.participantId) socket.join(`participant:${socket.data.participantId}`);

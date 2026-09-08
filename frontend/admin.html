@@ -38,6 +38,7 @@
       <button class="nav-btn" data-tab="globalchat">전체채팅</button>
       <button class="nav-btn" data-tab="board">게시판</button>
       <button class="nav-btn" data-tab="notices">공지</button>
+      <button class="nav-btn" data-tab="traffic">&#xC6B4;&#xC601; &#xD1B5;&#xACC4;</button>
     </nav>
     <button id="logout-btn" class="logout-btn">로그아웃</button>
   </aside>
@@ -52,6 +53,16 @@
 
     <div id="tab-tables" class="tab-panel active">
       <div id="table-grid" class="table-grid"></div>
+    </div>
+
+    <div id="tab-traffic" class="tab-panel">
+      <section class="game-panel traffic-stats-panel">
+        <div class="traffic-stats-head">
+          <div><h3 class="panel-title">&#xC6B4;&#xC601; &#xD2B8;&#xB798;&#xD53D; &#xD1B5;&#xACC4;</h3><p>5&#xBD84; &#xB2E8;&#xC704;&#xB85C; &#xC800;&#xC7A5;&#xB418;&#xB294; &#xC9D1;&#xACC4; &#xB370;&#xC774;&#xD130;&#xC785;&#xB2C8;&#xB2E4;.</p></div>
+          <button id="traffic-stats-refresh" class="detail-btn" type="button">&#xC0C8;&#xB85C;&#xACE0;&#xCE68;</button>
+        </div>
+        <div id="traffic-stats-grid" class="traffic-stats-grid" aria-live="polite"></div>
+      </section>
     </div>
 
     <div id="tab-participants" class="tab-panel">

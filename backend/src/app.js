@@ -17,11 +17,19 @@ const basketballRoutes = require('./routes/basketball.routes');
 const monitorRoutes = require('./routes/monitor.routes');
 const { getPinballPage } = require('./services/pinball-page.service');
 const { notFound, errorHandler } = require('./middleware/error-handler');
+const statsService = require('./services/stats.service');
 
 const app = express();
 
 app.use(cors({ origin: env.corsOrigin }));
 app.use(express.json());
+
+// Only dynamic API requests count. /health and static frontend files are intentionally
+// excluded because they are load-balancer checks or asset delivery, not service traffic.
+app.use('/api', (req, res, next) => {
+  statsService.recordHttpRequest();
+  next();
+});
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });

@@ -7,6 +7,7 @@ const sequelize = require('./config/db');
 const registerSocketHandlers = require('./socket');
 const chatService = require('./services/chat.service');
 const lifecycleService = require('./services/lifecycle.service');
+const statsService = require('./services/stats.service');
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -45,6 +46,7 @@ async function startServer() {
     }
 
     await require('./services/game.service').recoverPinballGames();
+    await statsService.start();
     server.listen(env.port, () => {
       console.log(`Festival backend listening on port ${env.port}`);
     });
@@ -54,5 +56,8 @@ async function startServer() {
     process.exitCode = 1;
   }
 }
+
+process.once('SIGTERM', () => { statsService.stop().catch(() => {}); });
+process.once('SIGINT', () => { statsService.stop().catch(() => {}); });
 
 startServer();
