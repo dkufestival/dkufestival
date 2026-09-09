@@ -296,6 +296,11 @@ function renderTrafficStats() {
     ['\ucd5c\ub300 \ub3d9\uc2dc \ucc38\uac00\uc790', summary.peakConcurrentParticipants], ['\ud604\uc7ac Socket \uc5f0\uacb0', summary.currentSocketConnections],
     ['\ucd5c\ub300 Socket \uc5f0\uacb0', summary.peakSocketConnections], ['\ub204\uc801 HTTP \uc694\uccad', summary.totalHttpRequests],
     ['\ub204\uc801 Socket \uc5f0\uacb0', summary.totalSocketConnections],
+    ['\ud604\uc7ac HTTP RPS', summary.currentHttpRps], ['\ucd5c\ub300 HTTP RPS', summary.peakHttpRps],
+    ['\ucd5c\uadfc 1\ubd84 \ud3c9\uade0 HTTP RPS', Number(summary.averageHttpRpsLastMinute || 0).toFixed(2)],
+    ['\ud604\uc7ac Socket \uc774\ubca4\ud2b8/\ucd08', summary.currentSocketEventsPerSecond], ['\ucd5c\ub300 Socket \uc774\ubca4\ud2b8/\ucd08', summary.peakSocketEventsPerSecond],
+    ['\ucd5c\uadfc 1\ubd84 \ud3c9\uade0 Socket \uc774\ubca4\ud2b8/\ucd08', Number(summary.averageSocketEventsPerSecondLastMinute || 0).toFixed(2)],
+    ['\ub204\uc801 Socket \uc774\ubca4\ud2b8', summary.totalSocketEvents],
   ].forEach(([name, value]) => {
     const card = document.createElement('article');
     card.className = 'traffic-stat-card';

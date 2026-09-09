@@ -7,6 +7,9 @@ module.exports = sequelize.define('ServiceStat', {
   totalSessions: { type: DataTypes.BIGINT.UNSIGNED, allowNull: false, defaultValue: 0 },
   totalHttpRequests: { type: DataTypes.BIGINT.UNSIGNED, allowNull: false, defaultValue: 0 },
   totalSocketConnections: { type: DataTypes.BIGINT.UNSIGNED, allowNull: false, defaultValue: 0 },
+  totalSocketEvents: { type: DataTypes.BIGINT.UNSIGNED, allowNull: false, defaultValue: 0 },
+  peakHttpRps: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
+  peakSocketEventsPerSecond: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
   peakSocketConnections: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
   peakConcurrentParticipants: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
 }, { tableName: 'service_stats' });

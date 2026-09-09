@@ -4,12 +4,16 @@ const registerGameSocket = require('./game.socket');
 const registerGlobalChatSocket = require('./globalChat.socket');
 const socketAuth = require('./auth.socket');
 const statsService = require('../services/stats.service');
+const { instrumentApplicationEvents } = require('./event-metrics');
 
 function registerSocketHandlers(io) {
   io.use(socketAuth);
   io.on('connection', (socket) => {
     statsService.recordSocketConnection(socket);
     socket.once('disconnect', () => statsService.recordSocketDisconnect(socket));
+    // Centralized once-per-incoming-event accounting prevents duplicate counts when
+    // multiple handlers are added for an application event.
+    instrumentApplicationEvents(socket, () => statsService.recordSocketEvent());
     socket.join(socket.data.user.role === 'ADMIN' ? 'admins' : socket.data.user.role === 'MONITOR' ? 'monitors' : 'participants');
     if (socket.data.sessionId) socket.join(`session:${socket.data.sessionId}`);
     if (socket.data.participantId) socket.join(`participant:${socket.data.participantId}`);
