@@ -13,7 +13,7 @@ async function getTables(options = {}) {
     include: [{
       model: TableSession,
       as: 'sessions',
-      where: { status: 'ACTIVE', expiresAt: { [Op.gt]: new Date() } },
+      where: { status: 'ACTIVE' },
       required: false,
       include: [{ model: Participant, as: 'participants', where: { kickedAt: null, blockedAt: null }, required: false }],
     }],

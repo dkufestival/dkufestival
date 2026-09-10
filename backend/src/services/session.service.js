@@ -9,7 +9,7 @@ function defaultExpiresAt(startedAt = new Date()) {
 }
 
 function isActiveSession(session) {
-  return Boolean(session && session.status === 'ACTIVE' && new Date(session.expiresAt) > new Date());
+  return Boolean(session && session.status === 'ACTIVE');
 }
 
 module.exports = { addMinutes, defaultExpiresAt, isActiveSession };

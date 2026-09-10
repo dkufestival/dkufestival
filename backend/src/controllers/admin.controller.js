@@ -70,7 +70,7 @@ async function messageParticipant(req, res, next) {
     });
     const content = req.body.content.trim();
     if (!participant || participant.kickedAt || participant.blockedAt
-      || participant.session?.status !== 'ACTIVE' || new Date(participant.session.expiresAt) <= new Date()) {
+      || participant.session?.status !== 'ACTIVE') {
       throw new AppError(409, 'PARTICIPANT_NOT_ACTIVE', '현재 접속 중인 사용자가 아닙니다.');
     }
     req.app.get('io')?.to(`participant:${participant.id}`).emit('admin:message', {

@@ -6,7 +6,6 @@ const app = require('./app');
 const sequelize = require('./config/db');
 const registerSocketHandlers = require('./socket');
 const chatService = require('./services/chat.service');
-const lifecycleService = require('./services/lifecycle.service');
 const statsService = require('./services/stats.service');
 
 const server = http.createServer(app);
@@ -27,8 +26,6 @@ function startLifecycleJobs() {
       expiredRequests.forEach((room) => {
         io.to(`session:${room.requesterSessionId}`).to(`session:${room.targetSessionId}`).emit('chat:request-expired', room);
       });
-      const expiredSessions = await lifecycleService.expireSessions();
-      expiredSessions.forEach((result) => lifecycleService.emitLifecycle(io, result));
     } catch (error) {
       console.warn('Lifecycle cleanup failed', error.message);
     }

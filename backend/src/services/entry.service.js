@@ -2,9 +2,8 @@ const { Op } = require('sequelize');
 const sequelize = require('../config/db');
 const { Table, TableSession, Participant } = require('../models');
 const AppError = require('../errors/AppError');
-const { defaultExpiresAt, isActiveSession } = require('./session.service');
+const { defaultExpiresAt } = require('./session.service');
 const { signParticipantToken } = require('./token.service');
-const lifecycleService = require('./lifecycle.service');
 
 function validateCounts(data, required) {
   const maleCount = Number(data.maleCount ?? 0);
@@ -36,7 +35,6 @@ async function getActiveSession(tableId, transaction) {
     where: {
       tableId,
       status: 'ACTIVE',
-      expiresAt: { [Op.gt]: new Date() },
     },
     include: [{ model: Participant, as: 'participants', where: { kickedAt: null, blockedAt: null }, required: false }],
     order: [['startedAt', 'DESC']],
@@ -58,7 +56,6 @@ function summarizeSession(session) {
 
 async function getContext(qrToken) {
   if (!qrToken) throw new AppError(400, 'QR_REQUIRED', 'qr query parameter is required.');
-  await lifecycleService.expireSessions();
   const table = await findTableByQr(qrToken);
   const session = await getActiveSession(table.id);
   return {
@@ -76,7 +73,6 @@ async function enter(data) {
   }
   const gender = validateGender(data.gender);
 
-  await lifecycleService.expireSessions();
   return sequelize.transaction(async (transaction) => {
     const table = await findTableByQr(data.qrToken, {
       transaction,

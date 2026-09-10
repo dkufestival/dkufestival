@@ -487,15 +487,37 @@ function initAdminMap() {
   $('admin-map-zoom-reset').addEventListener('click', () => adminMapZoom.reset());
 }
 
+// 관리자 지도는 참가자 지도(세로 8열 배치)를 시계방향으로 90도 돌린 가로 배치로 보여준다.
+// 원래 배치의 (row, col)은 총 행 수 TOTAL_ROWS 기준으로 새 배치의 (row: col, col: TOTAL_ROWS + 1 - row)로 옮겨간다.
+const ADMIN_MAP_TOTAL_ROWS = 12;
+function rotateSlotClockwise(row, col) {
+  return { row: col, col: ADMIN_MAP_TOTAL_ROWS + 1 - row };
+}
+
 function renderTableGrid() {
   initAdminMap();
   const canvas = $('admin-map-canvas');
   clear(canvas);
 
-  canvas.appendChild(text('div', 'admin-map-zone admin-map-zone-top', ''));
-  canvas.appendChild(text('div', 'admin-map-zone admin-map-zone-left', ''));
+  const topZoneSlot = rotateSlotClockwise(1, 1);
+  const topZone = text('div', 'admin-map-zone admin-map-zone-top', '');
+  topZone.style.gridRow = `${topZoneSlot.row} / 8`;
+  topZone.style.gridColumn = String(topZoneSlot.col);
+  canvas.appendChild(topZone);
+
+  const leftZoneSlot = rotateSlotClockwise(2, 1);
+  const leftZoneEnd = rotateSlotClockwise(4, 1);
+  const leftZone = text('div', 'admin-map-zone admin-map-zone-left', '');
+  leftZone.style.gridRow = String(leftZoneSlot.row);
+  leftZone.style.gridColumn = `${leftZoneEnd.col} / ${leftZoneSlot.col + 1}`;
+  canvas.appendChild(leftZone);
+
+  const rightZoneSlot = rotateSlotClockwise(2, 8);
+  const rightZoneEnd = rotateSlotClockwise(4, 8);
   const rightZone = document.createElement('div');
   rightZone.className = 'admin-map-zone admin-map-zone-right';
+  rightZone.style.gridRow = String(rightZoneSlot.row);
+  rightZone.style.gridColumn = `${rightZoneEnd.col} / ${rightZoneSlot.col + 1}`;
   rightZone.appendChild(text('div', 'admin-map-zone-label', '입구'));
   canvas.appendChild(rightZone);
 
@@ -519,18 +541,19 @@ function renderTableGrid() {
     const isBottomRowTable = bottomRowTableOrder.includes(table.tableNumber);
     const session = table.activeSession;
     const remainingMs = session ? new Date(session.expiresAt).getTime() - Date.now() : null;
-    const endingSoon = remainingMs !== null && remainingMs > 0 && remainingMs <= 10 * 60 * 1000;
+    const endingSoon = remainingMs !== null && remainingMs <= 20 * 60 * 1000;
     const cell = document.createElement('div');
     cell.className = `admin-table-cell ${session ? 'occupied' : ''}${endingSoon ? ' ending-soon' : ''}`;
+    let originalSlot;
     if (isBottomRowTable) {
       if (bottomRow === null) bottomRow = slotTableRow + 2;
-      cell.style.gridRow = String(bottomRow);
-      cell.style.gridColumn = String(bottomRowTableOrder.indexOf(table.tableNumber) + 2);
+      originalSlot = { row: bottomRow, col: bottomRowTableOrder.indexOf(table.tableNumber) + 2 };
     } else {
-      const slot = nextTableSlot();
-      cell.style.gridRow = String(slot.row);
-      cell.style.gridColumn = String(slot.col);
+      originalSlot = nextTableSlot();
     }
+    const slot = rotateSlotClockwise(originalSlot.row, originalSlot.col);
+    cell.style.gridRow = String(slot.row);
+    cell.style.gridColumn = String(slot.col);
     cell.appendChild(text('div', 'admin-table-cell-num', String(table.tableNumber).padStart(2, '0')));
     cell.appendChild(text('div', 'admin-table-cell-status', session ? `사용중 · ${session.participants?.length || 0}명` : '비어있음'));
     if (session) {
@@ -615,6 +638,10 @@ function renderActiveDetail(body, table) {
   timeRow.className = 'detail-btn-row';
   timeRow.appendChild(button('detail-btn', '+10분 연장', async () => {
     await adminApi.extend(table.id, { minutes: 10 });
+    await reloadDetail();
+  }));
+  timeRow.appendChild(button('detail-btn', '+1시간 연장', async () => {
+    await adminApi.extend(table.id, { minutes: 60 });
     await reloadDetail();
   }));
   timeRow.appendChild(button('detail-btn', '시간 초기화', async () => {

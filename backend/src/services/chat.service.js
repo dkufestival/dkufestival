@@ -21,7 +21,7 @@ function isExpired(room, at = now()) {
 
 async function requireActiveSession(sessionId, code = 'SESSION_NOT_FOUND', options = {}) {
   const session = await TableSession.findOne({
-    where: { id: sessionId, status: 'ACTIVE', expiresAt: { [Op.gt]: now() } },
+    where: { id: sessionId, status: 'ACTIVE' },
     include: [
       { model: Participant, as: 'participants' },
       { model: Table, as: 'table', attributes: ['id', 'tableNumber'] },

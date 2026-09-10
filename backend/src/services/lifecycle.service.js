@@ -1,9 +1,5 @@
-const { Op } = require('sequelize');
-const sequelize = require('../config/db');
-const { TableSession, TableLike } = require('../models');
 const chatService = require('./chat.service');
 const notificationService = require('./notification.service');
-const boardService = require('./board.service');
 const { emitPublicTableUpdate, roomTableIds, sessionTableId } = require('../socket/table-updates');
 
 async function closeSessionChats(sessionId, reason, options = {}) {
@@ -12,34 +8,6 @@ async function closeSessionChats(sessionId, reason, options = {}) {
     chatService.cancelPendingForSession(sessionId, options),
   ]);
   return { closedRooms, cancelledRooms };
-}
-
-async function expireSessions(options = {}) {
-  const at = options.now || new Date();
-  return sequelize.transaction(async (transaction) => {
-    const sessions = await TableSession.findAll({
-      where: {
-        status: 'ACTIVE',
-        expiresAt: { [Op.lte]: at },
-      },
-      transaction,
-      lock: transaction.LOCK.UPDATE,
-    });
-
-    const results = [];
-    for (const session of sessions) {
-      await session.update({ status: 'CLOSED', endedAt: at }, { transaction });
-      const chats = await closeSessionChats(session.id, 'SESSION_EXPIRED', { transaction });
-      const boardCleanup = await boardService.cleanupSessionBoardData(session.id, { transaction });
-      await TableLike.destroy({
-        where: { toSessionId: session.id },
-        transaction,
-      });
-      results.push({ session, ...chats, ...boardCleanup });
-    }
-    await chatService.expirePendingRooms({ transaction, now: at });
-    return results;
-  });
 }
 
 function emitLifecycle(io, result) {
@@ -67,4 +35,4 @@ function emitLifecycle(io, result) {
   emitPublicTableUpdate(io, { tableIds: publicTableIds, reason: 'table:lifecycle-ended' });
 }
 
-module.exports = { closeSessionChats, expireSessions, emitLifecycle };
+module.exports = { closeSessionChats, emitLifecycle };
