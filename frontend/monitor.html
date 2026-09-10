@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PIU:M Staff Monitor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="monitor.css">
+</head>
+<body>
+  <main class="monitor-shell">
+    <header class="monitor-header">
+      <div><div class="wordmark">PIU:M</div><div class="tagline">STAFF MONITOR</div></div>
+      <div class="monitor-meta"><span id="connection-status">갱신 대기 중</span><span id="updated-at">마지막 갱신: -</span></div>
+    </header>
+    <section class="summary" aria-label="테이블 요약">
+      <article><span>전체 테이블</span><strong id="stat-total">-</strong></article>
+      <article><span>사용 중</span><strong id="stat-occupied">-</strong></article>
+      <article><span>이용 인원</span><strong id="stat-people">-</strong></article>
+      <article class="urgent"><span>종료 임박 / 초과</span><strong id="stat-urgent">-</strong></article>
+    </section>
+    <section class="status-row"><div id="monitor-status" class="monitor-status" aria-live="polite">테이블 현황을 불러오는 중입니다.</div><button id="retry-button" type="button" hidden>다시 시도</button></section>
+    <section id="map-section" class="map-section" hidden>
+      <div id="monitor-map-viewport" class="monitor-map-viewport">
+        <div id="monitor-map-view" class="monitor-map-view"><div id="monitor-map-canvas" class="monitor-map-canvas"></div></div>
+        <div class="monitor-map-controls"><button id="monitor-map-zoom-in" type="button" aria-label="확대">+</button><button id="monitor-map-zoom-out" type="button" aria-label="축소">−</button><button id="monitor-map-zoom-reset" type="button" aria-label="초기화">↺</button></div>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="js/monitor-app.js"></script>
+</body>
+</html>

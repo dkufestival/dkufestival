@@ -11,7 +11,10 @@
 관리자 화면: https://dkufestival-app-production.up.railway.app/admin.html
 농구 게임:   https://dkufestival-app-production.up.railway.app/basketball/
 스톱워치:    https://dkufestival-app-production.up.railway.app/stopwatch/
+직원 테이블 모니터링: https://dkufestival-app-production.up.railway.app/monitor.html
 ```
+
+직원 테이블 모니터링은 별도 로그인 없이 접속하는 읽기 전용 페이지입니다. 최소한의 테이블 현황만 제공하며 QR 및 관리자 기능에는 접근할 수 없습니다.
 
 QR 이미지는 `FRONTEND_URL` 값을 기준으로 생성됩니다. 운영 QR을 새로 만들 때는 `.env`의 `FRONTEND_URL`을 실제 배포 URL로 설정한 뒤 `npm run seed`를 실행하세요.
 
